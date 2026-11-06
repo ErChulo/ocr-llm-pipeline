@@ -1,5 +1,9 @@
 name: Experimental 0.5B GGUF extraction benchmark
 
+concurrency:
+  group: model-benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
   push:

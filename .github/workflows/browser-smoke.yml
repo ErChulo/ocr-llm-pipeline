@@ -1,5 +1,9 @@
 name: Experimental offline browser smoke test
 
+concurrency:
+  group: offline-browser-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main]
