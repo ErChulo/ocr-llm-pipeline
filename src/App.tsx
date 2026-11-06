@@ -4,7 +4,7 @@ import { loadTheme, saveTheme, type Theme } from './theme';
 import darkLogo from './assets/logo-negro.png';
 import lightLogo from './assets/logo.svg';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import Ajv, { type AnySchema } from 'ajv';
+import { compileLocalSchema, validateLocalJson } from './schemaValidation';
 import { OfflineEngine, type ChatMessage, type Settings } from './engine';
 import { importFile, type SourceDocument } from './pipeline';
 import { terminateOcr } from './ocr';
@@ -170,7 +170,9 @@ export default function App() {
     setEvidenceChoices({}); setEvidenceConfirmed({}); setPrivacyReviewed(false);
   }
 
-  function validateDraft(draft: string, currentAudit: ExtractionAudit | null, choices: Record<string, number>) {
+  async function validateDraft(draft: string, currentAudit: ExtractionAudit | null, choices: Record<string, number>) {
+    if(busy)return;
+    setBusy(true);
     const errors: string[] = [];
     let value: unknown = null;
     try {
@@ -182,12 +184,11 @@ export default function App() {
         throw new Error('Resolve all ' + unresolved.length + ' conflicting field(s) before validation.');
       }
       const parsedSchema = JSON.parse(schema) as unknown;
-      const validator = new Ajv({ allErrors: true, strict: false }).compile(parsedSchema as AnySchema);
       value = JSON.parse(draft) as unknown;
-      if (!validator(value)) {
-        errors.push(...(validator.errors ?? []).map(x => (x.instancePath || '(root)') + ' ' + x.message));
-      }
+      const check=await validateLocalJson(parsedSchema,value);
+      errors.push(...check.errors);
     } catch (e) { errors.push(errorMessage(e)); }
+    finally { setBusy(false); }
     setValidationErrors(errors);
     setEvidenceChoices({}); setEvidenceConfirmed({});
     setValid(errors.length === 0);
@@ -215,7 +216,7 @@ export default function App() {
     setStatus('Checking source sections...');
     try {
       const parsed = JSON.parse(schema) as unknown;
-      new Ajv({ allErrors: true, strict: false }).compile(parsed as AnySchema); // Fail early on invalid schema.
+      await compileLocalSchema(parsed); // Fail early on invalid or remote-reference schema.
       const record = await extractWholeDocument(
         active, parsed, settings.context,
         async (prompt, section, total) => {
@@ -240,9 +241,9 @@ export default function App() {
         setValidationErrors(['Resolve ' + merged.unresolved.length + ' conflicting field(s).']);
         setStatus('All sections processed. Review conflicting values.');
       } else {
-        const validator = new Ajv({ allErrors: true, strict: false }).compile(parsed as AnySchema);
-        const okay = !!validator(merged.data);
-        setValidationErrors((validator.errors ?? []).map(x => (x.instancePath || '(root)') + ' ' + x.message));
+        const schemaResult=await validateLocalJson(parsed,merged.data);
+        const okay=schemaResult.valid;
+        setValidationErrors(schemaResult.errors);
         setValid(okay);
         setExtraction(okay ? merged.data : null);
         setStatus(okay
@@ -385,7 +386,7 @@ export default function App() {
               disabled={!audit || busy}
               onChange={e => { setReviewDraft(e.currentTarget.value); setValid(false); setExtraction(null); setEvidenceChoices({}); setEvidenceConfirmed({}); }}/>
             {audit && <div className="actions"><button type="button" className="secondary" disabled={busy}
-              onClick={() => validateDraft(reviewDraft, audit, conflictChoices)}>Validate edited JSON</button></div>}
+              onClick={() => void validateDraft(reviewDraft, audit, conflictChoices)}>Validate edited JSON</button></div>}
             {audit && <p className={valid ? 'success' : 'warning'}>
               {valid ? 'JSON Schema passed. Verify all facts before use.' : 'JSON needs review or corrections.'}
             </p>}
