@@ -65,3 +65,7 @@ The current Extract JSON view processes **all imported text** in bounded section
 ## Office document import (experimental)
 
 The app now accepts DOCX and XLSX files locally. DOCX text is labeled by paragraph/table location; XLSX values are labeled by sheet and cell. Formula results are read from cached workbook values, not recalculated. Headers, footers, embedded images, charts, unresolved changes, and Excel date formatting can be incomplete. Only tested parser-derived source locations may be cited; the user must review the original. This feature is not production-accepted.
+
+## Native PDF text import
+
+The PDF.js 6.5.438 parser is bundled locally with the application, including its no-network main-thread worker fallback. The imported text records the PDF's **actual page numbers**, not coordinates invented by AI. Every page must contain extractable text; image-only or blank pages fail closed until offline OCR is implemented. Tables, page ordering and drawings require source review. The PDF parser is subject to a 20 MB/300-page limit. It is not a document viewer and does not establish factual verification.

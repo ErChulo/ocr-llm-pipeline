@@ -6,7 +6,7 @@
 
 Get a GGUF model file. Save it on the local computer.
 
-The application currently accepts Bulk OCR Studio JSONC, JSON, TXT, MD and CSV files. Direct PDF, Word, Excel and image OCR are future features.
+The app accepts text PDFs, DOCX, XLSX, Bulk OCR Studio JSONC, JSON, TXT, MD and CSV files. Scanned PDFs and images need OCR, which is not yet supported.
 
 ## Workflow
 
@@ -70,6 +70,6 @@ Do not use the tool with protected case files until its security controls are ve
 - GGUF inference works only after a supported model loads. Real offline model testing remains pending.
 - Current AI extraction reads limited text per request. Long documents need full chunk coverage before production use.
 - JSON Schema validation checks shape and data types. You must verify facts against the document.
-- Direct PDF/DOCX/XLSX parsing, OCR and precise source locations are pending.
+- PDF page, DOCX paragraph/table and XLSX cell locations are parser-derived. OCR and PDF image-region locations remain pending.
 
 This guide uses an ASD-STE100-inspired writing style. It has not been certified against the full controlled vocabulary.

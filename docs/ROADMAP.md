@@ -59,3 +59,6 @@
 
 - [x] Native DOCX/XLSX parsing source with paragraph/table/cell and sheet/cell location metadata; tests and file:// integration still needed.
 - [ ] Verify DOCX and XLSX parsers on synthetic workbooks, including formula caches, data formats and malformed archive handling.
+
+- [x] Implement page-indexed, local PDF text parsing, with strict rejection when a page has no text; source and browser tests pending.
+- [ ] Add offline OCR for scanned PDF pages and images, then true region references and screenshot review.

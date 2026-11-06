@@ -10,7 +10,7 @@ const steps = [
   ] },
   { title: '2. Add a document', instructions: [
     'Select Attach OCR export / text.',
-    'Select a local JSONC, JSON, TXT, MD or CSV file.',
+    'Select a text PDF, DOCX, XLSX, JSONC, JSON, TXT, MD or CSV file.',
     'Select the document. Review the source text.'
   ] },
   { title: '3. Extract JSON', instructions: [
@@ -86,7 +86,7 @@ export default function UserGuideDrawer() {
           <section className="guide-step guide-availability">
             <h2>What works now?</h2>
             <p>Current source supports local text and Bulk OCR Studio exports. The local model and extraction interface are experimental.</p>
-            <p>Direct PDF, Word, Excel and image OCR are planned. Complete offline tests are pending.</p>
+            <p>Text PDFs, DOCX and XLSX are supported. Scanned pages and images need OCR, which is not yet included.</p>
           </section>
           <p className="guide-footnote">Instructions use an ASD-STE100-inspired style. Formal vocabulary compliance has not been certified.</p>
         </div>

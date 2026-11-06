@@ -15,7 +15,8 @@
     "react-dom": "^19.2.0",
     "@wllama/wllama-compat": "3.8.1",
     "fflate": "0.8.3",
-    "@xmldom/xmldom": "0.9.12"
+    "@xmldom/xmldom": "0.9.12",
+    "pdfjs-dist": "6.5.438"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

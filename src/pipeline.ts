@@ -1,8 +1,9 @@
 import { parseDocx, parseXlsx } from './nativeOffice.ts';
+import { parsePdf } from './pdfText.ts';
 export type SourceRecord = { start: number; end: number; label: string; location: Record<string, string | number> };
 export type SourceDocument = {
   id: string; name: string; text: string; mimeType: string; sizeBytes: number;
-  provenance: { source: 'local-text' | 'bulk-ocr-jsonc' | 'docx-native' | 'xlsx-native'; precision: 'document' | 'paragraph' | 'cell'; fileName: string };
+  provenance: { source: 'local-text' | 'bulk-ocr-jsonc' | 'docx-native' | 'xlsx-native' | 'pdf-native'; precision: 'document' | 'paragraph' | 'cell' | 'page'; fileName: string };
   records?: SourceRecord[];
   warnings?: string[];
 };
@@ -64,7 +65,7 @@ export function importText(filename: string, text: string): ImportResult {
     return { documents, notes };
   }
   if (!['txt', 'md', 'csv'].includes(ext || '')) {
-    throw new Error('This milestone imports .jsonc, .json, .txt, .md, and .csv. Native PDF/Office/OCR is pending.');
+    throw new Error('Supported direct text formats are .jsonc, .json, .txt, .md and .csv. Use the file picker for PDF, DOCX or XLSX.');
   }
   return { documents: [{
       id: filename, name: filename, text, mimeType: ext === 'csv' ? 'text/csv' : 'text/plain',
@@ -75,6 +76,10 @@ export function importText(filename: string, text: string): ImportResult {
 export async function importFile(file: File): Promise<ImportResult> {
   if (file.size > 20 * 1024 * 1024) throw new Error('Local import limited to 20 MB per file.');
   const ext=file.name.split('.').at(-1)?.toLowerCase();
+  if (ext === 'pdf') {
+    const parsed=await parsePdf(file.name,new Uint8Array(await file.arrayBuffer()));
+    return {documents:[parsed],notes:parsed.warnings??[]};
+  }
   if (ext === 'docx' || ext === 'xlsx') {
     const bytes=new Uint8Array(await file.arrayBuffer());
     const parsed=ext==='docx'?parseDocx(file.name,bytes):parseXlsx(file.name,bytes);
