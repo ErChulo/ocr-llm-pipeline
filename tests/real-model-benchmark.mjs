@@ -9,6 +9,8 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 
 mkdirSync('tmp',{recursive:true});
 const model=resolve('tmp/qwen2.5-0.5b-instruct-q4_k_m.gguf');
@@ -48,6 +50,54 @@ try {
   report.networkRequests=external.length;
   assert.equal(external.length,0,'The app must make zero external network requests.');
   await page.screenshot({path:'tmp/real-model-quality.png',fullPage:true});
+
+  // Full application test: import, extract, validate, confirm citation and
+  // download. This is not a mocked LLM, and no production participant data.
+  const fictional=[
+    'FICTIONAL TEST DOCUMENT. NEVER USE FOR A REAL PLAN.',
+    'This plan has normal_retirement_age: 65.',
+    'This plan has early_retirement_eligibility: age 55 after 10 years of service.',
+    'Use only the fictional values stated in this document.'
+  ].join('\n');
+  const expectedHash=createHash('sha256').update(Buffer.from(fictional)).digest('hex');
+  await page.getByRole('button',{name:'Documents',exact:true}).click();
+  await page.locator('input[type="file"][accept*=".txt"]').setInputFiles({
+    name:'fictional-extraction.txt',mimeType:'text/plain',buffer:Buffer.from(fictional)
+  });
+  await page.getByText(/normal_retirement_age: 65/).waitFor({timeout:15000});
+  await page.getByRole('button',{name:'Extract JSON',exact:true}).click();
+  await page.getByRole('button',{name:'Extract and validate'}).click();
+  await page.locator('.evidence-field').first().waitFor({timeout:240000});
+  const reviewedFields=await page.locator('.evidence-field').count();
+  assert.ok(reviewedFields>=2,'Model must produce both requested plan fields.');
+  for(let i=0;i<reviewedFields;i++){
+    const field=page.locator('.evidence-field').nth(i);
+    const missing=await field.getByText(/No exact source text supports this value/).count();
+    assert.equal(missing,0,'Every model value needs real source text.');
+    await field.locator('select').selectOption('0');
+    await field.locator('input[type="checkbox"]').check();
+  }
+  await page.getByRole('button',{name:'Export reviewed JSON'}).waitFor({state:'visible'});
+  assert.equal(await page.getByRole('button',{name:'Export reviewed JSON'}).isEnabled(),true,
+    'Export must remain locked until source review finishes.');
+  const downloadPending=page.waitForEvent('download',{timeout:15000});
+  await page.getByRole('button',{name:'Export reviewed JSON'}).click();
+  const download=await downloadPending;
+  const artifactPath='tmp/real-model-extraction.json';
+  await download.saveAs(artifactPath);
+  const exported=JSON.parse(readFileSync(artifactPath,'utf8'));
+  assert.equal(exported.coverage.complete,true);
+  assert.equal(exported.document.sourceSha256,expectedHash);
+  assert.equal(String(exported.extraction.normal_retirement_age).trim(),'65');
+  const early=String(exported.extraction.early_retirement_eligibility||'');
+  assert.match(early,/55/);
+  assert.match(early,/10/);
+  assert.ok(Object.keys(exported.fieldEvidence).length>=2);
+  report.fullPipeline='passed';
+  report.exportedFields=Object.keys(exported.fieldEvidence).length;
+  report.pipelineMs=Date.now()-t0-report.loadMs;
+  console.log('REAL GGUF END-TO-END: source import, JSON, evidence review and export passed.');
+
   console.log('REAL GGUF QUALITY:',JSON.stringify(report));
 } catch(error) {
   report.result='test_failed';

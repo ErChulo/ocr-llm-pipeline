@@ -15,3 +15,8 @@ This **separate, experimental** CI workflow is not part of the baseline build ba
 Workflow: \`.github/workflows/model-benchmark.yml\`.
 
 Before calling the application production grade, benchmark several representative instruction-tuned GGUF sizes using synthetic multi-page pension documents with measurable precision, recall, source evidence and latency.
+
+## Integrated export-path coverage
+
+The next benchmark run additionally imports a synthetic TXT pension document through the UI, requests JSON from the real GGUF model, validates the resulting JSON Schema, selects and confirms source matches, exports via the actual browser download action, and checks the saved JSON's source-file SHA-256 and expected benefit ages. This is still a small synthetic acceptance case, not a production actuarial benchmark.
+
