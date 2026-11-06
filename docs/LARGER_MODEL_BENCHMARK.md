@@ -16,3 +16,8 @@ Measurements: model file size, load time, known-answer score, full synthetic doc
 The larger model may fail due to runner memory, browser WASM limits, or CPU performance. Failure is reported rather than weakening the offline design.
 
 Model size alone does not determine whether it will run on a user's workstation. RAM, browser memory, context, KV cache, quantization, and WebAssembly support matter. CI success does not establish PBGC workstation approval.
+## Verified 1.5B result (November 6, 2026)
+
+[CI run 42281102968](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42281102968) completed successfully. It verified the official 1.5B model's SHA-256, loaded 1,117,320,736-byte weights in the offline browser in 8,701 ms, and completed the synthetic document → JSON → evidence review → browser export workflow with **zero network requests**.
+
+However, the independent four-field known-answer quality test scored **3/4**, not 4/4. This is a quality limitation; the passing workflow only establishes the end-to-end application path. The next diagnostic addition shows missing, incorrect and unsupported field names without treating these as verified facts. A 3B run remains untested.

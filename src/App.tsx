@@ -148,9 +148,15 @@ export default function App() {
         token=>{output+=token;},true
       );
       const report=scoreBenchmark(parseModelJson(output));
+      const issues=[
+        ...report.missing.map(path=>'missing '+path),
+        ...report.incorrect.map(path=>'incorrect '+path),
+        ...report.unsupported.map(path=>'unexpected '+path)
+      ];
       setBenchmarkStatus(
         'Synthetic sample: '+report.correct+' of '+report.total+' correct. '+
         (report.complete?'Sample passed.':'More accurate model or settings needed.')+
+        (issues.length?' Check: '+issues.join(', ')+'.':'')+
         ' This alone does not certify extraction accuracy.'
       );
     }catch(error){

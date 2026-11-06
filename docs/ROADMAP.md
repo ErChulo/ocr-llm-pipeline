@@ -18,7 +18,8 @@
 
 ## Remaining production gates — not yet accepted
 
-- [ ] Representative **actual instruction-tuned** GGUF benchmarks: accuracy/precision/recall, prompt injection, context overflow, latency and memory on 0.5B, 1.5B and 3B models.
+- [x] Official Qwen2.5-1.5B-Instruct Q4_K_M: successful local file URL inference and full JSON export; **3/4** known-answer score ([CI run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42281102968)).
+- [ ] Broader measured accuracy/precision/recall, prompt injection, context overflow, latency and RAM on 0.5B/1.5B/3B models; 3B remains untested.
 - [ ] Manual offline verification on the authorized managed PBGC Windows Chrome/Edge workstation.
 - [x] Implement original PDF page viewer and approximate PDF.js text-item evidence overlays; browser verification tracked separately.
 - [ ] Exact glyph/quoted-substring highlights and robust mixed raster/text page OCR remain open. Mixed-content PDF pages currently trigger a warning.

@@ -46,6 +46,7 @@ try {
   const found=text.match(/Synthetic sample: (\d) of 4 correct/);
   assert.ok(found,'Model must return a parsed known-answer JSON report.');
   report.score=Number(found[1]);
+  report.syntheticFeedback=text.slice(0,600);
   report.result=report.score===4?'all_four_correct':'partial_or_incorrect';
   report.elapsedMs=Date.now()-t0;
   report.networkRequests=external.length;
