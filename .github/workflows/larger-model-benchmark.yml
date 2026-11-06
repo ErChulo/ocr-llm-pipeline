@@ -44,7 +44,7 @@ jobs:
       - name: Download and verify official Qwen GGUF (CI only)
         timeout-minutes: 19
         env:
-          MODEL_SIZE: ${{ inputs.model_size || '1.5B' }}
+          MODEL_SIZE: ${{ github.event_name == 'push' && '3B' || inputs.model_size || '1.5B' }}
         run: |
           set -euo pipefail
           mkdir -p tmp
