@@ -117,6 +117,8 @@ export default function App() {
       const imports = await Promise.all(files.map(f => importFile(f)));
       const added = imports.flatMap(x => x.documents);
       setDocs(current => [...current, ...added]);
+      setDocumentIndex(docs.length);
+      clearExtraction();
       setNotes(imports.flatMap(x => x.notes));
       setStatus('Imported ' + added.length + ' local document(s). No server was used.');
     } catch (e) { setError(errorMessage(e)); setStatus('Document import stopped.'); }
