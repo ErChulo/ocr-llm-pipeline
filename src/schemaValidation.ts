@@ -87,7 +87,7 @@ function errorLines(output:unknown):string[]{
 export async function compileLocalSchema(schema:unknown):Promise<void>{
   const safe=preflightSchema(schema);
   const uri=uniqueSchemaUrl();
-  registerSchema(safe,uri);
+  registerSchema(safe as Parameters<typeof registerSchema>[0],uri);
   try {
     await validate(uri);
   } finally {
@@ -97,11 +97,11 @@ export async function compileLocalSchema(schema:unknown):Promise<void>{
 export async function validateLocalJson(schema:unknown,value:unknown):Promise<SchemaResult>{
   const safe=preflightSchema(schema);
   const uri=uniqueSchemaUrl();
-  registerSchema(safe,uri);
+  registerSchema(safe as Parameters<typeof registerSchema>[0],uri);
   try {
     // No unsafe-eval, no browser network requests.
     setShouldValidateFormat(true);
-    const output=await validate(uri,value,BASIC);
+    const output=await validate(uri,value as Parameters<typeof validate>[1],BASIC);
     return {valid:output.valid,errors:output.valid?[]:errorLines(output)};
   } finally {
     unregisterSchema(uri);
