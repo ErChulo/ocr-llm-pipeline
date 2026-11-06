@@ -82,3 +82,6 @@
 - [x] Local conservative SSN/email/payment-card/phone detection and export review acknowledgement; screening is not a comprehensive PII control or certification.
 
 - [x] SHA-256 fingerprints of original input bytes included with exported evidence, allowing audit reproduction without uploading source data.
+
+- [x] Optional synthetic known-answer local GGUF quality check in Settings, with deterministic scoring and no actual case records.
+- [ ] Run representative offline 0.5B–3B model benchmarks with measured factual accuracy, memory and latency before production release.

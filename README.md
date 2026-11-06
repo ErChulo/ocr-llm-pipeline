@@ -79,3 +79,7 @@ Before exporting, the user must select an exact local-text match and check each 
 ## CSV cell provenance
 
 CSV imports are parsed without a server. Every nonempty cell is recorded as text with its actual 1-based row and column. Quoted commas, CRLF and embedded newlines are handled; malformed quotes fail closed. The first row is **not assumed to be a header**. CSV formulas are never executed. Synthetic fixtures cover the parser and preserve no personal information.
+
+## Local model quality smoke check
+
+Under **Settings → Check extraction quality**, the loaded GGUF is asked to extract four known answers from a purely fictional plan. The app reports the score and any failure; it does not claim real-world actuarial accuracy. A passing sample is not sufficient for production use. See `src/modelBenchmark.ts`.

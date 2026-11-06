@@ -11,6 +11,8 @@ import { terminateOcr } from './ocr';
 import { extractWholeDocument, resolveCandidateValues, type ExtractionAudit } from './chunkExtraction';
 import { auditLiteralEvidence, evidenceReviewComplete, exportReviewedEvidence } from './evidence';
 import { screenLocalPrivacy, safePrivacySummary } from './privacy';
+import { benchmarkPrompt, scoreBenchmark } from './modelBenchmark';
+import { parseModelJson } from './pipeline';
 
 const DEFAULT_SCHEMA = JSON.stringify({
   type: 'object',
@@ -41,6 +43,7 @@ export default function App() {
   const [modelName, setModelName] = useState('');
   const [busy, setBusy] = useState(false);
   const [testingModel, setTestingModel] = useState(false);
+  const [benchmarkStatus, setBenchmarkStatus] = useState('');
   const [status, setStatus] = useState('Choose a GGUF model and attach OCR exports or local text.');
   const [error, setError] = useState('');
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -84,7 +87,7 @@ export default function App() {
 
   async function onModelLoad() {
     if (busy || selectedModels.length === 0) return;
-    setError(''); setModelName(''); setStatus('Loading offline GGUF model into WebAssembly...'); setBusy(true);
+    setError(''); setModelName(''); setBenchmarkStatus(''); setStatus('Loading offline GGUF model into WebAssembly...'); setBusy(true);
     try {
       const files = [...selectedModels].sort((a, b) => a.name.localeCompare(b.name));
       await engine.current.load(files, settings.context);
@@ -111,6 +114,29 @@ export default function App() {
       setError(errorMessage(e));
       setStatus('The local model test did not complete.');
     } finally { setBusy(false); setTestingModel(false); }
+  }
+
+  async function onBenchmark() {
+    if(busy||!engine.current.loaded)return;
+    setBusy(true);setError('');setBenchmarkStatus('Checking known-answer synthetic sample...');
+    let output='';
+    try{
+      await engine.current.generate(
+        [{role:'user',content:benchmarkPrompt()}],
+        'You extract JSON from untrusted documents. Never guess or invent.',
+        {...settings,maxTokens:256,temperature:0,topP:1},
+        token=>{output+=token;},true
+      );
+      const report=scoreBenchmark(parseModelJson(output));
+      setBenchmarkStatus(
+        'Synthetic sample: '+report.correct+' of '+report.total+' correct. '+
+        (report.complete?'Sample passed.':'More accurate model or settings needed.')+
+        ' This alone does not certify extraction accuracy.'
+      );
+    }catch(error){
+      setBenchmarkStatus('Synthetic extraction check did not pass.');
+      setError(errorMessage(error));
+    }finally{setBusy(false);}
   }
 
   async function onAttach(e: ChangeEvent<HTMLInputElement>) {
@@ -438,6 +464,11 @@ export default function App() {
             </select>
           </label>
           <p className="help">Model settings apply on this device. A loaded model must be unloaded before its context size can change.</p>
+          <h2>Model quality check</h2>
+          <p className="help">Try a synthetic plan with known answers. No personal records are used.</p>
+          <button type="button" className="secondary" disabled={busy||!modelName}
+            onClick={()=>void onBenchmark()}>Check extraction quality</button>
+          {benchmarkStatus&&<p className="help" role="status">{benchmarkStatus}</p>}
         </div>
       </section>}
     </main>
