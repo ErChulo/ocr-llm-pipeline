@@ -26,23 +26,27 @@ function blobUrl(contents:BlobPart[],type:string):string {
 }
 async function makeWorker(){
   try{
-    // Base64 decoded from bundled HTML to an object URL accessible to this blob Worker.
-    const languageResponse=await fetch(englishDataUri);
-    if(!languageResponse.ok)throw new Error('Bundled English OCR language data is unavailable.');
-    const languageBlob=await languageResponse.blob();
-    const langUrl=blobUrl([languageBlob],'application/gzip');
+    // Embed language bytes directly into the classic worker. Blob URLs made by a
+    // file:// document may be inaccessible to a blob:null worker in Chromium.
+    const languageBase64=englishDataUri.split(',')[1];
+    if(!languageBase64 || languageBase64.length<1000)throw new Error('Embedded English OCR language data is missing.');
 
     // The v7 worker requests this precise, virtual URL. Intercept only this asset
     // inside the worker; block all outbound HTTP(S) traffic.
     const prefix=[
       "'use strict';",
       "const _ocrFetch=self.fetch.bind(self);",
-      'const _ocrEngURL='+JSON.stringify(langUrl)+';',
+      'const _ocrBase64='+JSON.stringify(languageBase64)+';',
       'const _ocrVirtual='+JSON.stringify(VIRTUAL_ENG)+';',
+      'let _ocrLanguageBytes=null;',
       'self.fetch=function(input,opts){',
       'const url=String(input&&input.url||input);',
-      'if(url===_ocrVirtual)return _ocrFetch(_ocrEngURL,opts);',
+      'if(url===_ocrVirtual){',
+      'if(!_ocrLanguageBytes){const b=atob(_ocrBase64);const out=new Uint8Array(b.length);for(let i=0;i<b.length;i++)out[i]=b.charCodeAt(i);_ocrLanguageBytes=out;}',
+      'return Promise.resolve(new Response(_ocrLanguageBytes,{status:200,headers:{"content-type":"application/gzip"}}));',
+      '}',
       'if(/^https?:/i.test(url))return Promise.reject(new Error("OCR worker refuses network requests: "+url));',
+      'console.error("[OCR local fetch]",url.slice(0,120));',
       'return _ocrFetch(input,opts);',
       '};'
     ].join('\n');
