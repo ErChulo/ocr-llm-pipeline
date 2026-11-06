@@ -100,7 +100,7 @@ try {
     name:'synthetic.png',mimeType:'image/png',buffer:Buffer.from(png64,'base64')
   });
   await page.getByLabel('Document', {exact:true}).selectOption({label:'synthetic.png'});
-  await page.locator('.preview').getByText(/Image OCR:[\\s\\S]*RETIREMENT AGE 65/i).waitFor({timeout:150000});
+  await page.locator('.preview').getByText(/RETIREMENT AGE 65/i).waitFor({timeout:150000});
   assert.match(await page.locator('.preview').innerText(), /^Image OCR:/);
   console.log('REAL BROWSER: embedded English OCR recognized synthetic PNG entirely offline.');
   await page.screenshot({path:'tmp/smoke-ocr.png',fullPage:true});
