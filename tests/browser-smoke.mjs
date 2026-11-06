@@ -8,6 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { statSync, mkdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { createSyntheticPdf, createScannedPdf } from './pdf-fixture.mjs';
+import { zipSync, strToU8 } from 'fflate';
 
 mkdirSync('tmp', { recursive: true });
 const fixture = resolve('tmp/stories260K.gguf');
@@ -131,6 +132,49 @@ try {
   await page.screenshot({path:'tmp/smoke-scanned-pdf.png',fullPage:true});
 
   console.log('REAL BROWSER: PDF.js extracted both pages with page labels from file://.');
+
+  // Exercise ZIP-based Office and CSV import in the actual offline file build,
+  // not merely in Node parser unit tests.
+  const docxMarkup='<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Normal retirement 65</w:t></w:r></w:p></w:body></w:document>';
+  const docxFile=zipSync({
+    '[Content_Types].xml':strToU8('<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>'),
+    'word/document.xml':strToU8(docxMarkup)
+  },{level:0});
+  await page.locator('input[type="file"][accept*=".docx"]').setInputFiles({
+    name:'synthetic.docx',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    buffer:Buffer.from(docxFile)
+  });
+  await page.waitForFunction(() =>
+    document.querySelector('.preview')?.textContent?.includes('Paragraph 1: Normal retirement 65'),
+    null,{timeout:30000}
+  );
+  console.log('REAL BROWSER: DOCX paragraph provenance verified offline.');
+
+  const sheetXml='<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>NormalAge</t></is></c><c r="B1"><v>65</v></c></row></sheetData></worksheet>';
+  const xlsxFile=zipSync({
+    'xl/workbook.xml':strToU8('<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Plan Data" sheetId="1" r:id="rId1"/></sheets></workbook>'),
+    'xl/_rels/workbook.xml.rels':strToU8('<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>'),
+    'xl/worksheets/sheet1.xml':strToU8(sheetXml)
+  },{level:0});
+  await page.locator('input[type="file"][accept*=".xlsx"]').setInputFiles({
+    name:'synthetic.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    buffer:Buffer.from(xlsxFile)
+  });
+  await page.waitForFunction(() =>
+    document.querySelector('.preview')?.textContent?.includes('Plan Data!B1: 65'),
+    null,{timeout:30000}
+  );
+  console.log('REAL BROWSER: XLSX sheet/cell provenance verified offline.');
+
+  await page.locator('input[type="file"][accept*=".csv"]').setInputFiles({
+    name:'synthetic.csv',mimeType:'text/csv',
+    buffer:Buffer.from('Field,Value\r\nNormalAge,65\r\n')
+  });
+  await page.waitForFunction(() =>
+    document.querySelector('.preview')?.textContent?.includes('Row 2 column 2: 65'),
+    null,{timeout:30000}
+  );
+  console.log('REAL BROWSER: CSV row/column provenance verified offline.');
 
   await page.locator('input[type="file"][accept=".gguf"]').setInputFiles(fixture);
   await page.getByRole('button', { name: 'Load model' }).click();
