@@ -1,7 +1,7 @@
 # DESIGN.md — OCR + LLM Pipeline Studio
 
 **Status:** design specification, not a claim of completed UI compliance. 
-**Source:** *PBGC Branding & Editorial Style Guide*, September 2025, in the connected PBGC reference library. The exact \`DESIGN.md\` requested was **not found** in the linked \`pbgc-the-book-of-job\` Drive folder; this design file is a project-specific interpretation of the official guide.
+**Source:** *PBGC Branding & Editorial Style Guide*, September 2025, in the connected PBGC reference library. The exact `DESIGN.md` requested was **not found** in the linked `pbgc-the-book-of-job` Drive folder; this design file is a project-specific interpretation of the official guide.
 
 ## Design character
 
@@ -50,4 +50,8 @@ Normal UI body text at least 14 CSS px; controls at least 14 CSS px; large tap t
 
 ## Design review
 
-Use Impeccable during development after it is installed in a developer checkout. Its role is to review UX, accessibility and visual anti-patterns against **this** file and \`PRODUCT.md\`. It does not override PBGC brand, offline restrictions, source provenance, or security controls. See [setup](docs/IMPECCABLE_SETUP.md).
+Use Impeccable during development after it is installed in a developer checkout. Its role is to review UX, accessibility and visual anti-patterns against **this** file and `PRODUCT.md`. It does not override PBGC brand, offline restrictions, source provenance, or security controls. See [setup](docs/IMPECCABLE_SETUP.md).
+
+## Official branding asset implementation
+
+Official logo variants are embedded without recoloring or geometric modification. **White logo on dark UI**, **black logo on light UI**. Use consistent scale, minimum display width and ample clear space. These source images are not generated artwork. This application is an independent internal-oriented tool and must not claim PBGC endorsement. Details: `docs/BRANDING_ASSETS.md`.

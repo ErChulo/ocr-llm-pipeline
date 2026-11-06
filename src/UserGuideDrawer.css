@@ -37,3 +37,16 @@
   .guide-caution{background:#fff!important;border:1px solid #bbb!important;border-left:3px solid #E4002B!important}
   .guide-diagram{max-width:100%;print-color-adjust:exact;-webkit-print-color-adjust:exact}
 }
+
+/* Adapt the guide to the chosen color theme. The SVG diagram retains dark panels for readability. */
+:root[data-theme="light"] .guide-drawer{background:var(--guide-bg);color:var(--ink);border-color:var(--border)}
+:root[data-theme="light"] .guide-toolbar{background:var(--guide-raised);border-color:var(--border)}
+:root[data-theme="light"] .guide-content h1,:root[data-theme="light"] .guide-content h2{color:var(--ink)}
+:root[data-theme="light"] .guide-cover{border-color:#002D72}
+:root[data-theme="light"] .guide-overline,:root[data-theme="light"] .guide-footnote{color:var(--muted)}
+:root[data-theme="light"] .guide-step{border-color:var(--border)}
+:root[data-theme="light"] .guide-caution{background:#FFF1F2;border-left-color:#E4002B}
+:root[data-theme="light"] .guide-availability{border-left-color:#002D72}
+@media print{
+  :root[data-theme="light"] .guide-content h1,:root[data-theme="light"] .guide-content h2{color:#002D72!important}
+}

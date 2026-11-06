@@ -6,7 +6,7 @@
 
 A **browser-only, offline-first** document-to-JSON application. Developed with **Vite, React, TypeScript, WebAssembly and Wllama**. Its intended release is one HTML file, with a user-selected GGUF model stored separately.
 
-> The build badge indicates automated source tests and compilation. It **does not** establish that actual GGUF inference, OCR, or all \`file://\` scenarios work.
+> The build badge indicates automated source tests and compilation. It **does not** establish that actual GGUF inference, OCR, or all `file://` scenarios work.
 
 ## Critical features (P0)
 
@@ -19,13 +19,13 @@ Current code includes a local chat interface, a GGUF file selector, JSONC/JSON/T
 
 On a **development** computer with Node.js:
 
-\`\`\`bash
+```bash
 npm install
 npm test
 npm run build
-\`\`\`
+```
 
-The CI workflow runs these commands and uploads \`dist/index.html\` when it passes. For the target workstation, no Python, Node, local server, CDN, or network connection should be needed **after offline acceptance testing**. Select the GGUF model from local disk when prompted.
+The CI workflow runs these commands and uploads `dist/index.html` when it passes. For the target workstation, no Python, Node, local server, CDN, or network connection should be needed **after offline acceptance testing**. Select the GGUF model from local disk when prompted.
 
 ## Design and user documentation
 
@@ -45,3 +45,11 @@ This repository is public. **Do not commit PBGC case data, sensitive records, mo
 ## Status
 
 Source implementation in active development; automated build status appears above. Browser-only GGUF inference and end-to-end evidence-grounded extraction require real workstation tests before release.
+
+## Routing, themes and PWA
+
+- The application is a React single-page application using hash URLs (`#/documents`, `#/extract`, `#/chat`, `#/settings`), which continue to work from `file://`. The route list is in [`src/routes.ts`](src/routes.ts).
+- The app embeds official PBGC horizontal logo variants: **white for dark**, **black for light**. Using black on black or white on white would make the branding illegible. Assets are copied unchanged from the authorized reference directory for this app; see [asset provenance](docs/BRANDING_ASSETS.md). The app is not an official PBGC release.
+- **Future PWA:** installation requires an HTTPS (or localhost) origin and a service worker. The portable HTML deliberately does not register one. See [PWA strategy](docs/PWA_STRATEGY.md). The developer can build two distributions from the same React source when PWA functionality is implemented.
+
+**Repository visibility:** GitHub is currently public. Make the repository private if you do not want the embedded logo files publicly visible. Private repository access does not automatically grant logo rights or external-use approval.
