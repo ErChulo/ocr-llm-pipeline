@@ -448,7 +448,8 @@ export default function App() {
                     <label className="evidence-confirm">
                       <input type="checkbox" disabled={!Object.hasOwn(evidenceChoices,check.path)}
                         checked={!!evidenceConfirmed[check.path]}
-                        onChange={e=>setEvidenceConfirmed(current=>({...current,[check.path]:e.currentTarget.checked}))}/>
+                        onChange={e=>{ const checked=e.currentTarget.checked;
+                          setEvidenceConfirmed(current=>({...current,[check.path]:checked})); }}/>
                       I checked this value against the source.
                     </label>
                   </>}
