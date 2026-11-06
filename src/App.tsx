@@ -14,6 +14,7 @@ import { screenLocalPrivacy, safePrivacySummary } from './privacy';
 import { benchmarkPrompt, scoreBenchmark } from './modelBenchmark';
 import { evaluateExportGate } from './exportGate';
 import { parseModelJson } from './pipeline';
+import { ocrRecords, currentOcrText, correctOcrText } from './ocrCorrections';
 
 const DEFAULT_SCHEMA = JSON.stringify({
   type: 'object',
@@ -51,6 +52,9 @@ export default function App() {
   const [docs, setDocs] = useState<SourceDocument[]>([]);
   const [documentIndex, setDocumentIndex] = useState(0);
   const [notes, setNotes] = useState<string[]>([]);
+  const [ocrPageChoice, setOcrPageChoice] = useState(0);
+  const [ocrEditing, setOcrEditing] = useState(false);
+  const [ocrDraft, setOcrDraft] = useState('');
   const [schema, setSchema] = useState(DEFAULT_SCHEMA);
   const [extraction, setExtraction] = useState<unknown>(null);
   const [rawExtraction, setRawExtraction] = useState('');
@@ -68,6 +72,8 @@ export default function App() {
   const [message, setMessage] = useState('');
   const [chatStream, setChatStream] = useState('');
   const active = docs[documentIndex] ?? null;
+  const correctablePages = useMemo(()=>active?ocrRecords(active):[],[active]);
+  const chosenOcrPage = correctablePages[ocrPageChoice] ?? correctablePages[0] ?? null;
   const privacy = useMemo(() => active ? screenLocalPrivacy(active.text) :
     {categories:{},requiresReview:false}, [active]);
   // A literal text match is only a candidate citation. The user must review
@@ -158,11 +164,33 @@ export default function App() {
       const added = imports.flatMap(x => x.documents);
       setDocs(current => [...current, ...added]);
       setDocumentIndex(docs.length);
+      setOcrPageChoice(0); setOcrEditing(false); setOcrDraft('');
       clearExtraction();
       setNotes(imports.flatMap(x => x.notes));
       setStatus('Imported ' + added.length + ' local document(s). No server was used.');
     } catch (e) { setError(errorMessage(e)); setStatus('Document import stopped.'); }
     finally { setBusy(false); }
+  }
+
+  function beginOcrCorrection(){
+    if(!active||!chosenOcrPage||busy)return;
+    try {
+      setError('');
+      setOcrDraft(currentOcrText(active,chosenOcrPage.index));
+      setOcrEditing(true);
+    }catch(e){setError(errorMessage(e));}
+  }
+  function saveOcrCorrection(){
+    if(!active||!chosenOcrPage||busy)return;
+    try {
+      const corrected=correctOcrText(active,chosenOcrPage.index,ocrDraft);
+      setDocs(current=>current.map((doc,i)=>i===documentIndex?corrected:doc));
+      setOcrEditing(false); setOcrDraft('');
+      clearExtraction();
+      setNotes(corrected.warnings??[]);
+      setStatus('OCR correction saved in memory. Review source values before extracting JSON.');
+      setError('');
+    }catch(e){setError(errorMessage(e));}
   }
 
   function clearExtraction() {
@@ -337,11 +365,41 @@ export default function App() {
             {active ? <>
               <label>Document
                 <select value={documentIndex} onChange={e => {
-                  setDocumentIndex(Number(e.currentTarget.value)); clearExtraction();
+                  setDocumentIndex(Number(e.currentTarget.value));
+                  setOcrEditing(false);setOcrPageChoice(0);setOcrDraft('');clearExtraction();
                 }}>{docs.map((doc, i) => <option key={i} value={i}>{doc.name}</option>)}</select>
               </label>
               <p className="help">Source: {active.provenance.source} / {active.provenance.precision} level</p>
               <pre className="preview">{active.text.slice(0, 25000)}</pre>
+              {correctablePages.length > 0 && <section className="ocr-correction">
+                <h3>Review OCR text</h3>
+                <p className="help">OCR can misread numbers and dates. Compare the text with your original image or PDF.</p>
+                <label>OCR page
+                  <select aria-label="OCR page to review" disabled={ocrEditing||busy}
+                    value={ocrPageChoice}
+                    onChange={e=>setOcrPageChoice(Number(e.currentTarget.value))}>
+                    {correctablePages.map((p,i)=><option key={p.index} value={i}>{p.label}</option>)}
+                  </select>
+                </label>
+                {!ocrEditing
+                  ? <button type="button" className="secondary" disabled={busy}
+                      onClick={beginOcrCorrection}>Correct OCR text</button>
+                  : <>
+                    <label>Corrected transcription
+                      <textarea aria-label="Corrected OCR transcription" className="schema ocr-edit"
+                        value={ocrDraft} onChange={e=>setOcrDraft(e.currentTarget.value)}
+                        spellCheck={false} disabled={busy}/>
+                    </label>
+                    <div className="actions">
+                      <button type="button" disabled={busy||!ocrDraft.trim()}
+                        onClick={saveOcrCorrection}>Save correction</button>
+                      <button type="button" className="secondary"
+                        onClick={()=>{setOcrEditing(false);setOcrDraft('');}}>Cancel</button>
+                    </div>
+                  </>}
+                <p className="help">Corrections stay in memory. The source-file fingerprint remains unchanged, but corrected text is marked as human-reviewed.</p>
+              </section>}
+
               {active.text.length > 25000 && <p className="warning">Preview truncated. The in-memory file is unchanged.</p>}
               <div className="actions"><button type="button" onClick={() => navigateTo('extract')}>Extract JSON from this document</button></div>
             </> : <p className="empty">Attach a PDF, DOCX, XLSX, Bulk OCR JSONC or text file.</p>}
@@ -385,7 +443,7 @@ export default function App() {
                 title={exportGate.allowed ? 'Export reviewed JSON and source references.' : exportGate.reasons[0]}
                 onClick={() => { if(!exportGate.allowed) { setError(exportGate.reasons.join(' ')); return; } downloadJson({
                   status: 'schema_validated_facts_unverified',
-                  document: { id: audit.documentId, name: audit.documentName, sourceSha256: active?.sourceSha256 ?? null },
+                  document: { id: audit.documentId, name: audit.documentName, sourceSha256: active?.sourceSha256 ?? null, ocrCorrections: active?.correctionCount ?? 0 },
                   coverage: { sourceCharacters: audit.length, sections: audit.chunks, complete: true },
                   candidateSources: audit.candidates,
                   conflictDecisions: conflictChoices,

@@ -85,3 +85,8 @@ nav button.active{color:var(--ink);background:var(--raised);border-color:var(--b
 
 .privacy-review{border:1px solid var(--border);border-radius:10px;padding:16px;margin:16px 0;background:var(--raised)}
 .privacy-review h3{font-size:15px;margin:0 0 8px}
+
+.ocr-correction{padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--raised);margin:16px 0}
+.ocr-correction h3{font-size:15px;margin:0 0 6px}
+.ocr-correction label{display:block;margin:10px 0}
+.ocr-edit{min-height:180px;resize:vertical}
