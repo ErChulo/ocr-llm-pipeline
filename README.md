@@ -22,7 +22,7 @@
 |---|---|
 | Deterministic source tests and single-file build | [Build workflow](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/build.yml) |
 | Offline Chromium `file://` runtime | [Browser smoke workflow](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/browser-smoke.yml) |
-| Practical instruction-following GGUF model benchmark | [Separate experimental workflow](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/model-benchmark.yml) |
+| Practical instruction-following GGUF model benchmark | [Full end-to-end synthetic test passed](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42248309834) (4/4, JSON export, no network) |
 | Current production readiness and blockers | [Roadmap](docs/ROADMAP.md) |
 
 The browser smoke uses a tiny GGUF for **runtime verification only**. It does not prove large-model performance, extraction correctness on complex real pension plans, or operation on a managed PBGC workstation. The separate model benchmark measures a synthetic known-answer case and also does not certify accuracy.

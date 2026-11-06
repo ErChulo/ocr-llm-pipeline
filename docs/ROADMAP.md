@@ -14,7 +14,7 @@
 - [x] Source identity check, original file SHA-256, and fail-closed export validation.
 - [x] Conservative possible-SSN/email/phone/payment-card screening and acknowledgement.
 - [x] User-chosen dark/white logo pair, theme toggle, app routes and printable Guide.
-- [x] Small synthetic known-answer GGUF check; separate experiment for real instruction-tuned 0.5B weights.
+- [x] Real instruction-tuned Qwen2.5-0.5B GGUF: four of four known-answer fields and end-to-end TXT → JSON → source review → export passed under `file://` with zero network requests ([verified CI run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42248309834)).
 
 ## Remaining production gates — not yet accepted
 
