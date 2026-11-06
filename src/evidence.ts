@@ -69,7 +69,10 @@ function tokenFor(value: unknown): string | null {
 function boundaryOkay(source: string,start: number,end: number,value: unknown): boolean {
   if (typeof value !== 'number') return true;
   // "65" must not match "1965", "650", or "65.5".
-  return !/[0-9.]/.test(source[start-1]||'') && !/[0-9.]/.test(source[end]||'');
+  const before=source[start-1]||'', after=source[end]||'';
+  return !/[0-9]/.test(before) && !/[0-9]/.test(after) &&
+    !(after==='.' && /[0-9]/.test(source[end+1]||'')) &&
+    !(before==='.' && /[0-9]/.test(source[start-2]||''));
 }
 function findMatches(doc: SourceDocument,value: unknown): EvidenceMatch[] {
   const target=tokenFor(value);
