@@ -4,7 +4,7 @@
  * page numbers, Word paragraphs, or spreadsheet cell addresses.
  */
 import type { SourceDocument } from './pipeline.ts';
-import { parseModelJson } from './pipeline';
+import { parseModelJson } from './pipeline.ts';
 
 export type SourceSpan = { chunk: number; start: number; end: number };
 export type TextChunk = SourceSpan & { text: string };
