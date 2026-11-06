@@ -134,7 +134,7 @@ try {
   await transcription.fill('RETIREMENT AGE 65 HUMAN CONFIRMED');
   await page.getByRole('button',{name:'Save correction'}).click();
   await page.locator('.preview').getByText(/RETIREMENT AGE 65 HUMAN CONFIRMED/).waitFor({timeout:6000});
-  assert.equal(await page.locator('.preview').innerText(),
+  assert.equal((await page.locator('.preview').innerText()).trim(),
     'Image OCR:\nRETIREMENT AGE 65 HUMAN CONFIRMED');
   console.log('REAL BROWSER: OCR transcription correction saved with source references and no network.');
 
