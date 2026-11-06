@@ -1,0 +1,21 @@
+name: Build and source tests
+on:
+  push:
+  pull_request:
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npm run test
+      - run: npm run build
+      - name: Upload single HTML when build succeeds
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ocr-llm-pipeline-single-html
+          path: dist/index.html
