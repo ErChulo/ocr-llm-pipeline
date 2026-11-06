@@ -122,8 +122,11 @@ try {
   await page.locator('input[type="file"][accept*=".pdf"]').setInputFiles({
     name:'scanned-synthetic.pdf',mimeType:'application/pdf',buffer:scanPdf
   });
-  await page.locator('.preview').getByText(/RETIREMENT AGE 65/i).waitFor({timeout:150000});
-  assert.match(await page.locator('.preview').innerText(),/^Page 1:/);
+  await page.waitForFunction(
+    () => document.querySelector('.preview')?.textContent?.startsWith('Page 1:'),
+    null,{timeout:150000}
+  );
+  assert.match(await page.locator('.preview').innerText(), /RETIREMENT AGE 65/i);
   console.log('REAL BROWSER: image-only scanned PDF page OCR succeeded entirely offline.');
   await page.screenshot({path:'tmp/smoke-scanned-pdf.png',fullPage:true});
 
