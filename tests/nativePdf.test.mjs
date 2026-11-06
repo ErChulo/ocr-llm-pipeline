@@ -20,7 +20,7 @@ test('PDF parser extracts every page and records its actual page number', async 
   assert.match(parsed.text,/Normal form: 50 percent joint and survivor/);
   assert.equal(parsed.records[0].start,0);
   assert.equal(parsed.records.at(-1).end,parsed.text.length);
-  assert.ok(parsed.warnings.some(x=>x.includes('not OCR')));
+  assert.ok(parsed.warnings.some(x=>x.includes('might still be missed')));
 });
 
 test('one scanned or empty page blocks partial-document extraction', async () => {
