@@ -181,6 +181,43 @@ try {
   await page.getByText('Loaded: stories260K.gguf').waitFor({ timeout: 30000 });
   await page.getByRole('button', { name: 'Test model' }).click();
   await page.getByText(/Your local model generated text/i).waitFor({ timeout: 90000 });
+  // Verify the Guide really prints as a standalone readable PDF, not a
+  // screenshot of the application or leaked imported document content.
+  await page.getByRole('button',{name:'Guide',exact:true}).click();
+  await page.getByRole('dialog',{name:'User guide'}).waitFor({timeout:10000});
+  await page.emulateMedia({media:'print'});
+  const guideBytes=await page.pdf({
+    path:'tmp/guide-print.pdf',
+    printBackground:true,
+    preferCSSPageSize:true
+  });
+  const {getDocument}=await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const guideTask=getDocument({
+    data:Uint8Array.from(guideBytes),
+    disableFontFace:true,useSystemFonts:true,useWasm:false
+  });
+  const guidePdf=await guideTask.promise;
+  assert.ok(guidePdf.numPages>=1 && guidePdf.numPages<=3,
+    'Printable guide should fit into 1–3 A4 pages');
+  let guideText='';
+  for(let n=1;n<=guidePdf.numPages;n++){
+    const p=await guidePdf.getPage(n);
+    const pageText=await p.getTextContent();
+    guideText+=' '+pageText.items.filter(x=>'str' in x).map(x=>x.str).join(' ');
+    const v=p.getViewport({scale:1});
+    assert.ok(v.width>=590 && v.width<=600 && v.height>=840 && v.height<=845,
+      'Print should use A4 paper');
+  }
+  assert.match(guideText,/Start here/i);
+  assert.match(guideText,/Load a model/i);
+  assert.match(guideText,/Export the result/i);
+  assert.doesNotMatch(guideText,/scanned-synthetic\.pdf|synthetic\.csv|RETIREMENT AGE 65/,
+    'Guide-only print may not include imported user data');
+  await guideTask.destroy();
+  await page.emulateMedia({media:'screen'});
+  await page.getByRole('button',{name:'Close guide'}).click();
+  assert.equal(await page.getByRole('dialog',{name:'User guide'}).count(),0);
+  console.log('REAL BROWSER: printable A4 guide contains instructions without source data.');
   assert.equal(external.length, 0, 'No external network requests are allowed during file:// runtime');
   console.log('REAL BROWSER: local HTML + GGUF loading + text generation completed without external network requests.');
 } catch (err) {

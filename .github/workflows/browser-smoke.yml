@@ -49,5 +49,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: experimental-browser-smoke
-          path: tmp/smoke-*.png
+          path: |
+            tmp/smoke-*.png
+            tmp/guide-print.pdf
           if-no-files-found: ignore
