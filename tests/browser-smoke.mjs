@@ -176,6 +176,22 @@ try {
   );
   console.log('REAL BROWSER: CSV row/column provenance verified offline.');
 
+  await page.getByRole('button',{name:'Extract JSON',exact:true}).click();
+  // Schema validation must run in strict CSP without compiling dynamic JavaScript.
+  await page.getByRole('button',{name:'Check schema'}).click();
+  await page.getByText(/Schema is valid for local validation/i).waitFor({timeout:25000});
+  console.log('REAL BROWSER: JSON Schema validates with CSP unsafe-eval prohibited.');
+  // A user-provided remote $ref must be rejected before any network access.
+  const editor=page.getByRole('textbox',{name:'Target JSON Schema'});
+  const normalSchema=await editor.inputValue();
+  await editor.fill(JSON.stringify({type:'object',properties:{age:{$ref:'https://external.invalid/schema'}}}));
+  await page.getByRole('button',{name:'Check schema'}).click();
+  await page.getByRole('alert').getByText(/Only local JSON Pointer \$ref values are allowed/i).waitFor({timeout:25000});
+  await editor.fill(normalSchema);
+  await page.getByRole('button',{name:'Check schema'}).click();
+  await page.getByText(/Schema is valid for local validation/i).waitFor({timeout:25000});
+  await page.getByRole('button',{name:'Documents',exact:true}).click();
+
   await page.locator('input[type="file"][accept=".gguf"]').setInputFiles(fixture);
   await page.getByRole('button', { name: 'Load model' }).click();
   await page.getByText('Loaded: stories260K.gguf').waitFor({ timeout: 30000 });
