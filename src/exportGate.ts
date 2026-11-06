@@ -30,6 +30,7 @@ export function evaluateExportGate(input:ExportGateInputs):ExportGate{
   if(document&&audit&&(audit.documentId!==document.id ||
       audit.documentName!==document.name ||
       audit.length!==document.text.length || audit.sourceText!==document.text ||
+      audit.sourceSha256!==document.sourceSha256 ||
       audit.chunks.length===0 || audit.chunks[0].start!==0 ||
       audit.chunks.at(-1)?.end!==document.text.length)){
     reasons.push('The current document does not match the reviewed extraction.');

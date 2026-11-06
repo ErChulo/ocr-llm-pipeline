@@ -30,3 +30,11 @@ test('rejects unresolved conflicts, unfinished PII and unreviewed source matches
 test('no evidence and no document cannot be exported',()=>{
  assert.equal(evaluateExportGate({...safe,document:null,audit:null,evidence:[]}).allowed,false);
 });
+
+test('same text and filename but different original bytes cannot reuse evidence review',()=>{
+ const source={...d,sourceSha256:'a'.repeat(64)};
+ const record={...audit,sourceSha256:'b'.repeat(64)};
+ const gate=evaluateExportGate({...safe,document:source,audit:record});
+ assert.equal(gate.allowed,false);
+ assert.ok(gate.reasons.some(reason=>reason.includes('does not match')));
+});
