@@ -1,0 +1,83 @@
+name: Experimental larger GGUF benchmark
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/larger-model-benchmark.yml"
+  workflow_dispatch:
+    inputs:
+      model_size:
+        description: "Official Qwen2.5 Instruct GGUF quantization to test"
+        required: true
+        type: choice
+        default: "1.5B"
+        options:
+          - "1.5B"
+          - "3B"
+
+concurrency:
+  group: larger-model-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  real-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install and build
+        run: |
+          npm install
+          npm test
+          npm run build
+      - name: Install Chromium on the CI runner
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Download and verify official Qwen GGUF (CI only)
+        timeout-minutes: 18
+        env:
+          MODEL_SIZE: ${{ inputs.model_size || '1.5B' }}
+        run: |
+          set -euo pipefail
+          mkdir -p tmp
+          case "$MODEL_SIZE" in
+            "1.5B")
+              NAME="qwen2.5-1.5b-instruct-q4_k_m.gguf"
+              URL="https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/$NAME"
+              SHA="6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e"
+              ;;
+            "3B")
+              NAME="qwen2.5-3b-instruct-q4_k_m.gguf"
+              URL="https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/$NAME"
+              SHA="626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d"
+              ;;
+            *)
+              echo "Unsupported model size" >&2
+              exit 1
+              ;;
+          esac
+          curl -fL --retry 3 --retry-all-errors "$URL" -o "tmp/$NAME"
+          printf '%s  %s\n' "$SHA" "tmp/$NAME" | sha256sum --check
+          echo "MODEL_FILE=tmp/$NAME" >> "$GITHUB_ENV"
+          echo "MODEL_SHA256=$SHA" >> "$GITHUB_ENV"
+          echo "MODEL_LABEL=Official Qwen2.5-$MODEL_SIZE-Instruct Q4_K_M" >> "$GITHUB_ENV"
+      - name: Test real model loading, extraction, evidence review and export
+        timeout-minutes: 20
+        run: node tests/real-model-benchmark.mjs
+      - name: Upload JSON report and synthetic screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: larger-gguf-quality-report
+          path: |
+            tmp/real-model-*.json
+            tmp/real-model-*.png
+          if-no-files-found: ignore
