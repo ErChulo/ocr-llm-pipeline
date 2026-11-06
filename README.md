@@ -1,37 +1,47 @@
 # OCR + LLM Pipeline Studio
 
-An **offline-first, browser-only** document extraction project built with Vite, React, TypeScript and WebAssembly. Initial local GGUF inference uses **Wllama** (llama.cpp WASM), not the Python AirLLM layer-offloading engine.
+[![Build and source tests](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Version: 0.2.0](https://img.shields.io/badge/version-0.2.0-002D72.svg)](docs/ROADMAP.md)
 
-## Scope
+A **browser-only, offline-first** document-to-JSON application. Developed with **Vite, React, TypeScript, WebAssembly and Wllama**. Its intended release is one HTML file, with a user-selected GGUF model stored separately.
 
-- Read documents locally through the browser File API. No upload server or API key.
-- Import Bulk OCR Studio JSONC exports, preserving original document IDs and filenames.
-- Use a user-selected GGUF model for local chat and experimental JSON extraction.
-- Validate candidate JSON against a local JSON Schema and retain review status.
-- Target a single self-contained `dist/index.html`, with GGUF weights selected separately.
-- Port OCR and office parsers in a later milestone. The upstream project is read-only.
+> The build badge indicates automated source tests and compilation. It **does not** establish that actual GGUF inference, OCR, or all \`file://\` scenarios work.
 
-**Do not add sensitive data, pension records or PII to this public repository.**
+## Critical features (P0)
 
-## Quick start (development machine)
+1. **Local LLM inference.** Load a GGUF file from local disk. Run prompts through WebAssembly. Do not send documents to a server. **Release acceptance:** actual browser inference with Wi-Fi disabled and no network requests.
+2. **AI extraction into validated JSON.** Parse local source text, ask the model for structured data, validate with Ajv and a selected JSON Schema, and export with source information. **Release acceptance:** test extraction on known samples; inspect source evidence; mark unverified claims for review. Passing JSON Schema is **not** proof that the data is correct.
 
-```bash
+Current code includes a local chat interface, a GGUF file selector, JSONC/JSON/TXT/MD/CSV import, experimental extraction and JSON Schema checks. **Direct PDF, DOCX, XLSX, image OCR, and fine-grained provenance are pending.** No real-model offline acceptance test has passed yet.
+
+## Build and run
+
+On a **development** computer with Node.js:
+
+\`\`\`bash
 npm install
-npm run test
+npm test
 npm run build
-```
+\`\`\`
 
-Target computer: no Node, Python, internet, CDN or server required **after a verified standalone build**. The browser opens `dist/index.html` from disk and the user selects a GGUF file. This build **has not yet passed a real-model, offline file:// acceptance test**.
+The CI workflow runs these commands and uploads \`dist/index.html\` when it passes. For the target workstation, no Python, Node, local server, CDN, or network connection should be needed **after offline acceptance testing**. Select the GGUF model from local disk when prompted.
 
-## Source relationship
+## Design and user documentation
 
-- New repository: https://github.com/ErChulo/ocr-llm-pipeline
-- Unmodified upstream OCR app: https://github.com/ErChulo/bulk-ocr-studio
-- OCR JSONC format is documented in `docs/OCR_BRIDGE.md`.
-- Architecture and progress: `docs/ROADMAP.md`.
+- [DESIGN.md](DESIGN.md) — minimal, glossy, high-contrast PBGC-inspired visual standard. Grounded in the September 2025 PBGC Branding & Editorial Style Guide.
+- [PRODUCT.md](PRODUCT.md) — user-first product behavior, priority rules and non-negotiable constraints.
+- [Printable user guide](docs/USER_GUIDE.md) — short instructions in an ASD-STE100-inspired style. The application includes a separate **Guide** drawer with a visual workflow and **Print / Save PDF** action.
+- [Implementation requirements](docs/IMPLEMENTATION_ACCEPTANCE.md) — release gates and technical acceptance criteria.
+- [Impeccable setup](docs/IMPECCABLE_SETUP.md) — optional development-only design review tooling. It is not an application runtime dependency.
+- [Roadmap](docs/ROADMAP.md) — implemented versus pending work.
 
-The original OCR application is **not changed or overwritten**, and OCR vendor assets have not been copied into this repository. The existing upstream offline edition uses a directory with `vendor/` assets; repackaging all WASM, workers, and language models into one HTML remains an acceptance milestone.
+## Safe source reuse
+
+[Bulk OCR Studio](https://github.com/ErChulo/bulk-ocr-studio) is **read-only** for this project. The existing application's JSONC export format is supported by a separate importer. Its source and upstream history have not been changed.
+
+This repository is public. **Do not commit PBGC case data, sensitive records, model weights, or personal information.**
 
 ## Status
 
-Experimental initial implementation. Chat and GGUF loading are source implementations, **not proven working** until npm build and browser testing. JSONC import is deterministic; local-model extraction remains model-dependent and must be independently reviewed. A JSON Schema pass is a **structure** check, not proof of factual accuracy.
+Source implementation in active development; automated build status appears above. Browser-only GGUF inference and end-to-end evidence-grounded extraction require real workstation tests before release.
