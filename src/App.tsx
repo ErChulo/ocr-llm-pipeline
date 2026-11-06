@@ -16,6 +16,7 @@ import { evaluateExportGate } from './exportGate';
 import { parseModelJson } from './pipeline';
 import { ocrRecords, currentOcrText, correctOcrText } from './ocrCorrections';
 import PdfPageViewer from './PdfPageViewer';
+import {sha256Bytes} from './fingerprint';
 import './pdfViewer.css';
 
 const DEFAULT_SCHEMA = JSON.stringify({
@@ -191,10 +192,12 @@ export default function App() {
       setOcrEditing(true);
     }catch(e){setError(errorMessage(e));}
   }
-  function saveOcrCorrection(){
+  async function saveOcrCorrection(){
     if(!active||!chosenOcrPage||busy)return;
+    setBusy(true);
     try {
       const corrected=correctOcrText(active,chosenOcrPage.index,ocrDraft);
+      corrected.processedTextSha256=await sha256Bytes(new TextEncoder().encode(corrected.text));
       setDocs(current=>current.map((doc,i)=>i===documentIndex?corrected:doc));
       setOcrEditing(false); setOcrDraft('');
       clearExtraction();
@@ -202,6 +205,7 @@ export default function App() {
       setStatus('OCR correction saved in memory. Review source values before extracting JSON.');
       setError('');
     }catch(e){setError(errorMessage(e));}
+    finally {setBusy(false);}
   }
 
   function clearExtraction() {
@@ -405,7 +409,7 @@ export default function App() {
                     </label>
                     <div className="actions">
                       <button type="button" disabled={busy||!ocrDraft.trim()}
-                        onClick={saveOcrCorrection}>Save correction</button>
+                        onClick={()=>void saveOcrCorrection()}>Save correction</button>
                       <button type="button" className="secondary"
                         onClick={()=>{setOcrEditing(false);setOcrDraft('');}}>Cancel</button>
                     </div>
@@ -456,7 +460,9 @@ export default function App() {
                 title={exportGate.allowed ? 'Export reviewed JSON and source references.' : exportGate.reasons[0]}
                 onClick={() => { if(!exportGate.allowed) { setError(exportGate.reasons.join(' ')); return; } downloadJson({
                   status: 'schema_validated_facts_unverified',
-                  document: { id: audit.documentId, name: audit.documentName, sourceSha256: active?.sourceSha256 ?? null, ocrCorrections: active?.correctionCount ?? 0 },
+                  document: { id: audit.documentId, name: audit.documentName, sourceSha256: active?.sourceSha256 ?? null,
+                    processedTextSha256: active?.processedTextSha256 ?? null,
+                    ocrCorrections: active?.correctionCount ?? 0 },
                   coverage: { sourceCharacters: audit.length, sections: audit.chunks, complete: true },
                   candidateSources: audit.candidates,
                   conflictDecisions: conflictChoices,

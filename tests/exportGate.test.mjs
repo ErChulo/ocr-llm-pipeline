@@ -38,3 +38,9 @@ test('same text and filename but different original bytes cannot reuse evidence 
  assert.equal(gate.allowed,false);
  assert.ok(gate.reasons.some(reason=>reason.includes('does not match')));
 });
+
+test('identical original file hash but different OCR transcription hash blocks export',()=>{
+ const document={...d,sourceSha256:'a'.repeat(64),processedTextSha256:'1'.repeat(64)};
+ const reviewed={...audit,sourceSha256:'a'.repeat(64),processedTextSha256:'2'.repeat(64)};
+ assert.equal(evaluateExportGate({...safe,document,audit:reviewed}).allowed,false);
+});

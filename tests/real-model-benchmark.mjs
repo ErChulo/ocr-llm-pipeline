@@ -90,6 +90,7 @@ try {
   const exported=JSON.parse(readFileSync(artifactPath,'utf8'));
   assert.equal(exported.coverage.complete,true);
   assert.equal(exported.document.sourceSha256,expectedHash);
+  assert.equal(exported.document.processedTextSha256,expectedHash);
   assert.equal(String(exported.extraction.normal_retirement_age).trim(),'65');
   const early=String(exported.extraction.early_retirement_eligibility||'');
   assert.match(early,/55/);

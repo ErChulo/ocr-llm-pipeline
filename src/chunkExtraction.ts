@@ -15,6 +15,7 @@ export type ExtractionAudit = {
   documentName: string;
   sourceText: string; // original text identity retained in memory, not included in export
   sourceSha256?: string; // original input bytes, checked on every export
+  processedTextSha256?: string; // OCR + human correction text sent to model
   length: number;
   chunks: SourceSpan[];
   candidates: Record<string, Candidate[]>;
@@ -157,7 +158,8 @@ export function collectChunkCandidates(doc: SourceDocument, chunks: TextChunk[],
     .map(path => ({ path, candidates: candidates[path] }));
   return {
     documentId: doc.id, documentName: doc.name, sourceText: doc.text,
-    sourceSha256: doc.sourceSha256, length: doc.text.length,
+    sourceSha256: doc.sourceSha256, processedTextSha256:doc.processedTextSha256,
+    length: doc.text.length,
     chunks: chunks.map(({chunk,start,end}) => ({chunk,start,end})),
     candidates, conflicts
   };

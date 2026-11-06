@@ -19,6 +19,7 @@ export type SourceDocument = {
   records?: SourceRecord[];
   warnings?: string[];
   sourceSha256?: string;
+  processedTextSha256?: string;
   correctionCount?: number;
   pdfBytes?: Uint8Array; // browser memory only; never serialized in JSON exports
 };
@@ -121,7 +122,10 @@ export async function importFile(file: File): Promise<ImportResult> {
     const text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
     result=importText(file.name,text);
   }
-  for(const doc of result.documents)doc.sourceSha256=fingerprint;
+  for(const doc of result.documents){
+    doc.sourceSha256=fingerprint;
+    doc.processedTextSha256=await sha256Bytes(new TextEncoder().encode(doc.text));
+  }
   return result;
 }
 export function buildExtractionPrompt(doc: SourceDocument, schema: unknown, maxChars = 6500) {

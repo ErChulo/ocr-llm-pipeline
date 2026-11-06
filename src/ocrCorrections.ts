@@ -79,6 +79,7 @@ export function correctOcrText(doc:SourceDocument,index:number,edited:string):So
     ...doc,text:output,records:updated,warnings,
     // Always retain the fingerprint of ORIGINAL FILE bytes; never hash
     // corrected text and misrepresent it as the imported file fingerprint.
-    correctionCount:(doc.correctionCount||0)+1
+    correctionCount:(doc.correctionCount||0)+1,
+    processedTextSha256:undefined // invalidate digest until the edited text is hashed again
   };
 }

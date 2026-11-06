@@ -21,6 +21,7 @@ test('one OCR page can be corrected without changing native source text or origi
  const result=correctOcrText(old,1,'OCR confirmed 55');
  assert.match(result.text,/Page 2:\nOCR confirmed 55/);
  assert.equal(result.sourceSha256,old.sourceSha256);
+ assert.equal(result.processedTextSha256,undefined);
  assert.equal(result.records[1].location.kind,'pdf-page-ocr-reviewed');
  assert.equal(result.records[2].start,result.text.indexOf('Page 3:'));
  assert.match(result.text,/Native text 65/);
