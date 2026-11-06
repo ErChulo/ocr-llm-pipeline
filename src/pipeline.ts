@@ -1,6 +1,5 @@
 import { parseDocx, parseXlsx } from './nativeOffice.ts';
 import { parsePdf } from './pdfText.ts';
-import { recognizeCanvas, recognizeImage } from './ocr.ts';
 export type SourceRecord = { start: number; end: number; label: string; location: Record<string, string | number> };
 export type SourceDocument = {
   id: string; name: string; text: string; mimeType: string; sizeBytes: number;
@@ -78,11 +77,11 @@ export async function importFile(file: File): Promise<ImportResult> {
   if (file.size > 20 * 1024 * 1024) throw new Error('Local import limited to 20 MB per file.');
   const ext=file.name.split('.').at(-1)?.toLowerCase();
   if (ext === 'pdf') {
-    const parsed=await parsePdf(file.name,new Uint8Array(await file.arrayBuffer()),recognizeCanvas);
+    const parsed=await parsePdf(file.name,new Uint8Array(await file.arrayBuffer()),async canvas => (await import('./ocr.ts')).recognizeCanvas(canvas));
     return {documents:[parsed],notes:parsed.warnings??[]};
   }
   if (['png','jpg','jpeg','webp'].includes(ext||'')) {
-    const data=await recognizeImage(file);
+    const data=await (await import('./ocr.ts')).recognizeImage(file);
     if(!data.text.trim())throw new Error('OCR could not read any text from this image. No partial result was saved.');
     const text='Image OCR:\n'+data.text+'\n';
     return {documents:[{
