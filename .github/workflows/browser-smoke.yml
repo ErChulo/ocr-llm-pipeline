@@ -4,7 +4,9 @@ on:
   push:
     branches: [main]
     paths:
-      - "src/**"
+      - "src/engine.ts"
+      - "src/App.tsx"
+      - "src/chunkExtraction.ts"
       - "vite.config.ts"
       - "package.json"
       - "scripts/verify-build.mjs"

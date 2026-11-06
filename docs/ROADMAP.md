@@ -54,3 +54,5 @@
 
 - [x] Embedded official Wllama compatibility WASM and worker locally, with no CDN fallback in the portable build (source/CI; browser test pending).
 - [ ] Re-run file:// Chromium GGUF smoke test after compat integration; first attempt stalled while loading the model.
+
+- [x] Moved the Guide trigger away from the official PBGC logo after examining actual browser screenshots; guide drawer and print layout preserved.

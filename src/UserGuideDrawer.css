@@ -1,5 +1,5 @@
-.guide-host{position:fixed;z-index:80;left:0;top:74px}
-.guide-open{border:1px solid #6E93C2;border-left:0;background:#002D72;color:#fff;padding:11px 14px;border-radius:0 9px 9px 0;box-shadow:0 2px 14px rgba(0,0,0,.3);font:700 14px Arial,sans-serif}
+.guide-host{position:fixed;z-index:80;left:18px;top:auto;bottom:58px}
+.guide-open{border:1px solid var(--border);background:var(--raised);color:var(--ink);padding:10px 14px;border-radius:9px;box-shadow:0 2px 14px rgba(0,0,0,.13);font:700 14px Arial,sans-serif;min-width:90px;min-height:42px}
 .guide-scrim{position:fixed;inset:0;z-index:98;background:rgba(0,0,0,.72)}
 .guide-drawer{position:fixed;z-index:99;top:0;bottom:0;left:0;width:min(540px,100vw);overflow:hidden;background:#0C1017;border-right:1px solid #6E93C2;box-shadow:10px 0 32px rgba(0,0,0,.4);display:flex;flex-direction:column;color:#fff}
 .guide-toolbar{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid #253244;gap:10px;background:#131B26;font:700 14px Arial,sans-serif}
@@ -50,3 +50,5 @@
 @media print{
   :root[data-theme="light"] .guide-content h1,:root[data-theme="light"] .guide-content h2{color:#002D72!important}
 }
+
+@media(max-width:900px){.guide-host{left:12px;bottom:12px}}
