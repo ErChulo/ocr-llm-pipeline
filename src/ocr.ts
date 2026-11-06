@@ -31,7 +31,7 @@ async function makeWorker(){
     if(!languageResponse.ok)throw new Error('Bundled English OCR language data is unavailable.');
     const languageBlob=await languageResponse.blob();
     const langUrl=blobUrl([languageBlob],'application/gzip');
-    const coreBlobUrl=blobUrl([tesseractCore],'text/javascript');
+
     // The v7 worker requests this precise, virtual URL. Intercept only this asset
     // inside the worker; block all outbound HTTP(S) traffic.
     const prefix=[
@@ -39,12 +39,6 @@ async function makeWorker(){
       "const _ocrFetch=self.fetch.bind(self);",
       'const _ocrEngURL='+JSON.stringify(langUrl)+';',
       'const _ocrVirtual='+JSON.stringify(VIRTUAL_ENG)+';',
-      'const _ocrCoreVirtual="https://ocr-assets.invalid/embedded-core.js";',
-      'const _ocrCoreActual='+JSON.stringify(coreBlobUrl)+';',
-      'const _ocrImport=self.importScripts.bind(self);',
-      'self.importScripts=function(...urls){',
-      'return _ocrImport(...urls.map(url=>String(url)===_ocrCoreVirtual?_ocrCoreActual:url));',
-      '};',
       'self.fetch=function(input,opts){',
       'const url=String(input&&input.url||input);',
       'if(url===_ocrVirtual)return _ocrFetch(_ocrEngURL,opts);',
@@ -52,7 +46,10 @@ async function makeWorker(){
       'return _ocrFetch(input,opts);',
       '};'
     ].join('\n');
-    const workerUrl=blobUrl([prefix,tesseractWorker],'text/javascript');
+    // Chromium may reject importScripts(blob:null/...) from a file:// worker.
+    // Execute the self-contained Emscripten core in this same classic Worker
+    // before the Tesseract dispatcher starts. No secondary importScripts call.
+    const workerUrl=blobUrl([prefix,'\n',tesseractCore,'\n',tesseractWorker],'text/javascript');
     const worker=await createWorker('eng',OEM.LSTM_ONLY,{
       workerPath:workerUrl,workerBlobURL:false,
       corePath:'https://ocr-assets.invalid/embedded-core.js',
