@@ -1,0 +1,53 @@
+name: Experimental 0.5B GGUF extraction benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/model-benchmark.yml"
+      - "tests/real-model-benchmark.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  qwen-0_5b-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install and build
+        run: |
+          npm install
+          npm run test
+          npm run build
+      - name: Install test browser (CI only)
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Download official Qwen 0.5B Q4_K_M weights (CI only)
+        timeout-minutes: 8
+        run: |
+          mkdir -p tmp
+          curl -fL --retry 3 --retry-all-errors \
+            'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf' \
+            -o tmp/qwen2.5-0.5b-instruct-q4_k_m.gguf
+          printf '%s  %s\n' \
+            '74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db' \
+            'tmp/qwen2.5-0.5b-instruct-q4_k_m.gguf' | sha256sum -c -
+      - name: Test offline extraction quality in a real browser
+        timeout-minutes: 10
+        run: node tests/real-model-benchmark.mjs
+      - name: Upload quality evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qwen-0_5b-offline-quality-report
+          path: |
+            tmp/real-model-*.json
+            tmp/real-model-*.png
+          if-no-files-found: ignore
