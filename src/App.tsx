@@ -3,7 +3,7 @@ import { ROUTES, routeFromHash, type RouteId } from './routes';
 import { loadTheme, saveTheme, type Theme } from './theme';
 import darkLogo from './assets/logo-negro.png';
 import lightLogo from './assets/logo.svg';
-import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import Ajv, { type AnySchema } from 'ajv';
 import { OfflineEngine, type ChatMessage, type Settings } from './engine';
 import { importFile, type SourceDocument } from './pipeline';
@@ -63,9 +63,10 @@ export default function App() {
   const active = docs[documentIndex] ?? null;
   // A literal text match is only a candidate citation. The user must review
   // each value and confirm one actual source location before exporting.
-  const evidenceChecks = valid && extraction !== null && active && audit
-    ? auditLiteralEvidence(active, extraction)
-    : [];
+  const evidenceChecks = useMemo(() =>
+    valid && extraction !== null && active && audit
+      ? auditLiteralEvidence(active, extraction) : [],
+    [valid, extraction, active, audit]);
   const evidenceComplete = evidenceReviewComplete(evidenceChecks, evidenceChoices, evidenceConfirmed);
 
   useEffect(() => () => { void engine.current.unload(); void terminateOcr(); }, []);
