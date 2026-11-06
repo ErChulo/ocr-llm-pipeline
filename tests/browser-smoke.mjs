@@ -86,6 +86,21 @@ try {
   assert.match(await page.locator('.preview').innerText(), /Page 2:[\s\S]*Early retirement age 55/);
   await page.screenshot({ path: 'tmp/smoke-pdf.png', fullPage: true });
 
+  await page.getByRole('button',{name:'View original PDF'}).click();
+  await page.getByRole('dialog',{name:'Original PDF page'}).waitFor({timeout:15000});
+  await page.locator('.pdf-view-canvas canvas').waitFor({timeout:15000});
+  await page.waitForFunction(()=>{
+    const canvas=document.querySelector('.pdf-view-canvas canvas');
+    return canvas && canvas.width>=400 && canvas.height>=400;
+  },null,{timeout:20000});
+  assert.match(await page.getByRole('dialog',{name:'Original PDF page'}).innerText(),/page 1 of 2/);
+  await page.getByRole('button',{name:'Next page'}).click();
+  await page.getByText(/Original PDF — page 2 of 2/).waitFor({timeout:20000});
+  await page.getByRole('button',{name:'Close PDF view'}).click();
+  assert.equal(await page.getByRole('dialog',{name:'Original PDF page'}).count(),0);
+  console.log('REAL BROWSER: original PDF pages rendered and navigated under file URL.');
+
+
   // Image OCR uses English traineddata, WASM and Worker embedded in the HTML.
   // Synthetic sans-serif text is the expected local recognition fixture.
   const png64=await page.evaluate(() => {
