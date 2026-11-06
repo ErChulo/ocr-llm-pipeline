@@ -110,6 +110,20 @@ try {
   console.log('REAL BROWSER: embedded English OCR recognized synthetic PNG entirely offline.');
   await page.screenshot({path:'tmp/smoke-ocr.png',fullPage:true});
 
+  // Correct transcription in the browser and verify source integrity is
+  // clearly distinguished from OCR and no data leaves the local document.
+  await page.getByRole('button',{name:'Correct OCR text'}).click();
+  const transcription=page.getByRole('textbox',{name:'Corrected OCR transcription'});
+  await transcription.waitFor({timeout:5000});
+  assert.match(await transcription.inputValue(),/RETIREMENT AGE 65/i);
+  await transcription.fill('RETIREMENT AGE 65 HUMAN CONFIRMED');
+  await page.getByRole('button',{name:'Save correction'}).click();
+  await page.locator('.preview').getByText(/RETIREMENT AGE 65 HUMAN CONFIRMED/).waitFor({timeout:6000});
+  assert.equal(await page.locator('.preview').innerText(),
+    'Image OCR:\nRETIREMENT AGE 65 HUMAN CONFIRMED');
+  console.log('REAL BROWSER: OCR transcription correction saved with source references and no network.');
+
+
   const jpeg64=await page.evaluate(()=>{
     const canvas=document.createElement('canvas');
     canvas.width=950;canvas.height=230;
