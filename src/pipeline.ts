@@ -20,6 +20,7 @@ export type SourceDocument = {
   warnings?: string[];
   sourceSha256?: string;
   correctionCount?: number;
+  pdfBytes?: Uint8Array; // browser memory only; never serialized in JSON exports
 };
 export type ImportResult = { documents: SourceDocument[]; notes: string[] };
 
@@ -99,6 +100,7 @@ export async function importFile(file: File): Promise<ImportResult> {
   let result:ImportResult;
   if (ext === 'pdf') {
     const parsed=await parsePdf(file.name,bytes,async canvas => (await import('./ocr.ts')).recognizeCanvas(canvas));
+    parsed.pdfBytes=Uint8Array.from(bytes);
     result={documents:[parsed],notes:parsed.warnings??[]};
   } else if (['png','jpg','jpeg','webp'].includes(ext||'')) {
     const data=await (await import('./ocr.ts')).recognizeImage(file);
