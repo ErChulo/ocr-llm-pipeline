@@ -35,3 +35,27 @@
 
 ## Future research
 AirLLM-style one-layer-at-a-time disk streaming is a separate WASM inference backend. Wllama's split GGUF support is not transformer-layer streaming. See `AIRLLM_STREAMING_DESIGN.md` for the technical plan.
+
+## P0 product and design acceptance (added 2026-11-05)
+
+### Core functionality
+* Offline GGUF execution is a release gate. A passing TypeScript build or a mock LLM is insufficient.
+* AI-generated JSON must be parsed and validated against the supplied JSON Schema. Document-backed source claims require an independent check. No truth guarantee may be inferred from schema-valid status.
+* Missing context and truncated document content must be visible and block silent acceptance.
+
+### Design and documentation
+* Apply \`DESIGN.md\` and \`PRODUCT.md\` before altering the interface. PBGC Blue #002D72 and Red #E4002B are sourced from the September 2025 agency style guide.
+* Minimal black/high-contrast, restrained-gloss interface. Avoid dashboard ornamentation, developer diagnostics and needless reporting in the normal workspace.
+* Place a separate, collapsible **Guide** drawer at the left. Make it keyboard accessible. Do not crowd the existing navigation.
+* The guide must use short, ordered, ASD-STE100-inspired instructions; add feature visuals, progress examples and source/result comparisons. Do not claim formal ASD-STE100 conformity without verification.
+* A **Print / Save PDF** control must print the guide only. QA the resulting PDF for readability, typography, correct page breaks, visible diagrams and no leaked user content.
+* Source code for the drawer exists. A passing compile does not constitute a print-layout review.
+* Impeccable is development-only design tooling. Attempt project-local installation in a connected development environment, then run audit/polish against DESIGN.md. Do not add to offline runtime or claim installation until verified.
+
+### Status labels
+* **Source implemented** = source merged.
+* **CI verified** = automated tests and build passed.
+* **Offline verified** = actual workstation test performed without network.
+* **Fact verified** = extracted value reviewed against real provenance.
+
+Do not collapse these labels into a generic “passing” claim.

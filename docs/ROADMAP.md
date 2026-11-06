@@ -1,15 +1,34 @@
-# Milestones
+# Implementation roadmap
 
-- [x] Repository established without changing Bulk OCR Studio.
-- [x] Vite + React + TypeScript + Wllama baseline source.
-- [x] JSONC/JSON/TXT/MD/CSV ingestion module and basic tests.
-- [x] Initial document selection, preview, extraction and JSON Schema validation UI source.
-- [ ] Install dependencies and run production build on an internet-connected developer machine.
-- [ ] Test actual GGUF inference and file:// offline behavior on Chrome/Edge.
-- [ ] Port native PDF, DOCX, XLSX, image and Tesseract OCR into this repository.
-- [ ] Record exact page/paragraph/table/cell provenance and review trails.
-- [ ] Build complete PII scan/redaction/export gates and compliance checks.
-- [ ] Verify a single HTML (OCR workers, WASM and language assets fully embedded).
-- [ ] Research AirLLM-style disk-streamed transformer layers separately.
+## Accepted baseline (source/CI)
 
-No model weights or real protected documents are committed.
+- [x] Independent repository. The existing \`bulk-ocr-studio\` project is unchanged.
+- [x] Vite, React, TypeScript and Wllama-based local model integration source.
+- [x] Bulk OCR Studio JSONC / JSON / TXT / MD / CSV importer and source tests.
+- [x] First local-model, document, JSON extraction and JSON Schema validation interface.
+- [x] GitHub Actions source tests and production bundle build completed successfully.
+- [x] README with working build badge; \`DESIGN.md\` and \`PRODUCT.md\`.
+- [x] Collapsible **Guide** drawer with workflow diagram, clear instructions and Print / Save PDF browser action; code compiled by CI.
+
+## P0 — not release-verified
+
+- [ ] **Local LLM inference:** load an actual GGUF model; generate offline from \`file://\` in managed Chrome/Edge; prove zero network requests.
+- [ ] **AI extraction into validated JSON:** compare with synthetic known-answer samples, enforce a user-selected JSON Schema, check source-backed facts, and fail safely on incomplete evidence.
+- [ ] Replace the current limited prompt slice with complete chunk coverage and explicit missing-chunk feedback.
+- [ ] Verify printed Guide as a readable PDF with diagrams and page breaks; add labeled feature screenshots and examples.
+- [ ] Verify the actual offline HTML bundle and workers/WASM in Chrome/Edge (CI bundling alone is not sufficient).
+
+## P1 — ingestion and safeguards
+
+- [ ] Native PDF, DOCX, XLSX, image and Tesseract processing in this repository only.
+- [ ] Real provenance for PDF pages/regions, DOCX paragraphs/tables, XLSX sheets/cells and CSV rows/columns.
+- [ ] Full PII scanning, redaction, protected exports and independent security review.
+- [ ] Accessibility, keyboard navigation, screen-size checks and GUI noise reduction.
+- [ ] Run Impeccable's project-local install and design audit in a networked developer environment, using \`DESIGN.md\` and \`PRODUCT.md\`. Not installed in this environment.
+- [ ] Validate printable guide against ASD-STE100 controlled vocabulary as appropriate; current style is inspired by STE, not certified.
+
+## Research
+
+- [ ] Evaluate AirLLM-style transformer-layer streaming separately from standard Wllama model loading.
+
+**No model weights or protected records belong in this public repository.**
