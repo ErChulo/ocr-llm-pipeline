@@ -236,9 +236,9 @@ export default function App() {
       </section>
       <section><h2>02 — Local documents</h2>
         <label className="picker">Attach OCR export / text
-          <input type="file" multiple accept=".jsonc,.json,.txt,.md,.csv" onChange={e => void onAttach(e)}/>
+          <input type="file" multiple accept=".jsonc,.json,.txt,.md,.csv,.docx,.xlsx" onChange={e => void onAttach(e)}/>
         </label>
-        <p className="help">Bulk OCR Studio JSONC is supported. Direct PDF, Word and Excel parsing will follow.</p>
+        <p className="help">Supports Bulk OCR JSONC, DOCX, XLSX and text files. PDF and image OCR will follow.</p>
         <p className="help">{docs.length} document(s) in this session</p>
       </section>
       <footer>Your documents stay on this device.</footer>
@@ -275,7 +275,7 @@ export default function App() {
               <pre className="preview">{active.text.slice(0, 25000)}</pre>
               {active.text.length > 25000 && <p className="warning">Preview truncated. The in-memory file is unchanged.</p>}
               <div className="actions"><button type="button" onClick={() => navigateTo('extract')}>Extract JSON from this document</button></div>
-            </> : <p className="empty">Import a Bulk OCR Studio JSONC export or a local text file.</p>}
+            </> : <p className="empty">Attach a DOCX, XLSX, Bulk OCR JSONC or text file.</p>}
           </section>}
           {route === "extract" && <section className="card">
             <h2>Extract structured JSON</h2>

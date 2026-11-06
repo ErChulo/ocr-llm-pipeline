@@ -56,3 +56,6 @@
 - [ ] Re-run file:// Chromium GGUF smoke test after compat integration; first attempt stalled while loading the model.
 
 - [x] Moved the Guide trigger away from the official PBGC logo after examining actual browser screenshots; guide drawer and print layout preserved.
+
+- [x] Native DOCX/XLSX parsing source with paragraph/table/cell and sheet/cell location metadata; tests and file:// integration still needed.
+- [ ] Verify DOCX and XLSX parsers on synthetic workbooks, including formula caches, data formats and malformed archive handling.

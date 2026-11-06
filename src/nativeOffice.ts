@@ -1,5 +1,5 @@
 import { unzipSync, strFromU8 } from 'fflate';
-import { DOMParser } from '@xmldom/xmldom';
+import { DOMParser, type Node as XmlNode, type Element as XmlElement } from '@xmldom/xmldom';
 import type { SourceDocument, SourceRecord } from './pipeline.ts';
 
 const MAX_ARCHIVE = 20 * 1024 * 1024;
@@ -42,30 +42,30 @@ function xmlDoc(text: string) {
   if (parsed.getElementsByTagName('parsererror').length) throw new Error('Invalid Office XML.');
   return parsed;
 }
-function children(node: Node, localName: string): Element[] {
-  const found: Element[] = [];
+function children(node: XmlNode, localName: string): XmlElement[] {
+  const found: XmlElement[] = [];
   for (let i = 0; i < node.childNodes.length; i++) {
     const child = node.childNodes.item(i);
-    if (child && child.nodeType === 1 && child.localName === localName) found.push(child as Element);
+    if (child && child.nodeType === 1 && child.localName === localName) found.push(child as XmlElement);
   }
   return found;
 }
-function descendants(node: Node, localName: string): Element[] {
-  const all: Element[] = [];
-  function descend(n: Node) {
+function descendants(node: XmlNode, localName: string): XmlElement[] {
+  const all: XmlElement[] = [];
+  function descend(n: XmlNode) {
     for (let i=0;i<n.childNodes.length;i++) {
       const x=n.childNodes.item(i);
       if (!x) continue;
-      if (x.nodeType === 1 && x.localName === localName) all.push(x as Element);
+      if (x.nodeType === 1 && x.localName === localName) all.push(x as XmlElement);
       descend(x);
     }
   }
   descend(node);
   return all;
 }
-function textOf(node: Node): string {
+function textOf(node: XmlNode): string {
   let result='';
-  function walk(n: Node) {
+  function walk(n: XmlNode) {
     if (n.nodeType === 1) {
       if (n.localName === 't') { result += n.textContent ?? ''; return; }
       if (n.localName === 'tab') { result += '\t'; return; }

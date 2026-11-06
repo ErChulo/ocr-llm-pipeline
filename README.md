@@ -61,3 +61,7 @@ Use the small **sun/moon icon** in the top-right navigation bar. Dark mode uses 
 ## Whole-document extraction review
 
 The current Extract JSON view processes **all imported text** in bounded sections rather than silently truncating the source. It records text-section offsets, flags contradictions for manual resolution, and blocks JSON export until conflicts are resolved and the latest candidate passes JSON Schema. Source locations refer only to extracted text; verified page/paragraph/cell provenance is still pending. See [whole-document extraction notes](docs/WHOLE_DOCUMENT_EXTRACTION.md).
+
+## Office document import (experimental)
+
+The app now accepts DOCX and XLSX files locally. DOCX text is labeled by paragraph/table location; XLSX values are labeled by sheet and cell. Formula results are read from cached workbook values, not recalculated. Headers, footers, embedded images, charts, unresolved changes, and Excel date formatting can be incomplete. Only tested parser-derived source locations may be cited; the user must review the original. This feature is not production-accepted.
