@@ -84,6 +84,25 @@ try {
   await page.locator('.preview').getByText(/Normal retirement age 65/).waitFor({ timeout: 30000 });
   assert.match(await page.locator('.preview').innerText(), /Page 2:[\s\S]*Early retirement age 55/);
   await page.screenshot({ path: 'tmp/smoke-pdf.png', fullPage: true });
+
+  // Image OCR uses English traineddata, WASM and Worker embedded in the HTML.
+  // Synthetic sans-serif text is the expected local recognition fixture.
+  const png64=await page.evaluate(() => {
+    const canvas=document.createElement('canvas');
+    canvas.width=950;canvas.height=230;
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle='white';ctx.fillRect(0,0,950,230);
+    ctx.fillStyle='black';ctx.font='bold 68px Arial';
+    ctx.fillText('RETIREMENT AGE 65',42,145);
+    return canvas.toDataURL('image/png').split(',')[1];
+  });
+  await page.locator('input[type="file"][accept*=".png"]').setInputFiles({
+    name:'synthetic.png',mimeType:'image/png',buffer:Buffer.from(png64,'base64')
+  });
+  await page.locator('.preview').getByText(/RETIREMENT AGE 65/i).waitFor({timeout:150000});
+  console.log('REAL BROWSER: embedded English OCR recognized synthetic PNG entirely offline.');
+  await page.screenshot({path:'tmp/smoke-ocr.png',fullPage:true});
+
   console.log('REAL BROWSER: PDF.js extracted both pages with page labels from file://.');
 
   await page.locator('input[type="file"][accept=".gguf"]').setInputFiles(fixture);

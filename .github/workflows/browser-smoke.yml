@@ -44,7 +44,7 @@ jobs:
             '270cba1bd5109f42d03350f60406024560464db173c0e387d91f0426d3bd256d' \
             'tmp/stories260K.gguf' | sha256sum --check
       - name: Test file:// app with external requests blocked
-        timeout-minutes: 6
+        timeout-minutes: 12
         run: node tests/browser-smoke.mjs
       - name: Upload smoke screenshots
         if: always()
