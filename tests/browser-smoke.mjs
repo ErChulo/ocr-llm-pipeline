@@ -7,7 +7,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { statSync, mkdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
-import { createSyntheticPdf } from './pdf-fixture.mjs';
+import { createSyntheticPdf, createScannedPdf } from './pdf-fixture.mjs';
 
 mkdirSync('tmp', { recursive: true });
 const fixture = resolve('tmp/stories260K.gguf');
@@ -104,6 +104,24 @@ try {
   assert.match(await page.locator('.preview').innerText(), /^Image OCR:/);
   console.log('REAL BROWSER: embedded English OCR recognized synthetic PNG entirely offline.');
   await page.screenshot({path:'tmp/smoke-ocr.png',fullPage:true});
+
+  const jpeg64=await page.evaluate(()=>{
+    const canvas=document.createElement('canvas');
+    canvas.width=950;canvas.height=230;
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle='white';ctx.fillRect(0,0,950,230);
+    ctx.fillStyle='black';ctx.font='bold 68px Arial';
+    ctx.fillText('RETIREMENT AGE 65',42,145);
+    return canvas.toDataURL('image/jpeg',0.98).split(',')[1];
+  });
+  const scanPdf=createScannedPdf(Buffer.from(jpeg64,'base64'),950,230);
+  await page.locator('input[type="file"][accept*=".pdf"]').setInputFiles({
+    name:'scanned-synthetic.pdf',mimeType:'application/pdf',buffer:scanPdf
+  });
+  await page.locator('.preview').getByText(/RETIREMENT AGE 65/i).waitFor({timeout:150000});
+  assert.match(await page.locator('.preview').innerText(),/^Page 1:/);
+  console.log('REAL BROWSER: image-only scanned PDF page OCR succeeded entirely offline.');
+  await page.screenshot({path:'tmp/smoke-scanned-pdf.png',fullPage:true});
 
   console.log('REAL BROWSER: PDF.js extracted both pages with page labels from file://.');
 
