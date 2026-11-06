@@ -7,6 +7,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { statSync, mkdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import { createSyntheticPdf } from './pdf-fixture.mjs';
 
 mkdirSync('tmp', { recursive: true });
 const fixture = resolve('tmp/stories260K.gguf');
@@ -74,6 +75,16 @@ try {
     'rgb(255, 255, 255)',
     'Light theme must be pure white'
   );
+
+  // Test native document parsing in the true standalone file:// build.
+  const pdf = createSyntheticPdf([['Normal retirement age 65'], ['Early retirement age 55']]);
+  await page.locator('input[type="file"][accept*=".pdf"]').setInputFiles({
+    name: 'synthetic.pdf', mimeType: 'application/pdf', buffer: pdf
+  });
+  await page.locator('.preview').getByText(/Normal retirement age 65/).waitFor({ timeout: 30000 });
+  assert.match(await page.locator('.preview').innerText(), /Page 2:[\s\S]*Early retirement age 55/);
+  await page.screenshot({ path: 'tmp/smoke-pdf.png', fullPage: true });
+  console.log('REAL BROWSER: PDF.js extracted both pages with page labels from file://.');
 
   await page.locator('input[type="file"][accept=".gguf"]').setInputFiles(fixture);
   await page.getByRole('button', { name: 'Load model' }).click();

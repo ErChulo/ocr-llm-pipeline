@@ -63,7 +63,6 @@ export async function parsePdf(fileName: string, bytes: Uint8Array): Promise<Sou
     useSystemFonts: true,
     disableFontFace: true,
     enableXfa: false,
-    isEvalSupported: false,
     useWasm: false,
     stopAtErrors: true
   });
