@@ -4,10 +4,11 @@ import 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 import type {EvidenceMatch} from './evidence';
 
 type Box=NonNullable<EvidenceMatch['textItemBoxes']>[number];
+const NO_BOXES:Box[]=[];
 type Props={bytes:Uint8Array;initialPage:number;highlightBoxes?:Box[];onClose:()=>void};
 type Rectangle={x:number;y:number;width:number;height:number};
 
-export default function PdfPageViewer({bytes,initialPage,highlightBoxes=[],onClose}:Props){
+export default function PdfPageViewer({bytes,initialPage,highlightBoxes=NO_BOXES,onClose}:Props){
   const canvasRef=useRef<HTMLCanvasElement|null>(null);
   const [pageNumber,setPageNumber]=useState(initialPage);
   const [pageCount,setPageCount]=useState(0);
@@ -25,7 +26,7 @@ export default function PdfPageViewer({bytes,initialPage,highlightBoxes=[],onClo
   useEffect(()=>{
     let cancelled=false;
     let task:ReturnType<typeof getDocument>|null=null;
-    let pageRender:ReturnType<Awaited<ReturnType<Awaited<ReturnType<typeof getDocument>['promise']>['getPage']>>['render']>|null=null;
+    let pageRender:{cancel:()=>void;promise:Promise<unknown>}|null=null;
     (async()=>{
       setBusy(true);setFailure('');setRegions([]);
       try{
@@ -56,7 +57,7 @@ export default function PdfPageViewer({bytes,initialPage,highlightBoxes=[],onClo
         pageRender=page.render({canvas,canvasContext:ctx,viewport});
         await pageRender.promise;
         if(cancelled)return;
-        const rectangles=highlightBoxes.flatMap(box=>{
+        const rectangles=(pageNumber===initialPage?highlightBoxes:NO_BOXES).flatMap(box=>{
           if(![box.x,box.y,box.width,box.height].every(Number.isFinite)||
             box.width<=0||box.height<=0)return [];
           const r=viewport.convertToViewportRectangle([
