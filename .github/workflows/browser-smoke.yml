@@ -1,0 +1,53 @@
+name: Experimental offline browser smoke test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "vite.config.ts"
+      - "package.json"
+      - "scripts/verify-build.mjs"
+      - "tests/browser-smoke.mjs"
+      - ".github/workflows/browser-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install application
+        run: npm install
+      - name: Build standalone HTML
+        run: npm run build
+      - name: Install browser automation (CI only)
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Download tiny synthetic-inference model (CI only)
+        run: |
+          mkdir -p tmp
+          curl --fail --location --silent --show-error --retry 3 \
+            'https://huggingface.co/ggml-org/models-moved/resolve/main/tinyllamas/stories260K.gguf' \
+            --output tmp/stories260K.gguf
+          printf '%s  %s\n' \
+            '270cba1bd5109f42d03350f60406024560464db173c0e387d91f0426d3bd256d' \
+            'tmp/stories260K.gguf' | sha256sum --check
+      - name: Test file:// app with external requests blocked
+        timeout-minutes: 6
+        run: node tests/browser-smoke.mjs
+      - name: Upload smoke screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: experimental-browser-smoke
+          path: tmp/smoke-*.png
+          if-no-files-found: ignore
