@@ -20,3 +20,7 @@ Before calling the application production grade, benchmark several representativ
 
 The next benchmark run additionally imports a synthetic TXT pension document through the UI, requests JSON from the real GGUF model, validates the resulting JSON Schema, selects and confirms source matches, exports via the actual browser download action, and checks the saved JSON's source-file SHA-256 and expected benefit ages. This is still a small synthetic acceptance case, not a production actuarial benchmark.
 
+
+## CSP-safe end-to-end gate
+
+The full pipeline browser benchmark now runs automatically on changes to extraction, evidence, export, and schema-validation source files. The app uses an interpreted local JSON Schema validator. This avoids Ajv's dynamic JavaScript compilation, which was blocked by the strict offline Content Security Policy. The previous end-to-end run failed before evidence review; only a successful rerun establishes this acceptance milestone.

@@ -7,6 +7,11 @@ on:
     paths:
       - ".github/workflows/model-benchmark.yml"
       - "tests/real-model-benchmark.mjs"
+      - "src/App.tsx"
+      - "src/schemaValidation.ts"
+      - "src/chunkExtraction.ts"
+      - "src/evidence.ts"
+      - "src/exportGate.ts"
 
 permissions:
   contents: read
