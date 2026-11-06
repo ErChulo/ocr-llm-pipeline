@@ -78,3 +78,15 @@ test('Unicode source offsets are against unchanged text',()=>{
  assert.equal(raw.slice(checks[0].matches[0].start,checks[0].matches[0].end),'[SLA]');
  assert.equal(raw.slice(checks[1].matches[0].start,checks[1].matches[0].end),'65');
 });
+
+test('PDF literal match contains actual PDF text-item envelopes for review', async()=>{
+ const {parsePdf}=await import('../src/pdfText.ts');
+ const {createSyntheticPdf}=await import('./pdf-fixture.mjs');
+ const parsed=await parsePdf('synthetic.pdf',new Uint8Array(createSyntheticPdf([['Normal retirement age 65']])));
+ const checked=auditLiteralEvidence(parsed,{age:65});
+ assert.equal(checked[0].status,'match');
+ const matched=checked[0].matches[0];
+ assert.equal(matched.location.page,1);
+ assert.ok(matched.textItemBoxes?.length>0);
+ assert.equal(matched.textItemBoxes[0].precision,'pdf-text-item-envelope');
+});

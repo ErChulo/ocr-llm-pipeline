@@ -2,7 +2,17 @@ import { parseDocx, parseXlsx } from './nativeOffice.ts';
 import { parsePdf } from './pdfText.ts';
 import { parseCsv } from './csv.ts';
 import { sha256Bytes } from './fingerprint.ts';
-export type SourceRecord = { start: number; end: number; label: string; location: Record<string, string | number> };
+export type SourceTextSpan = {
+  start: number;
+  end: number;
+  box: { x: number; y: number; width: number; height: number };
+  precision: 'pdf-text-item-envelope';
+};
+export type SourceRecord = {
+  start: number; end: number; label: string;
+  location: Record<string, string | number>;
+  textSpans?: SourceTextSpan[];
+};
 export type SourceDocument = {
   id: string; name: string; text: string; mimeType: string; sizeBytes: number;
   provenance: { source: 'local-text' | 'bulk-ocr-jsonc' | 'docx-native' | 'xlsx-native' | 'pdf-native' | 'csv-native' | 'pdf-ocr' | 'image-ocr'; precision: 'document' | 'paragraph' | 'cell' | 'page'; fileName: string };

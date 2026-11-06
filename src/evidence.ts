@@ -11,6 +11,7 @@ export type EvidenceMatch = {
   quote: string;
   label: string;
   location: Record<string, string | number>;
+  textItemBoxes?: Array<{ x:number; y:number; width:number; height:number; precision:'pdf-text-item-envelope' }>;
 };
 export type EvidenceCheck = {
   path: string;
@@ -100,7 +101,10 @@ function findMatches(doc: SourceDocument,value: unknown): EvidenceMatch[] {
           start:at,end,
           quote:doc.text.slice(Math.max(contentStart,at-WINDOW),Math.min(record.end,end+WINDOW)).trim(),
           label:record.label,
-          location:{...record.location}
+          location:{...record.location},
+          ...(record.textSpans ? { textItemBoxes:record.textSpans
+            .filter(s=>s.start<end&&s.end>at)
+            .map(s=>({ ...s.box, precision:s.precision })) } : {})
         });
       }
     }

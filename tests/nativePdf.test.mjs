@@ -45,3 +45,15 @@ test('text-bearing PDF images require explicit visual completeness warning', asy
  assert.ok(parsed.warnings.some(msg=>msg.includes('not OCR checked')));
  assert.equal(parsed.records[0].location.kind,'pdf-page');
 });
+
+test('PDF.js text coordinates attach parser-derived text-item envelopes, not invented quote boxes', async () => {
+  const pdf=createSyntheticPdf([['Plan early age 55','Normal retirement age 65']]);
+  const extracted=await parsePdf('synthetic.pdf',new Uint8Array(pdf));
+  const page=extracted.records[0];
+  assert.ok(Array.isArray(page.textSpans) && page.textSpans.length>=2);
+  const age=page.textSpans.find(s=>extracted.text.slice(s.start,s.end).includes('age 65'));
+  assert.ok(age,'text span must match actual extracted item content');
+  assert.equal(age.precision,'pdf-text-item-envelope');
+  assert.ok(Number.isFinite(age.box.x)&&age.box.width>0&&age.box.height>0);
+  assert.ok(age.start>=page.start&&age.end<=page.end);
+});
