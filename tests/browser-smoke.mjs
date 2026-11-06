@@ -99,7 +99,11 @@ try {
   await page.locator('input[type="file"][accept*=".png"]').setInputFiles({
     name:'synthetic.png',mimeType:'image/png',buffer:Buffer.from(png64,'base64')
   });
-  await page.getByLabel('Document', {exact:true}).selectOption({label:'synthetic.png'});
+  await page.getByText(/Imported 1 local document\(s\)/).waitFor({timeout:150000});
+  const currentPreview = await page.locator('.preview').innerText();
+  if (!currentPreview.startsWith('Image OCR:')) {
+    await page.locator('.card select').first().selectOption({label:'synthetic.png'});
+  }
   await page.locator('.preview').getByText(/RETIREMENT AGE 65/i).waitFor({timeout:150000});
   assert.match(await page.locator('.preview').innerText(), /^Image OCR:/);
   console.log('REAL BROWSER: embedded English OCR recognized synthetic PNG entirely offline.');
