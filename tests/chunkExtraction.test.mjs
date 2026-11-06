@@ -105,8 +105,8 @@ test('invalid model output aborts without a partial audit', async () => {
 
 test('section budgeting reserves context for output', () => {
   const schema={type:'object',properties:{age:{type:'integer'}}};
-  const smallOutput=textChunkBudget(4096,schema,128);
-  const largeOutput=textChunkBudget(4096,schema,2048);
+  const smallOutput=textChunkBudget(2048,schema,128);
+  const largeOutput=textChunkBudget(2048,schema,1024);
   assert.ok(smallOutput>largeOutput);
   assert.throws(()=>textChunkBudget(1024,schema,1024),/Output tokens/);
 });
