@@ -12,6 +12,7 @@ import { extractWholeDocument, resolveCandidateValues, type ExtractionAudit } fr
 import { auditLiteralEvidence, evidenceReviewComplete, exportReviewedEvidence } from './evidence';
 import { screenLocalPrivacy, safePrivacySummary } from './privacy';
 import { benchmarkPrompt, scoreBenchmark } from './modelBenchmark';
+import { evaluateExportGate } from './exportGate';
 import { parseModelJson } from './pipeline';
 
 const DEFAULT_SCHEMA = JSON.stringify({
@@ -75,6 +76,13 @@ export default function App() {
       ? auditLiteralEvidence(active, extraction) : [],
     [valid, extraction, active, audit]);
   const evidenceComplete = evidenceReviewComplete(evidenceChecks, evidenceChoices, evidenceConfirmed);
+  const exportGate = evaluateExportGate({
+    document: active, audit, value: extraction, schemaValid:valid, busy,
+    evidence: evidenceChecks, selectedEvidence:evidenceChoices,
+    confirmedEvidence:evidenceConfirmed,
+    conflictsUnresolved: audit?.conflicts.filter(c=>!Object.hasOwn(conflictChoices,c.path)).length ?? 0,
+    privacyRequired:privacy.requiresReview, privacyReviewed
+  });
 
   useEffect(() => () => { void engine.current.unload(); void terminateOcr(); }, []);
   useEffect(() => {
@@ -355,9 +363,9 @@ export default function App() {
             </div>}
             <div className="heading"><h2>Candidate JSON</h2>
               {audit && <button className="secondary"
-                disabled={!valid || !extraction || !evidenceComplete || busy || (privacy.requiresReview && !privacyReviewed)}
-                title={!evidenceComplete ? 'Select and confirm source evidence for every JSON value.' : 'Export reviewed JSON and source references.'}
-                onClick={() => downloadJson({
+                disabled={!exportGate.allowed}
+                title={exportGate.allowed ? 'Export reviewed JSON and source references.' : exportGate.reasons[0]}
+                onClick={() => { if(!exportGate.allowed) { setError(exportGate.reasons.join(' ')); return; } downloadJson({
                   status: 'schema_validated_facts_unverified',
                   document: { id: audit.documentId, name: audit.documentName, sourceSha256: active?.sourceSha256 ?? null },
                   coverage: { sourceCharacters: audit.length, sections: audit.chunks, complete: true },
@@ -368,7 +376,7 @@ export default function App() {
                   evidenceStatus: 'literal_match_human_reviewed_facts_not_independently_verified',
                   extraction,
                   validationErrors: []
-                })}>Export schema-valid JSON</button>}
+                }); }}>Export reviewed JSON</button>}
             </div>
             <p className="help">You can correct the candidate JSON and validate it again. This checks structure, not facts.</p>
             <textarea className="schema review-json" aria-label="Candidate JSON for review" spellCheck={false}
