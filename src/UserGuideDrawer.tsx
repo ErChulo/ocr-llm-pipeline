@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './UserGuideDrawer.css';
 
 const steps = [
@@ -51,11 +51,14 @@ function WorkflowVisual() {
 
 export default function UserGuideDrawer() {
   const [open, setOpen] = useState(false);
+  const closeRef=useRef<HTMLButtonElement|null>(null);
   useEffect(() => {
     if (!open) return;
+    const previous=document.activeElement as HTMLElement|null;
+    closeRef.current?.focus();
     function onKeyDown(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false); }
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    return () => { window.removeEventListener('keydown', onKeyDown); previous?.focus(); };
   }, [open]);
   return <div className="guide-host">
     {!open && <button className="guide-open" type="button" onClick={() => setOpen(true)} aria-expanded={false} aria-controls="guide-drawer">Guide</button>}
@@ -66,7 +69,7 @@ export default function UserGuideDrawer() {
           <strong>Quick guide</strong>
           <div>
             <button type="button" onClick={() => window.print()}>Print / Save PDF</button>
-            <button type="button" aria-label="Close guide" onClick={() => setOpen(false)}>Close</button>
+            <button type="button" ref={closeRef} aria-label="Close guide" onClick={() => setOpen(false)}>Close</button>
           </div>
         </div>
         <div className="guide-content" id="guide-sheet">

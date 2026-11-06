@@ -88,6 +88,7 @@ try {
 
   await page.getByRole('button',{name:'View original PDF'}).click();
   await page.getByRole('dialog',{name:'Original PDF page'}).waitFor({timeout:15000});
+  assert.equal(await page.getByRole('button',{name:'Close PDF view'}).evaluate(el=>el===document.activeElement),true);
   await page.locator('.pdf-view-canvas canvas').waitFor({timeout:15000});
   await page.waitForFunction(()=>{
     const canvas=document.querySelector('.pdf-view-canvas canvas');
@@ -230,6 +231,7 @@ try {
   // screenshot of the application or leaked imported document content.
   await page.getByRole('button',{name:'Guide',exact:true}).click();
   await page.getByRole('dialog',{name:'User guide'}).waitFor({timeout:10000});
+  assert.equal(await page.getByRole('button',{name:'Close guide'}).evaluate(el=>el===document.activeElement),true);
   await page.emulateMedia({media:'print'});
   const guideBytes=await page.pdf({
     path:'tmp/guide-print.pdf',

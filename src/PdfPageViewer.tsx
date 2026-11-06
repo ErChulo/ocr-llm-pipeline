@@ -11,6 +11,7 @@ type Rectangle={x:number;y:number;width:number;height:number};
 
 export default function PdfPageViewer({bytes,initialPage,highlightBoxes=NO_BOXES,onClose}:Props){
   const canvasRef=useRef<HTMLCanvasElement|null>(null);
+  const closeRef=useRef<HTMLButtonElement|null>(null);
   const [pageNumber,setPageNumber]=useState(initialPage);
   const [pageCount,setPageCount]=useState(0);
   const [size,setSize]=useState({width:0,height:0});
@@ -18,6 +19,11 @@ export default function PdfPageViewer({bytes,initialPage,highlightBoxes=NO_BOXES
   const [failure,setFailure]=useState('');
   const [busy,setBusy]=useState(true);
 
+  useEffect(()=>{
+    const previous=document.activeElement as HTMLElement|null;
+    closeRef.current?.focus();
+    return ()=>previous?.focus();
+  },[]);
   useEffect(()=>{
     const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose();};
     window.addEventListener('keydown',onKey);
@@ -81,7 +87,7 @@ export default function PdfPageViewer({bytes,initialPage,highlightBoxes=NO_BOXES
     <section className="pdf-view-dialog" role="dialog" aria-modal="true" aria-label="Original PDF page" tabIndex={-1}>
       <header className="pdf-view-header">
         <strong>Original PDF — page {pageNumber}{pageCount?' of '+pageCount:''}</strong>
-        <button type="button" onClick={onClose} aria-label="Close PDF view">Close</button>
+        <button type="button" ref={closeRef} onClick={onClose} aria-label="Close PDF view">Close</button>
       </header>
       {failure&&<p role="alert" className="warning">{failure}</p>}
       {busy&&<p role="status">Rendering PDF page locally...</p>}
