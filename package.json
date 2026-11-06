@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@wllama/wllama": "3.8.1",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
     "@wllama/wllama-compat": "3.8.1",
     "fflate": "0.8.3",
     "@xmldom/xmldom": "0.9.12",
@@ -21,12 +21,12 @@
     "@hyperjump/json-schema": "1.18.0"
   },
   "devDependencies": {
-    "@types/node": "^22.15.0",
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
-    "@vitejs/plugin-react": "^5.1.0",
-    "typescript": "~5.9.3",
-    "vite": "^7.3.0",
-    "vite-plugin-singlefile": "^2.3.4"
+    "@types/node": "22.15.0",
+    "@types/react": "19.2.0",
+    "@types/react-dom": "19.2.0",
+    "@vitejs/plugin-react": "5.1.0",
+    "typescript": "5.9.3",
+    "vite": "7.3.0",
+    "vite-plugin-singlefile": "2.3.4"
   }
 }
