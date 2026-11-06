@@ -1,5 +1,7 @@
 import { Wllama } from '@wllama/wllama';
 import wasmUrl from 'virtual:wllama-wasm';
+import compatWasmUrl from 'virtual:wllama-compat-wasm';
+import compatWorkerCode from 'virtual:wllama-compat-worker';
 export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 export type Settings = { context: number; maxTokens: number; temperature: number; topP: number };
 export class OfflineEngine {
@@ -14,9 +16,18 @@ export class OfflineEngine {
     await this.unload();
     const model = new Wllama({ default: wasmUrl }, {
       suppressNativeLog: true,
-      logger: { debug: () => {}, log: () => {}, warn: console.warn, error: console.error }
+      logger: {
+        debug: () => {}, log: () => {}, warn: (...args: unknown[]) => console.warn(...args),
+        error: (...args: unknown[]) => {
+          for (const item of args) {
+            if (item instanceof ErrorEvent) console.error('WASM worker error:', item.message, item.filename, item.lineno);
+            else console.error(item);
+          }
+        }
+      }
     });
-    model.setCompat(null);
+    // Never use CDN fallback: both compatibility assets are bundled into the HTML.
+    model.setCompat({ wasm: compatWasmUrl, worker: { code: compatWorkerCode } });
     this.model = model;
     try { await model.loadModel(sorted, { n_ctx: nCtx, n_threads: 1, n_gpu_layers: 0, n_parallel: 1 }); }
     catch (error) { await this.unload(); throw error; }

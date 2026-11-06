@@ -5,18 +5,24 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 function embeddedWasm(): Plugin {
-  const virtual = 'virtual:wllama-wasm';
-  const resolved = '\0' + virtual;
+  const files: Record<string, string> = {
+    'virtual:wllama-wasm': 'node_modules/@wllama/wllama/esm/wasm/wllama.wasm',
+    'virtual:wllama-compat-wasm': 'node_modules/@wllama/wllama-compat/wasm/wllama.wasm',
+    'virtual:wllama-compat-worker': 'node_modules/@wllama/wllama-compat/wasm/wllama.js'
+  };
   return {
     name: 'embedded-wllama-wasm',
     enforce: 'pre',
-    resolveId(id) { return id === virtual ? resolved : undefined; },
+    resolveId(id) { return Object.hasOwn(files, id) ? '\0' + id : undefined; },
     load(id) {
-      if (id !== resolved) return undefined;
-      const file = resolve(process.cwd(), 'node_modules/@wllama/wllama/esm/wasm/wllama.wasm');
-      if (!existsSync(file)) throw new Error('Wllama WASM binary unavailable: ' + file);
+      if (!id.startsWith('\0virtual:') || !Object.hasOwn(files, id.slice(1))) return undefined;
+      const file = resolve(process.cwd(), files[id.slice(1)]);
+      if (!existsSync(file)) throw new Error('Required offline Wllama asset unavailable: ' + file);
       const bytes = readFileSync(file);
-      if (bytes.subarray(0, 4).toString('hex') !== '0061736d') throw new Error('Invalid WASM header');
+      if (id.endsWith('-worker')) {
+        return 'export default ' + JSON.stringify(bytes.toString('utf8')) + ';';
+      }
+      if (bytes.subarray(0, 4).toString('hex') !== '0061736d') throw new Error('Invalid WASM header: ' + file);
       return 'export default ' + JSON.stringify('data:application/wasm;base64,' + bytes.toString('base64')) + ';';
     }
   };

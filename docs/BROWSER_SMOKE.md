@@ -16,3 +16,7 @@ Script: \`tests/browser-smoke.mjs\`.
 Screenshots are uploaded only as workflow artifacts. Neither Playwright nor its browser is required for the standalone app.
 
 **Status:** The test is experimental. Only a completed passing run counts as evidence; source compilation is not a real browser acceptance test. Office workstation and Windows Edge validation remain separate.
+
+## First run observation
+
+The initial Playwright run **failed**: the standalone app rendered and toggled themes, but loading `stories260K.gguf` did not complete within the test timeout. The worker logged a generic error event. This is not a passing inference result. A subsequent implementation adds bundled official compatibility assets for browsers that lack Wllama's JSPI/MEMORY64 requirements; it still requires an independent passing runtime test.

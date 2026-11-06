@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 const entries = readdirSync('dist');
 assert.deepEqual(entries, ['index.html'], 'The output must be exactly one HTML file');
 const html = readFileSync('dist/index.html', 'utf8');
-assert.match(html, /data:application\/wasm;base64,/, 'WASM must be embedded');
+assert.ok((html.match(/data:application\/wasm;base64,/g) ?? []).length >= 2, 'Both main and compat WASM must be embedded');
 assert.doesNotMatch(html, /<script[^>]+src=/i, 'No external JS allowed');
 assert.doesNotMatch(html, /<link[^>]+stylesheet/i, 'No external CSS allowed');
 console.log('Static single-file checks passed. Browser inference still requires live testing.');

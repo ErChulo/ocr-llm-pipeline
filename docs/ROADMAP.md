@@ -51,3 +51,6 @@
 - [x] Small accessible sun/moon icon in the navigation bar; remove redundant settings-page theme controls.
 
 - [x] Added an optional local-model generation self-test and prevented stale model status after failed loads. This does not replace offline acceptance with a real GGUF.
+
+- [x] Embedded official Wllama compatibility WASM and worker locally, with no CDN fallback in the portable build (source/CI; browser test pending).
+- [ ] Re-run file:// Chromium GGUF smoke test after compat integration; first attempt stalled while loading the model.
