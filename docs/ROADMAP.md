@@ -80,3 +80,5 @@
 - [x] CSV row/column provenance with quoted-cell parsing and no spreadsheet formula evaluation, covered by synthetic tests.
 
 - [x] Local conservative SSN/email/payment-card/phone detection and export review acknowledgement; screening is not a comprehensive PII control or certification.
+
+- [x] SHA-256 fingerprints of original input bytes included with exported evidence, allowing audit reproduction without uploading source data.

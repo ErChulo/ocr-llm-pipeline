@@ -333,7 +333,7 @@ export default function App() {
                 title={!evidenceComplete ? 'Select and confirm source evidence for every JSON value.' : 'Export reviewed JSON and source references.'}
                 onClick={() => downloadJson({
                   status: 'schema_validated_facts_unverified',
-                  document: { id: audit.documentId, name: audit.documentName },
+                  document: { id: audit.documentId, name: audit.documentName, sourceSha256: active?.sourceSha256 ?? null },
                   coverage: { sourceCharacters: audit.length, sections: audit.chunks, complete: true },
                   candidateSources: audit.candidates,
                   conflictDecisions: conflictChoices,
