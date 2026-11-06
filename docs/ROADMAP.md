@@ -14,7 +14,8 @@
 
 - [ ] **Local LLM inference:** load an actual GGUF model; generate offline from `file://` in managed Chrome/Edge; prove zero network requests.
 - [ ] **AI extraction into validated JSON:** compare with synthetic known-answer samples, enforce a user-selected JSON Schema, check source-backed facts, and fail safely on incomplete evidence.
-- [ ] Replace the current limited prompt slice with complete chunk coverage and explicit missing-chunk feedback.
+- [x] Sectioned text processing with exact source coverage, deterministic conflict detection, and incomplete-section export blocking (source/CI).
+- [ ] Verify accuracy and context bounds with a real GGUF; token budgets are provisional.
 - [ ] Verify printed Guide as a readable PDF with diagrams and page breaks; add labeled feature screenshots and examples.
 - [ ] Verify the actual offline HTML bundle and workers/WASM in Chrome/Edge (CI bundling alone is not sufficient).
 
@@ -43,7 +44,8 @@
 - [ ] Optional HTTPS PWA release build with manifest, icons, service worker and installability checks; **not** a dependency of the file:// version.
 
 - [x] Fail closed when a source exceeds the current extraction coverage; no partial-document output is treated as valid. Export is disabled on JSON Schema failure.
-- [ ] Replace the interim coverage guard with complete chunked extraction and explicit source coverage audit.
+- [x] Replace fixed 6,500-character rejection with full text sectioning up to a bounded number of sections; fail closed beyond the supported limit.
+- [ ] Add persistent checkpoint/restart and multi-document batch extraction for exceptionally long plans.
 
 - [x] Use pure black and pure white canvases matching the exact source logo backgrounds.
 - [x] Small accessible sun/moon icon in the navigation bar; remove redundant settings-page theme controls.

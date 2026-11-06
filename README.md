@@ -57,3 +57,7 @@ Source implementation in active development; automated build status appears abov
 ### Theme switch
 
 Use the small **sun/moon icon** in the top-right navigation bar. Dark mode uses a pure-black app canvas and the original `logo-negro.png`; light mode uses a pure-white app canvas and the original `logo.svg`. The chosen theme is stored locally when supported by the browser. No theme-specific remote assets are loaded.
+
+## Whole-document extraction review
+
+The current Extract JSON view processes **all imported text** in bounded sections rather than silently truncating the source. It records text-section offsets, flags contradictions for manual resolution, and blocks JSON export until conflicts are resolved and the latest candidate passes JSON Schema. Source locations refer only to extracted text; verified page/paragraph/cell provenance is still pending. See [whole-document extraction notes](docs/WHOLE_DOCUMENT_EXTRACTION.md).

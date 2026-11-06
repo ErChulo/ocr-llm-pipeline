@@ -3,7 +3,7 @@
  * Source offsets refer only to characters in the imported text. They are not PDF
  * page numbers, Word paragraphs, or spreadsheet cell addresses.
  */
-import type { SourceDocument } from './pipeline';
+import type { SourceDocument } from './pipeline.ts';
 import { parseModelJson } from './pipeline';
 
 export type SourceSpan = { chunk: number; start: number; end: number };
