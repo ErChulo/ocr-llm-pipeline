@@ -60,6 +60,7 @@ export default function App() {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [valid, setValid] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [schemaFeedback, setSchemaFeedback] = useState('');
   const [evidenceChoices, setEvidenceChoices] = useState<Record<string,number>>({});
   const [evidenceConfirmed, setEvidenceConfirmed] = useState<Record<string,boolean>>({});
   const [privacyReviewed, setPrivacyReviewed] = useState(false);
@@ -210,6 +211,18 @@ export default function App() {
     setEvidenceChoices({}); setEvidenceConfirmed({});
   }
 
+  async function onCheckSchema() {
+    if(busy)return;
+    setBusy(true);setSchemaFeedback('');setError('');
+    try {
+      await compileLocalSchema(JSON.parse(schema) as unknown);
+      setSchemaFeedback('Schema is valid for local validation. Check extracted facts separately.');
+    } catch(e) {
+      setSchemaFeedback('Schema needs correction.');
+      setError(errorMessage(e));
+    } finally { setBusy(false); }
+  }
+
   async function onExtract() {
     if (busy || !active || !engine.current.loaded) return;
     clearExtraction(); setError(''); setBusy(true);
@@ -338,14 +351,18 @@ export default function App() {
             <p className="help">{active ? 'Source: ' + active.name : 'Select a document first.'} All text sections must finish before export.</p>
             <label>Target JSON Schema
               <textarea className="schema" aria-label="Target JSON Schema" value={schema} spellCheck={false}
-                onChange={e => { setSchema(e.currentTarget.value); setValid(false); setExtraction(null); setEvidenceChoices({}); setEvidenceConfirmed({}); }}/>
+                onChange={e => { setSchema(e.currentTarget.value); setSchemaFeedback(''); setValid(false); setExtraction(null); setEvidenceChoices({}); setEvidenceConfirmed({}); }}/>
             </label>
             <div className="actions">
+              <button className="secondary" disabled={busy} onClick={() => void onCheckSchema()}>
+                Check schema
+              </button>
               <button disabled={busy || !modelName || !active} onClick={() => void onExtract()}>
                 {busy ? 'Extracting...' : 'Extract and validate'}
               </button>
               {busy && <button className="secondary" onClick={() => engine.current.stop()}>Stop</button>}
             </div>
+            {schemaFeedback && <p className="help" role="status">{schemaFeedback}</p>}
             {progress.total > 0 && <p className="help" role="status">Sections complete: {progress.done} / {progress.total}</p>}
             {audit && audit.conflicts.length > 0 && <div className="review-conflicts">
               <h3>Choose values that need review</h3>
