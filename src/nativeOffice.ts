@@ -114,7 +114,9 @@ function appendRecords(fileName: string, kind: 'docx'|'xlsx', entries: Entry[], 
   };
 }
 export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
-  const {files, omitted}=officeArchive(data,n=>n==='word/document.xml'||n==='[Content_Types].xml');
+  const {files, omitted}=officeArchive(data,n=>n==='word/document.xml'||n==='[Content_Types].xml' ||
+    /^word\/(?:header|footer)\d+\.xml$/.test(n) ||
+    n==='word/footnotes.xml'||n==='word/endnotes.xml');
   // Require the Office content-type manifest; do not accept arbitrary ZIP files.
   const types=xmlDoc(getPart(files,'[Content_Types].xml'));
   if(!descendants(types,'Types').length){
@@ -148,7 +150,46 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
     if(entries.length>MAX_RECORDS)throw new Error('DOCX exceeds the maximum record limit.');
   }
   const warnings:string[]=[];
-  if (omitted.some(n=>/^word\/(header|footer|footnotes|endnotes|comments)/i.test(n))) warnings.push('Header, footer, note or comment content is not included. Verify the source before using results.');
+  for(const part of Object.keys(files).filter(n=>/^word\/(?:header|footer)\d+\.xml$/.test(n)).sort()){
+    const section=part.includes('header')?'header':'footer';
+    const content=xmlDoc(getPart(files,part));
+    let paragraphNo=0;
+    for(const p of descendants(content,'p')){
+      paragraphNo++;
+      const value=textOf(p);
+      if(value){
+        entries.push({
+          label:part+' paragraph '+paragraphNo,
+          value,
+          location:{kind:'docx-'+section,part,paragraph:paragraphNo}
+        });
+      }
+    }
+    warnings.push('Word '+section+' content was read from '+part+
+      '. The file does not establish which page repeats this content.');
+  }
+  for(const section of ['footnotes','endnotes'] as const){
+    const part='word/'+section+'.xml';
+    if(!files[part])continue;
+    const content=xmlDoc(getPart(files,part));
+    for(const note of descendants(content,section==='footnotes'?'footnote':'endnote')){
+      const rawId=note.getAttribute('w:id') ||
+        note.getAttributeNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main','id');
+      if(rawId===null || !/^\d+$/.test(rawId))continue;
+      const noteId=Number(rawId);
+      if(!Number.isSafeInteger(noteId))throw new Error('Word note ID exceeds safe range.');
+      const value=descendants(note,'p').map(p=>textOf(p)).filter(Boolean).join('\n');
+      if(value)entries.push({
+        label:section+' '+noteId,
+        value,
+        location:{kind:'docx-'+(section==='footnotes'?'footnote':'endnote'),part,noteId}
+      });
+    }
+    warnings.push('Word '+section+' were included by note ID, without a verified page location.');
+  }
+  if (omitted.some(n=>/^word\/(?:comments|commentsExtended)/i.test(n)))
+    warnings.push('Word comments are not included in the extracted source.');
+  if(entries.length>MAX_RECORDS)throw new Error('DOCX exceeds the maximum record limit.');
   if (omitted.some(n=>/^word\/media\//i.test(n)) || descendants(doc,'drawing').length ||
       descendants(doc,'pict').length) warnings.push('Images and drawing text are not OCR processed.');
   if (descendants(doc,'altChunk').length) throw new Error('DOCX contains embedded alternate content that this parser cannot inspect.');

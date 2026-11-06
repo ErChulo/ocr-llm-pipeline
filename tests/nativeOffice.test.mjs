@@ -55,3 +55,25 @@ test('DOCX rejects XML with an oversized inflated part',()=>{
  },{level:9});
  assert.throws(()=>parseDocx('large.docx',bytes),/too large after decompression|decompressed-size/);
 });
+
+test('Word header, footer and footnote text are included with honest part IDs',()=>{
+ const files={
+  '[Content_Types].xml':'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>',
+  'word/document.xml':'<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Retirement 65</w:t></w:r></w:p></w:body></w:document>',
+  'word/header1.xml':'<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:t>Amendment 2023</w:t></w:r></w:p></w:hdr>',
+  'word/footer1.xml':'<w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:t>Plan footer</w:t></w:r></w:p></w:ftr>',
+  'word/footnotes.xml':'<w:footnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:footnote w:id="7"><w:p><w:r><w:t>Service excludes breaks.</w:t></w:r></w:p></w:footnote></w:footnotes>'
+ };
+ const data=zipped(files);
+ const doc=parseDocx('notes.docx',data);
+ assert.match(doc.text,/Retirement 65/);
+ assert.match(doc.text,/Amendment 2023/);
+ assert.match(doc.text,/Plan footer/);
+ assert.match(doc.text,/Service excludes breaks/);
+ const header=doc.records.find(x=>x.location.kind==='docx-header');
+ assert.equal(header.location.part,'word/header1.xml');
+ assert.equal(header.location.paragraph,1);
+ const note=doc.records.find(x=>x.location.kind==='docx-footnote');
+ assert.equal(note.location.noteId,7);
+ assert.ok(doc.warnings.some(x=>x.includes('without a verified page location')));
+});
