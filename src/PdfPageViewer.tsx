@@ -2,6 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import {getDocument} from 'pdfjs-dist/legacy/build/pdf.mjs';
 import 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 import type {EvidenceMatch} from './evidence';
+import {viewportRect} from './pdfGeometry';
 
 type Box=NonNullable<EvidenceMatch['textItemBoxes']>[number];
 const NO_BOXES:Box[]=[];
@@ -60,12 +61,7 @@ export default function PdfPageViewer({bytes,initialPage,highlightBoxes=NO_BOXES
         const rectangles=(pageNumber===initialPage?highlightBoxes:NO_BOXES).flatMap(box=>{
           if(![box.x,box.y,box.width,box.height].every(Number.isFinite)||
             box.width<=0||box.height<=0)return [];
-          const r=viewport.convertToViewportRectangle([
-            box.x,box.y,box.x+box.width,box.y+box.height
-          ]);
-          const x=Math.min(r[0],r[2]),y=Math.min(r[1],r[3]);
-          const width=Math.abs(r[2]-r[0]),height=Math.abs(r[3]-r[1]);
-          return [{x,y,width,height}];
+          return [viewportRect(viewport.transform,box)];
         });
         setSize({width:viewport.width,height:viewport.height});
         setRegions(rectangles);
