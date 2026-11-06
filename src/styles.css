@@ -1,15 +1,15 @@
 :root{font:14px/1.55 Arial,Helvetica,sans-serif;color-scheme:dark;background:#000;
---canvas:#000;--sidebar:#0C1017;--surface:#0E1420;--raised:#152033;--preview:#03060B;
+--canvas:#000000;--sidebar:#000000;--surface:#0C0C0C;--raised:#171717;--preview:#070707;
 --ink:#FFFFFF;--muted:#C6D2E1;--border:#29384D;--focus:#6E93C2;
 --primary:#002D72;--primary-border:#6E93C2;--primary-ink:#FFFFFF;
 --warn:#FFD28A;--success:#83E3BC;--error-bg:#32141A;--error-ink:#FFD6DD;
---guide-bg:#0C1017;--guide-raised:#131B26;--guide-accent:#131B26}
-:root[data-theme="light"]{color-scheme:light;background:#F7F9FC;
---canvas:#F7F9FC;--sidebar:#FFFFFF;--surface:#FFFFFF;--raised:#EAF0F6;--preview:#F3F6FA;
+--guide-bg:#000000;--guide-raised:#171717;--guide-accent:#171717}
+:root[data-theme="light"]{color-scheme:light;background:#FFFFFF;
+--canvas:#FFFFFF;--sidebar:#FFFFFF;--surface:#FFFFFF;--raised:#F5F7FA;--preview:#FCFCFD;
 --ink:#182332;--muted:#425166;--border:#C4D0DE;--focus:#002D72;
 --primary:#002D72;--primary-border:#002D72;--primary-ink:#FFFFFF;
 --warn:#80520B;--success:#006B50;--error-bg:#FFF0F2;--error-ink:#9A1532;
---guide-bg:#FFFFFF;--guide-raised:#F0F5FA;--guide-accent:#EAF0F6}
+--guide-bg:#FFFFFF;--guide-raised:#F5F7FA;--guide-accent:#F5F7FA}
 *{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--ink)}
 button,select,textarea,input{font:inherit}button,.picker{cursor:pointer}
 button:disabled{opacity:.48;cursor:not-allowed}
@@ -18,7 +18,7 @@ button:focus-visible,.picker:focus-within,textarea:focus-visible,select:focus-vi
 .sidebar{background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column}
 .sidebar header{padding:24px 18px 20px;border-bottom:1px solid var(--border)}
 .app-brand{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
-.brand-logo{width:100%;max-width:240px;height:auto;object-fit:contain;display:block}
+.brand-logo{width:auto;max-width:100%;height:145px;object-fit:contain;object-position:left center;display:block}
 .app-brand h1{font-size:17px;line-height:1.3;font-weight:700;margin:0}
 .sidebar section{padding:19px 18px;border-bottom:1px solid var(--border)}
 h2{font-size:17px;margin:0 0 12px;font-weight:700}
@@ -33,8 +33,11 @@ button:not(:disabled):hover{filter:brightness(1.12)}
 select{display:block;width:100%;background:var(--preview);color:var(--ink);border:1px solid var(--border);border-radius:7px;padding:10px;margin-top:6px}
 .sidebar footer{margin-top:auto;color:var(--muted);padding:18px;font-size:12px}
 .main{min-width:0}
-nav{padding:15px 24px;border-bottom:1px solid var(--border);background:var(--sidebar)}
-.route-tabs{display:flex;gap:7px;flex-wrap:wrap}
+nav{padding:12px 24px;border-bottom:1px solid var(--border);background:var(--sidebar);display:flex;align-items:center;justify-content:space-between;gap:14px}
+.route-tabs{display:flex;gap:7px;flex-wrap:wrap;min-width:0}
+.theme-toggle{flex:0 0 44px;width:44px;height:44px;padding:0;display:grid;place-items:center;color:var(--ink);background:var(--sidebar);border:1px solid var(--border);border-radius:12px;box-shadow:0 1px 8px rgba(0,0,0,.07)}
+.theme-toggle:hover:not(:disabled){background:var(--raised)}
+.theme-toggle svg{display:block}
 nav button{background:transparent;border:1px solid transparent;color:var(--muted);padding:9px 13px}
 nav button.active{color:var(--ink);background:var(--raised);border-color:var(--border)}
 .alert{margin:17px 24px;padding:11px 14px;border:1px solid var(--border);background:var(--raised);color:var(--ink);border-radius:8px}
@@ -58,8 +61,6 @@ nav button.active{color:var(--ink);background:var(--raised);border-color:var(--b
 .chat form textarea{display:block;min-height:100px;width:100%;background:var(--surface);color:var(--ink);border:1px solid var(--border);border-radius:8px;padding:13px}
 .chat form button{margin-top:10px;margin-right:9px}
 .settings-card{max-width:700px}.settings-card>h2:not(:first-child){margin-top:28px}
-.theme-buttons{display:flex;gap:10px;margin:12px 0 20px}
-.theme-buttons .selected{background:var(--primary);color:#fff;border-color:var(--primary)}
 .settings-card>label{max-width:300px}
 @media(max-width:900px){.shell{display:block}.sidebar section{padding:14px 20px}.columns{grid-template-columns:1fr}.workspace{padding:6px 15px}.alert{margin:12px 15px}nav{padding:14px 15px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}}

@@ -1,8 +1,8 @@
 import UserGuideDrawer from './UserGuideDrawer';
 import { ROUTES, routeFromHash, type RouteId } from './routes';
 import { loadTheme, saveTheme, type Theme } from './theme';
-import darkLogo from './assets/PBGC_logo_name_hor_wt.png';
-import lightLogo from './assets/PBGC_logo_name_hor_bw.png';
+import darkLogo from './assets/logo-negro.png';
+import lightLogo from './assets/logo.svg';
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import Ajv from 'ajv';
 import { OfflineEngine, type ChatMessage, type Settings } from './engine';
@@ -135,7 +135,7 @@ export default function App() {
   return <div className="shell">
     <UserGuideDrawer />
     <aside className="sidebar">
-      <header className="app-brand"><img className="brand-logo" src={theme === "dark" ? darkLogo : lightLogo} alt="Pension Benefit Guaranty Corporation"/><h1>OCR + LLM Pipeline Studio</h1></header>
+      <header className="app-brand"><img className="brand-logo" src={theme === "dark" ? darkLogo : lightLogo} alt="PBGC logo"/><h1>OCR + LLM Pipeline Studio</h1></header>
       <section><h2>01 — Local GGUF model</h2>
         <label className="picker">Choose model files
           <input type="file" accept=".gguf" multiple disabled={busy}
@@ -157,7 +157,21 @@ export default function App() {
       <footer>Your documents stay on this device.</footer>
     </aside>
     <main className="main">
-      <nav aria-label="Main navigation"><div className="route-tabs">{ROUTES.map(item => <button key={item.id} type="button" className={route === item.id ? "active" : ""} aria-current={route === item.id ? "page" : undefined} onClick={() => navigateTo(item.id)}>{item.label}</button>)}</div></nav>
+      <nav aria-label="Main navigation">
+        <div className="route-tabs">{ROUTES.map(item => <button key={item.id} type="button" className={route === item.id ? "active" : ""} aria-current={route === item.id ? "page" : undefined} onClick={() => navigateTo(item.id)}>{item.label}</button>)}</div>
+        <button type="button" className="theme-toggle"
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')}>
+          {theme === 'dark'
+            ? <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"/>
+              </svg>
+            : <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M20.8 14.2A9 9 0 0 1 9.8 3.2 9 9 0 1 0 20.8 14.2Z"/>
+              </svg>}
+        </button>
+      </nav>
       {error && <div role="alert" className="alert error">{error}<button onClick={() => setError('')}>Dismiss</button></div>}
       <div role="status" className="alert">{status}</div>
       {(route === 'documents' || route === 'extract') ? <div className="workspace">
@@ -213,11 +227,7 @@ export default function App() {
       </section> : <section className="workspace settings-page">
         <div className="card settings-card">
           <h2>Appearance</h2>
-          <p className="help">Choose a display theme. The official PBGC logo changes for contrast.</p>
-          <div className="theme-buttons" role="group" aria-label="Display theme">
-            <button type="button" className={theme === 'dark' ? 'selected' : 'secondary'} aria-pressed={theme === 'dark'} onClick={() => setTheme('dark')}>Dark</button>
-            <button type="button" className={theme === 'light' ? 'selected' : 'secondary'} aria-pressed={theme === 'light'} onClick={() => setTheme('light')}>Light</button>
-          </div>
+          <p className="help">Use the sun or moon icon in the top bar to change themes. Your selection is saved when browser storage is available.</p>
           <h2>Model settings</h2>
           <label>Context tokens
             <select disabled={!!modelName || busy} value={settings.context}

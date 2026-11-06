@@ -55,3 +55,15 @@ Use Impeccable during development after it is installed in a developer checkout.
 ## Official branding asset implementation
 
 Official logo variants are embedded without recoloring or geometric modification. **White logo on dark UI**, **black logo on light UI**. Use consistent scale, minimum display width and ample clear space. These source images are not generated artwork. This application is an independent internal-oriented tool and must not claim PBGC endorsement. Details: `docs/BRANDING_ASSETS.md`.
+
+## Exact logo and theme correction
+
+The user approved a specific visual pairing, which supersedes earlier generic "white for dark / black for light" guidance:
+- Dark app canvas and navigation: pure **#000000**, using untouched `logo-negro.png` from the branding directory.
+- Light app canvas and navigation: pure **#FFFFFF**, using untouched `logo.svg` full-color PBGC artwork.
+- No light/white logo on dark background or dark-text logo on light background substitution.
+- Theme control is one small, visible sun/moon icon in the top navigation, with an accessible 44×44 click target; store preference when possible.
+- Supporting cards may use subtly raised surfaces, but the page canvas, sidebar and navigation must match the logo's background.
+- The dark logo has intentionally low artwork contrast. Maintain strong contrast for navigation labels and all form controls.
+
+See `docs/BRANDING_ASSETS.md`.

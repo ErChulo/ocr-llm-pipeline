@@ -36,11 +36,14 @@
 ## Current navigation/theme work
 
 - [x] File-safe hash route manifest for Documents, Extract JSON, Local chat and Settings.
-- [x] Dark/light theme toggle with contrast-appropriate official logo variants.
-- [x] Original official PBGC logo files imported into this repository only.
+- [x] Dark/light theme toggle with the user-selected black-background and white-background logo pair.
+- [x] Original `logo-negro.png` and `logo.svg` imported into this repository only.
 - [x] Responsive Guide drawer theme support.
 - [ ] Verify manual keyboard flow and logo layout under both themes.
 - [ ] Optional HTTPS PWA release build with manifest, icons, service worker and installability checks; **not** a dependency of the file:// version.
 
 - [x] Fail closed when a source exceeds the current extraction coverage; no partial-document output is treated as valid. Export is disabled on JSON Schema failure.
 - [ ] Replace the interim coverage guard with complete chunked extraction and explicit source coverage audit.
+
+- [x] Use pure black and pure white canvases matching the exact source logo backgrounds.
+- [x] Small accessible sun/moon icon in the navigation bar; remove redundant settings-page theme controls.

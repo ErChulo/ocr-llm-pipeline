@@ -49,7 +49,11 @@ Source implementation in active development; automated build status appears abov
 ## Routing, themes and PWA
 
 - The application is a React single-page application using hash URLs (`#/documents`, `#/extract`, `#/chat`, `#/settings`), which continue to work from `file://`. The route list is in [`src/routes.ts`](src/routes.ts).
-- The app embeds official PBGC horizontal logo variants: **white for dark**, **black for light**. Using black on black or white on white would make the branding illegible. Assets are copied unchanged from the authorized reference directory for this app; see [asset provenance](docs/BRANDING_ASSETS.md). The app is not an official PBGC release.
+- The app embeds the selected PBGC logo pair: **black-background `logo-negro.png` for dark**, **color `logo.svg` on white for light**. Using black on black or white on white would make the branding illegible. Assets are copied unchanged from the authorized reference directory for this app; see [asset provenance](docs/BRANDING_ASSETS.md). The app is not an official PBGC release.
 - **Future PWA:** installation requires an HTTPS (or localhost) origin and a service worker. The portable HTML deliberately does not register one. See [PWA strategy](docs/PWA_STRATEGY.md). The developer can build two distributions from the same React source when PWA functionality is implemented.
 
 **Repository visibility:** GitHub is currently public. Make the repository private if you do not want the embedded logo files publicly visible. Private repository access does not automatically grant logo rights or external-use approval.
+
+### Theme switch
+
+Use the small **sun/moon icon** in the top-right navigation bar. Dark mode uses a pure-black app canvas and the original `logo-negro.png`; light mode uses a pure-white app canvas and the original `logo.svg`. The chosen theme is stored locally when supported by the browser. No theme-specific remote assets are loaded.

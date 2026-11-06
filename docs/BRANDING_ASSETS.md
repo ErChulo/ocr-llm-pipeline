@@ -1,13 +1,20 @@
-# PBGC logo asset provenance and usage
+# Approved PBGC-themed logo pair
 
-The following files were retrieved from the connected Drive folder:
-`pbgc-the-book-of-job/PBGC_CASEWORK_CURATED/07_SOFTWARE_AND_ASSETS/03_Branding_Assets/images`
+The theme pair was **explicitly selected by the user** after inspecting both original files.
 
-- `PBGC_logo_name_hor_wt.png` — white horizontal PBGC logo with agency name; used when the **application background is dark**.
-- `PBGC_logo_name_hor_bw.png` — black horizontal PBGC logo with agency name; used when the **application background is light**.
+| App theme | Selected original | Placement | Site background |
+| --- | --- | --- | --- |
+| Dark | `logo-negro.png` | Black-background dark-gray PBGC monogram, unchanged | `#000000` |
+| Light | `logo.svg` | Full-color blue/red PBGC monogram, unchanged | `#FFFFFF` |
 
-The original PNG bytes are committed under `src/assets/`. The Vite build embeds them in the single HTML. No remote asset URL is used at runtime.
+## Source
+Both are from the connected Google Drive `pbgc-the-book-of-job` library:
 
-The *September 2025 PBGC Branding & Editorial Style Guide* gives PBGC Blue as #002D72 and PBGC Red as #E4002B and requires maintaining official logo proportions and spacing. It also says approval is needed for external logo use. Do not treat the use of these files as PBGC endorsement. Do not modify, recolor, or distort logos.
+- Dark: `PBGC_CASEWORK_CURATED/07_SOFTWARE_AND_ASSETS/03_Branding_Assets/Other/logo-negro.png`.
+- Light: `PBGC_CASEWORK_CURATED/07_SOFTWARE_AND_ASSETS/03_Branding_Assets/images/logo.svg`.
 
-**Privacy and distribution:** the repository was PUBLIC when the asset commit was made. If it must be private, change its visibility through GitHub settings. Do not place PBGC case data or PII in repository assets.
+The original source bytes are committed in `src/assets/` and bundled into the portable HTML. They are not recolored, composited, or modified. The black bitmap's corner pixels are black; the light SVG has transparent background and appears on the white site surface.
+
+**Design note:** The chosen dark logo is intentionally low contrast. It is a user-approved aesthetic exception for the brand image, not permission to lower text or control contrast elsewhere. A 44×44 accessible sun/moon button in the top navigation toggles themes; the preference is stored in browser storage when permitted.
+
+The repository is an independent tool and does not imply official PBGC approval. Follow the agency's branding guide and any applicable authorization rules for external distribution. The user plans to make this repository private; only the owner can change visibility through GitHub settings.
