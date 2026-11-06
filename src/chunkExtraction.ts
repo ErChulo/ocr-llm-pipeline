@@ -13,6 +13,7 @@ export type Conflict = { path: string; candidates: Candidate[] };
 export type ExtractionAudit = {
   documentId: string;
   documentName: string;
+  sourceText: string; // original text identity retained in memory, not included in export
   length: number;
   chunks: SourceSpan[];
   candidates: Record<string, Candidate[]>;
@@ -146,7 +147,7 @@ export function collectChunkCandidates(doc: SourceDocument, chunks: TextChunk[],
     .sort()
     .map(path => ({ path, candidates: candidates[path] }));
   return {
-    documentId: doc.id, documentName: doc.name, length: doc.text.length,
+    documentId: doc.id, documentName: doc.name, sourceText: doc.text, length: doc.text.length,
     chunks: chunks.map(({chunk,start,end}) => ({chunk,start,end})),
     candidates, conflicts
   };
