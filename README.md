@@ -1,23 +1,35 @@
 # OCR + LLM Pipeline Studio
 
 [![Build and source tests](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/build.yml)
+[![Offline browser test](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/browser-smoke.yml/badge.svg?branch=main)](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/browser-smoke.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version: 0.2.0](https://img.shields.io/badge/version-0.2.0-002D72.svg)](docs/ROADMAP.md)
+[![Version: beta](https://img.shields.io/badge/version-0.3.0--beta.1-002D72.svg)](CHANGELOG.md)
 
-A **browser-only, offline-first** document-to-JSON application. Developed with **Vite, React, TypeScript, WebAssembly and Wllama**. Its intended release is one HTML file, with a user-selected GGUF model stored separately.
+**Private-document-to-JSON research application. Beta; not approved for production PBGC data.** The release target is one offline HTML file that opens directly under `file://` in Chrome or Edge. GGUF model weights stay separate, selected by the user. No Python, Node, server, CDN, installation, or network is required on the target workstation once its hardware is independently validated.
 
-> The build badge indicates automated source tests and compilation. It **does not** establish that actual GGUF inference, OCR, or all `file://` scenarios work.
+## What is implemented
 
-## Critical features (P0)
+- **Local GGUF inference:** Wllama / WebAssembly model picker, chat and a local generation self-test. Small-model generation passed the `file://` Chromium workflow without external requests.
+- **Source ingestion:** native text PDFs, English OCR for scanned PDF pages and PNG/JPEG/WebP images, DOCX, XLSX, CSV, TXT, MD, and Bulk OCR Studio JSONC/JSON exports. Source-location precision varies by format.
+- **JSON extraction:** bounded whole-source sectioning, JSON Schema validation, conflict review, editable JSON, and fail-closed handling of incomplete sections.
+- **Source evidence:** literal value searches with parser-derived document/page/paragraph/table/cell locations. Users must inspect and confirm each match before export. Literal matches and valid JSON **do not independently establish factual or actuarial accuracy**.
+- **Safety:** local possible-PII flags, protected-export acknowledgement, SHA-256 fingerprints of original input files, and export gates that refuse changed source text, unresolved conflicts, missing evidence and invalid JSON. The privacy screen is not comprehensive.
+- **Usability:** offline hash routing, black/white PBGC logo pairing, theme switch, collapsible printable Guide and a synthetic known-answer model check.
 
-1. **Local LLM inference.** Load a GGUF file from local disk. Run prompts through WebAssembly. Do not send documents to a server. **Release acceptance:** actual browser inference with Wi-Fi disabled and no network requests.
-2. **AI extraction into validated JSON.** Parse local source text, ask the model for structured data, validate with Ajv and a selected JSON Schema, and export with source information. **Release acceptance:** test extraction on known samples; inspect source evidence; mark unverified claims for review. Passing JSON Schema is **not** proof that the data is correct.
+## Where it is verified
 
-Current code includes a local chat interface, a GGUF file selector, JSONC/JSON/TXT/MD/CSV import, experimental extraction and JSON Schema checks. **Direct PDF, DOCX, XLSX, image OCR, and fine-grained provenance are pending.** No real-model offline acceptance test has passed yet.
+| Check | Evidence |
+|---|---|
+| Deterministic source tests and single-file build | [Build workflow](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/build.yml) |
+| Offline Chromium `file://` runtime | [Browser smoke workflow](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/browser-smoke.yml) |
+| Practical instruction-following GGUF model benchmark | [Separate experimental workflow](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/model-benchmark.yml) |
+| Current production readiness and blockers | [Roadmap](docs/ROADMAP.md) |
 
-## Build and run
+The browser smoke uses a tiny GGUF for **runtime verification only**. It does not prove large-model performance, extraction correctness on complex real pension plans, or operation on a managed PBGC workstation. The separate model benchmark measures a synthetic known-answer case and also does not certify accuracy.
 
-On a **development** computer with Node.js:
+## Run locally
+
+Development machine:
 
 ```bash
 npm install
@@ -25,61 +37,15 @@ npm test
 npm run build
 ```
 
-The CI workflow runs these commands and uploads `dist/index.html` when it passes. For the target workstation, no Python, Node, local server, CDN, or network connection should be needed **after offline acceptance testing**. Select the GGUF model from local disk when prompted.
+Download `ocr-llm-pipeline-single-html` from the successful [build workflow](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/build.yml), extract `index.html`, and open it directly in the browser. Choose a separate GGUF file from local disk.
 
-## Design and user documentation
+**No protected participant, plan-case or sensitive material should be committed to this repository or used before agency approval and the remaining security validation.** Model files are not in Git.
 
-- [DESIGN.md](DESIGN.md) — minimal, glossy, high-contrast PBGC-inspired visual standard. Grounded in the September 2025 PBGC Branding & Editorial Style Guide.
-- [PRODUCT.md](PRODUCT.md) — user-first product behavior, priority rules and non-negotiable constraints.
-- [Printable user guide](docs/USER_GUIDE.md) — short instructions in an ASD-STE100-inspired style. The application includes a separate **Guide** drawer with a visual workflow and **Print / Save PDF** action.
-- [Implementation requirements](docs/IMPLEMENTATION_ACCEPTANCE.md) — release gates and technical acceptance criteria.
-- [Impeccable setup](docs/IMPECCABLE_SETUP.md) — optional development-only design review tooling. It is not an application runtime dependency.
-- [Roadmap](docs/ROADMAP.md) — implemented versus pending work.
+## Documentation
 
-## Safe source reuse
+- [Short user guide](docs/USER_GUIDE.md) and in-app left Guide drawer with Print / Save PDF.
+- [Design standard](DESIGN.md) and [product requirements](PRODUCT.md).
+- [PDF ingestion](docs/PDF_INGESTION.md), [evidence/whole-source extraction](docs/WHOLE_DOCUMENT_EXTRACTION.md), [real GGUF benchmark](docs/REAL_MODEL_BENCHMARK.md).
+- [Acceptance contract](docs/IMPLEMENTATION_ACCEPTANCE.md), [Impeccable setup](docs/IMPECCABLE_SETUP.md), [changelog](CHANGELOG.md).
 
-[Bulk OCR Studio](https://github.com/ErChulo/bulk-ocr-studio) is **read-only** for this project. The existing application's JSONC export format is supported by a separate importer. Its source and upstream history have not been changed.
-
-This repository is public. **Do not commit PBGC case data, sensitive records, model weights, or personal information.**
-
-## Status
-
-Source implementation in active development; automated build status appears above. Browser-only GGUF inference and end-to-end evidence-grounded extraction require real workstation tests before release.
-
-## Routing, themes and PWA
-
-- The application is a React single-page application using hash URLs (`#/documents`, `#/extract`, `#/chat`, `#/settings`), which continue to work from `file://`. The route list is in [`src/routes.ts`](src/routes.ts).
-- The app embeds the selected PBGC logo pair: **black-background `logo-negro.png` for dark**, **color `logo.svg` on white for light**. Using black on black or white on white would make the branding illegible. Assets are copied unchanged from the authorized reference directory for this app; see [asset provenance](docs/BRANDING_ASSETS.md). The app is not an official PBGC release.
-- **Future PWA:** installation requires an HTTPS (or localhost) origin and a service worker. The portable HTML deliberately does not register one. See [PWA strategy](docs/PWA_STRATEGY.md). The developer can build two distributions from the same React source when PWA functionality is implemented.
-
-**Repository visibility:** GitHub is currently public. Make the repository private if you do not want the embedded logo files publicly visible. Private repository access does not automatically grant logo rights or external-use approval.
-
-### Theme switch
-
-Use the small **sun/moon icon** in the top-right navigation bar. Dark mode uses a pure-black app canvas and the original `logo-negro.png`; light mode uses a pure-white app canvas and the original `logo.svg`. The chosen theme is stored locally when supported by the browser. No theme-specific remote assets are loaded.
-
-## Whole-document extraction review
-
-The current Extract JSON view processes **all imported text** in bounded sections rather than silently truncating the source. It records text-section offsets, flags contradictions for manual resolution, and blocks JSON export until conflicts are resolved and the latest candidate passes JSON Schema. Source locations refer only to extracted text; verified page/paragraph/cell provenance is still pending. See [whole-document extraction notes](docs/WHOLE_DOCUMENT_EXTRACTION.md).
-
-## Office document import (experimental)
-
-The app now accepts DOCX and XLSX files locally. DOCX text is labeled by paragraph/table location; XLSX values are labeled by sheet and cell. Formula results are read from cached workbook values, not recalculated. Headers, footers, embedded images, charts, unresolved changes, and Excel date formatting can be incomplete. Only tested parser-derived source locations may be cited; the user must review the original. This feature is not production-accepted.
-
-## Native PDF text import
-
-The PDF.js 6.5.438 parser is bundled locally with the application, including its no-network main-thread worker fallback. The imported text records the PDF's **actual page numbers**, not coordinates invented by AI. Every page must contain extractable text; image-only or blank pages fail closed until offline OCR is implemented. Tables, page ordering and drawings require source review. The PDF parser is subject to a 20 MB/300-page limit. It is not a document viewer and does not establish factual verification.
-
-[Native PDF ingestion milestone](docs/PDF_INGESTION.md) — verified with synthetic two-page PDF input under Chromium `file://`. Incomplete scanned pages are refused rather than silently skipped. See the GitHub Actions browser smoke workflow for the successful runtime test.
-
-## Field-level evidence review
-
-Before exporting, the user must select an exact local-text match and check each JSON value against its source. The source label and location are taken from the parser (PDF page, DOCX location or XLSX cell), not invented by the model. Missing literal matches block export, including numeric values that occur only as substrings of other numbers. These are **candidate textual citations**; they do not establish independent factual or actuarial correctness. The export includes human-reviewed evidence metadata. See `src/evidence.ts`.
-
-## CSV cell provenance
-
-CSV imports are parsed without a server. Every nonempty cell is recorded as text with its actual 1-based row and column. Quoted commas, CRLF and embedded newlines are handled; malformed quotes fail closed. The first row is **not assumed to be a header**. CSV formulas are never executed. Synthetic fixtures cover the parser and preserve no personal information.
-
-## Local model quality smoke check
-
-Under **Settings → Check extraction quality**, the loaded GGUF is asked to extract four known answers from a purely fictional plan. The app reports the score and any failure; it does not claim real-world actuarial accuracy. A passing sample is not sufficient for production use. See `src/modelBenchmark.ts`.
+[Bulk OCR Studio](https://github.com/ErChulo/bulk-ocr-studio) is **read-only**. This repository contains a separate importer and has never modified that project.

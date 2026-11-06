@@ -2,7 +2,7 @@
  * Browser-local PDF text ingestion with verified PDF page numbers.
  * PDF.js is embedded, including its parsing code. The worker's side-effect
  * registers a main-thread handler for file://, with no CDN or fetch.
- * Scanned pages fail closed until the OCR milestone exists.
+ * Scanned pages use the optional offline OCR callback; failed OCR blocks import.
  */
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import 'pdfjs-dist/legacy/build/pdf.worker.mjs';

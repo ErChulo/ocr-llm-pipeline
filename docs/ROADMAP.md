@@ -1,87 +1,40 @@
-# Implementation roadmap
+# Roadmap — beta validation
 
-## Accepted baseline (source/CI)
+**Version:** 0.3.0-beta.1. CI verification is not security certification or workplace approval.
 
-- [x] Independent repository. The existing `bulk-ocr-studio` project is unchanged.
-- [x] Vite, React, TypeScript and Wllama-based local model integration source.
-- [x] Bulk OCR Studio JSONC / JSON / TXT / MD / CSV importer and source tests.
-- [x] First local-model, document, JSON extraction and JSON Schema validation interface.
-- [x] GitHub Actions source tests and production bundle build completed successfully.
-- [x] README with working build badge; `DESIGN.md` and `PRODUCT.md`.
-- [x] Collapsible **Guide** drawer with workflow diagram, clear instructions and Print / Save PDF browser action; code compiled by CI.
+## Implemented and source-tested
 
-## P0 — not release-verified
+- [x] Standalone bundled HTML under `file://`, local GGUF and WebAssembly worker.
+- [x] Small GGUF real-browser load and text generation with zero external requests.
+- [x] PDF text and scanned page OCR; English image OCR; DOCX, XLSX, CSV and text import.
+- [x] Synthetic PDF, scanned PDF, image OCR, DOCX, XLSX, CSV browser acceptance on local HTML.
+- [x] Source offsets and actual parser-derived PDF page, DOCX paragraph/table, XLSX sheet/cell and CSV row/column references.
+- [x] JSON Schema validation, bounded sectioning, exact source coverage and conflict review.
+- [x] Mandatory field-level *candidate text evidence* confirmation before export.
+- [x] Source identity check, original file SHA-256, and fail-closed export validation.
+- [x] Conservative possible-SSN/email/phone/payment-card screening and acknowledgement.
+- [x] User-chosen dark/white logo pair, theme toggle, app routes and printable Guide.
+- [x] Small synthetic known-answer GGUF check; separate experiment for real instruction-tuned 0.5B weights.
 
-- [ ] **Local LLM inference:** load an actual GGUF model; generate offline from `file://` in managed Chrome/Edge; prove zero network requests.
-- [ ] **AI extraction into validated JSON:** compare with synthetic known-answer samples, enforce a user-selected JSON Schema, check source-backed facts, and fail safely on incomplete evidence.
-- [x] Sectioned text processing with exact source coverage, deterministic conflict detection, and incomplete-section export blocking (source/CI).
-- [ ] Verify accuracy and context bounds with a real GGUF; token budgets are provisional.
-- [ ] Verify printed Guide as a readable PDF with diagrams and page breaks; add labeled feature screenshots and examples.
-- [ ] Verify the actual offline HTML bundle and workers/WASM in Chrome/Edge (CI bundling alone is not sufficient).
+## Remaining production gates — not yet accepted
 
-## P1 — ingestion and safeguards
+- [ ] Representative **actual instruction-tuned** GGUF benchmarks: accuracy/precision/recall, prompt injection, context overflow, latency and memory on 0.5B, 1.5B and 3B models.
+- [ ] Manual offline verification on the authorized managed PBGC Windows Chrome/Edge workstation.
+- [ ] Native PDF visual page review and precise region/quote highlighting; detect text embedded in images on otherwise text-bearing pages.
+- [ ] OCR confidence visualization and corrected text capture with provenance; larger test corpus, varied scans, multipage layouts and columns.
+- [ ] Thorough DOCX/XLSX layout and fidelity checks: headers/footers, tracked changes, dates/styles, formulas, merged cells, comments, embedded graphics.
+- [ ] Factual verification beyond literal text matches; full cross-document conflict resolution, no silent assumptions.
+- [ ] Comprehensive PII handling, redaction/export security, threat modeling and independent agency review.
+- [ ] Full accessibility/keyboard/printable guide acceptance; verify PDF print output and ASD-STE100-inspired language.
+- [ ] Frozen reproducible dependencies and supply-chain review. Current direct dependencies are not all exact-pinned and the workflow uses `npm install`.
+- [ ] Optional Impeccable design review on development machine, not in workplace runtime.
+- [ ] Optional PWA build (requires HTTPS/security context distinct from mandatory `file://` mode).
+- [ ] Restartable indexing and batch support for very large documents beyond current 256 section limit.
 
-- [ ] Native PDF, DOCX, XLSX, image and Tesseract processing in this repository only.
-- [ ] Real provenance for PDF pages/regions, DOCX paragraphs/tables, XLSX sheets/cells and CSV rows/columns.
-- [ ] Full PII scanning, redaction, protected exports and independent security review.
-- [ ] Accessibility, keyboard navigation, screen-size checks and GUI noise reduction.
-- [ ] Run Impeccable's project-local install and design audit in a networked developer environment, using `DESIGN.md` and `PRODUCT.md`. Not installed in this environment.
-- [ ] Validate printable guide against ASD-STE100 controlled vocabulary as appropriate; current style is inspired by STE, not certified.
+## Boundaries
 
-## Research
+The repository does not change `ErChulo/bulk-ocr-studio`. CI fixtures contain no real participant data. Keep GGUF weights separate from Git. A passing JSON Schema or manually approved quote is **not proof** that a pension provision was interpreted correctly.
 
-- [ ] Evaluate AirLLM-style transformer-layer streaming separately from standard Wllama model loading.
+## Known file limits
 
-**No model weights or protected records belong in this public repository.**
-
-## Current navigation/theme work
-
-- [x] File-safe hash route manifest for Documents, Extract JSON, Local chat and Settings.
-- [x] Dark/light theme toggle with the user-selected black-background and white-background logo pair.
-- [x] Original `logo-negro.png` and `logo.svg` imported into this repository only.
-- [x] Responsive Guide drawer theme support.
-- [ ] Verify manual keyboard flow and logo layout under both themes.
-- [ ] Optional HTTPS PWA release build with manifest, icons, service worker and installability checks; **not** a dependency of the file:// version.
-
-- [x] Fail closed when a source exceeds the current extraction coverage; no partial-document output is treated as valid. Export is disabled on JSON Schema failure.
-- [x] Replace fixed 6,500-character rejection with full text sectioning up to a bounded number of sections; fail closed beyond the supported limit.
-- [ ] Add persistent checkpoint/restart and multi-document batch extraction for exceptionally long plans.
-
-- [x] Use pure black and pure white canvases matching the exact source logo backgrounds.
-- [x] Small accessible sun/moon icon in the navigation bar; remove redundant settings-page theme controls.
-
-- [x] Added an optional local-model generation self-test and prevented stale model status after failed loads. This does not replace offline acceptance with a real GGUF.
-
-- [x] Embedded official Wllama compatibility WASM and worker locally, with no CDN fallback in the portable build (source/CI; browser test pending).
-- [ ] Re-run file:// Chromium GGUF smoke test after compat integration; first attempt stalled while loading the model.
-
-- [x] Moved the Guide trigger away from the official PBGC logo after examining actual browser screenshots; guide drawer and print layout preserved.
-
-- [x] Native DOCX/XLSX parsing source with paragraph/table/cell and sheet/cell location metadata; tests and file:// integration still needed.
-- [ ] Verify DOCX and XLSX parsers on synthetic workbooks, including formula caches, data formats and malformed archive handling.
-
-- [x] Implement page-indexed local PDF text extraction, rejecting pages without text (29 tests, build and Chromium file:// acceptance passed on November 6, 2026).
-- [ ] Add offline OCR for scanned PDF pages and images, then true region references and screenshot review.
-
-## Native PDF milestone — verified November 6, 2026
-
-- [x] Page-indexed native PDF text parsing with bounded memory and local-only assets.
-- [x] Reject mixed text/image PDFs when any page lacks extractable text.
-- [x] Verify two-page synthetic PDF in the bundled single-HTML Chromium file:// build.
-- [x] Verify local GGUF text generation and zero HTTP(S)/WebSocket requests in the same browser run.
-- [ ] Implement offline Tesseract OCR and scanned-page review.
-- [ ] Add precise page-region/quotation evidence links from JSON fields; page-level parser records currently exist but are not proof of claim-level evidence.
-
-- [x] Exact local source-text evidence candidates, parser-derived PDF/DOCX/XLSX references, and mandatory field-by-field review before JSON export. Independent semantic fact checking is still pending.
-
-- [x] Added bundled English Tesseract.js OCR integration for image attachments and PDF pages without text; source build/browser acceptance pending.
-- [ ] Test image and scanned-PDF OCR with synthetic fixtures under `file://`, confirm zero network requests and accuracy thresholds.
-
-- [x] CSV row/column provenance with quoted-cell parsing and no spreadsheet formula evaluation, covered by synthetic tests.
-
-- [x] Local conservative SSN/email/payment-card/phone detection and export review acknowledgement; screening is not a comprehensive PII control or certification.
-
-- [x] SHA-256 fingerprints of original input bytes included with exported evidence, allowing audit reproduction without uploading source data.
-
-- [x] Optional synthetic known-answer local GGUF quality check in Settings, with deterministic scoring and no actual case records.
-- [ ] Run representative offline 0.5B–3B model benchmarks with measured factual accuracy, memory and latency before production release.
+Individual inputs are bounded to 20 MB; PDF page limit is 300, extracted PDF text 2 million characters, OCR canvas 5 million pixels, source extraction at most 256 sections. Some image-rich or unusually large files are therefore intentionally rejected rather than partially accepted.

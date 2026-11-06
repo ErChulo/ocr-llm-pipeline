@@ -1,75 +1,38 @@
 # User guide — OCR + LLM Pipeline Studio
 
-*Draft guide for new users. The app also presents these steps in a collapsible left drawer with a visual flow and print action.*
+This short guide explains the current **beta**. The app includes a separate left-hand **Guide** drawer with a diagram and a print command.
 
 ## Before you start
 
-Get a GGUF model file. Save it on the local computer.
+Save one compatible GGUF model on your computer. Obtain the standalone `index.html` from a successful build. Do not use protected case records before your workplace approves the app.
 
-The app accepts text PDFs, DOCX, XLSX, Bulk OCR Studio JSONC, JSON, TXT, MD and CSV files. Scanned PDFs and images need OCR, which is not yet supported.
+## Steps
 
-## Workflow
+1. Open `index.html` in Chrome or Edge. You do not need a local server.
+2. Select **Choose model files**. Select the GGUF file. Select **Load model**.
+3. Select **Test model**. Read the status. If the model fails, select a different file.
+4. Select **Attach OCR export / text**. Choose a PDF, PNG, JPG, WebP, DOCX, XLSX, CSV, TXT, MD or supported JSONC/JSON export.
+5. Select **Documents**. Choose the document. Review the imported text and source notes. The app uses English OCR for images and PDF pages that contain no text.
+6. Select **Extract JSON**. Review the JSON Schema. Select **Extract and validate**.
+7. If sections disagree, select the correct candidate **after you check the source**.
+8. If necessary, edit the JSON. Select **Validate edited JSON**.
+9. Review **each** field against the original source. Choose a source location and confirm the match.
+10. If the app finds possible personal data, review the warning and confirm authorized local handling.
+11. Select **Export reviewed JSON**. Save it in an approved local folder.
 
-\`\`\`text
-LOCAL DOCUMENT ──→ LOCAL MODEL ──→ CANDIDATE JSON
-                         │                 │
-                         └──── SOURCE REVIEW + SCHEMA CHECK
-\`\`\`
+For model exploration, select **Settings** and **Check extraction quality**. That command tests fictional plan provisions. A passing small test does not prove real-case accuracy.
 
-### 1. Load a model
+## Important limitations
 
-1. Open the application in the browser.
-2. Select **Choose model files**.
-3. Select the GGUF file.
-4. Select **Load model**.
-5. Read the status message.
-6. Select **Test model** to check local text generation.
+- A JSON Schema check verifies structure, **not facts**.
+- OCR may misread numbers, dates, tables and formulas. Inspect the original.
+- PDF references are page-level; exact PDF region highlighting is not yet available.
+- DOCX headers, footers and revisions; Excel dates and formula recalculation; and images embedded in text-bearing PDF pages may be incomplete.
+- Very large sources can exceed the limit. The app must not silently export incomplete results.
+- The user-facing privacy warning is not a complete security review.
 
-The model must load before you extract JSON.
+## Print this guide
 
-### 2. Add a document
+Open **Guide** in the application, then select **Print / Save PDF**. In the browser's print dialog, select **Save as PDF**.
 
-1. Select **Attach OCR export / text**.
-2. Select a local file.
-3. Select the document in the list.
-4. Review the source text.
-
-Do not use the tool with protected case files until its security controls are verified.
-
-### 3. Extract JSON
-
-1. Review the JSON Schema.
-2. Select **Extract and validate**.
-3. Read the validation result.
-4. Compare each output field with the source.
-5. Correct errors before you use the results.
-
-**Important:** A valid JSON structure does not prove that the information is correct.
-
-### 4. Save the result
-
-1. Review the candidate JSON.
-2. Select **Export JSON**.
-3. Save the file in an approved local folder.
-
-### 5. Use the local chat
-
-1. Select **Local chat**.
-2. Enter your question.
-3. Select **Send**.
-4. Review the response.
-
-### Print this guide
-
-1. Open **Guide** on the left.
-2. Select **Print / Save PDF**.
-3. Choose **Save as PDF** in the browser print window.
-
-## Current limitations
-
-- Local GGUF loading and text generation passed a small-model offline Chromium test. Your workstation and larger models still require testing.
-- Extraction processes text in bounded sections. Review the coverage and each source fact. Very long documents can exceed the supported section limit.
-- JSON Schema validation checks shape and data types. You must verify facts against the document.
-- PDF page, DOCX paragraph/table and XLSX cell locations are parser-derived. OCR and PDF image-region locations remain pending.
-
-This guide uses an ASD-STE100-inspired writing style. It has not been certified against the full controlled vocabulary.
+The language is inspired by ASD-STE100 but has not undergone formal controlled-language certification.

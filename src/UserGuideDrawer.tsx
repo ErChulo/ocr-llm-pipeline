@@ -20,8 +20,9 @@ const steps = [
   ] },
   { title: '4. Export the result', instructions: [
     'Resolve any structural errors.',
-    'Verify the facts in the source.',
-    'Select Export JSON. Save the file locally.'
+    'Select a source location and confirm every value.',
+    'Review possible personal-data warnings.',
+    'Select Export reviewed JSON. Save the file locally.'
   ] },
   { title: '5. Ask a question', instructions: [
     'Select Local chat.',
@@ -85,8 +86,8 @@ export default function UserGuideDrawer() {
           </section>
           <section className="guide-step guide-availability">
             <h2>What works now?</h2>
-            <p>Current source supports local text and Bulk OCR Studio exports. The local model and extraction interface are experimental.</p>
-            <p>English OCR is included for scanned PDF pages and images. Inspect every OCR result against the original.</p>
+            <p>Local GGUF, document import and OCR passed synthetic offline-browser tests. They remain experimental until workplace acceptance.</p>
+            <p>English OCR recognizes scanned PDF pages and images. Always inspect numbers, dates, and formulas.</p>
           </section>
           <p className="guide-footnote">Instructions use an ASD-STE100-inspired style. Formal vocabulary compliance has not been certified.</p>
         </div>

@@ -8,4 +8,4 @@ assert.match(html, /new Worker\([A-Za-z_$][\w$]*,\{type:"classic"\}\)/, 'Wllama 
 assert.doesNotMatch(html, /new Worker\([A-Za-z_$][\w$]*,\{type:"module"\}\)/, 'Portable build must not use module blob worker');
 assert.doesNotMatch(html, /<script[^>]+src=/i, 'No external JS allowed');
 assert.doesNotMatch(html, /<link[^>]+stylesheet/i, 'No external CSS allowed');
-console.log('Static single-file checks passed. Browser inference still requires live testing.');
+console.log('Static single-file checks passed. Runtime acceptance is tracked in the separate browser workflow.');
