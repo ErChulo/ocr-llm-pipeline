@@ -1,33 +1,31 @@
-# Native PDF text ingestion — verified development milestone
+# Local PDF ingestion and source review
 
-**Date:** November 6, 2026  
-**Source:** \`src/pdfText.ts\`, pinned Mozilla PDF.js \`6.5.438\`.  
-**Automated test evidence:** 29 source tests passed and the single-file production build succeeded; experimental Chromium file:// smoke test extracted two synthetic PDF pages, loaded a small GGUF model and generated text while blocking external requests.
+**Beta status:** Source tests and build have passed; final browser acceptance of the newest PDF viewer and OCR-correction controls is tracked in the [offline Chromium workflow](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/browser-smoke.yml).
 
-## What the parser does
+## What works
 
-1. Accept a locally selected PDF up to 20 MB with a PDF header.
-2. Parse at most 300 pages and no more than 2 million characters of extracted text.
-3. Visit all pages in order. Each page must have extractable text.
-4. Preserve **actual parser-reported page numbers** in text labels and \`SourceDocument.records[].location.page\`.
-5. Insert the full extracted text into the document list, then allow the user to select Extract JSON.
-6. Refuse a partial result when any page lacks text, is password protected, or parsing fails.
+- Import text PDFs and English-scanned PDFs locally using bundled PDF.js and Tesseract.
+- Preserve the actual parser-reported page number.
+- Retain original PDF bytes **in browser memory only** so the user can open and inspect each page. These bytes are not part of the JSON export.
+- For searchable text, preserve character offsets and PDF.js text-item coordinates. The reviewer can display **approximate text-item envelopes** on the original page. They are not exact glyph or quoted-substring boxes.
+- The original page viewer supports page navigation and uses no server.
+- For pages without a text layer, use English OCR and record the OCR confidence. Pages with both selectable text and images issue a warning because image-contained text might still be missed.
+- Correct an OCR transcription manually. Corrections invalidate earlier extraction/review, preserve the original file SHA-256 and page identity, and are marked as human-reviewed text.
+- Refuse partial imports when OCR fails, a page is blank, limits are exceeded or the PDF is password protected.
 
-The resulting provenance is **page-level**. Word/table geometry, actual page regions, and fact-level evidence are not yet verified. Text ordering can diverge from visual layout. PDF tables are not reconstructed into a semantic table. Do not infer cells or exact spans from page-only references.
+## Important limits
 
-## Test evidence
+- OCR may misread numbers, dates, names and formulas. Always compare with the PDF.
+- Text embedded in an image on a page that already has text can remain unrecognized.
+- PDF tables, columns, rotated text and complex layouts may not preserve logical reading order.
+- A PDF text-item envelope is **not** a verified box around every character or a claim-level factual citation.
+- File-size and safety limits remain 20 MB, 300 pages and 2 million extracted characters.
+- A human-confirmed text match is not independent verification of a pension provision.
 
-- [Source tests and standalone build](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42222998200) — 29 tests passed, one \`index.html\` uploaded.
-- [Real Chromium file:// browser test](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42222998426) — page 1 and page 2 text verified; local GGUF loading and text generation verified; no HTTP(S) or WebSocket requests.
+## Automated evidence
 
-The test PDFs are generated in \`tests/pdf-fixture.mjs\` and contain only fabricated sample text. No case documents or personal information were committed. The tests do not establish reliable extraction of all real-world PDF layouts.
+- [Source build and tests](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/build.yml).
+- [Offline Chromium runtime and PDF viewer](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/browser-smoke.yml).
+- [Actual 0.5B GGUF end-to-end extraction test](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42248309834).
 
-## Not implemented
-
-- Offline OCR of scanned PDF pages or image attachments.
-- Fidelity checks for columns, diagrams, forms, handwritten annotations or tables.
-- A source-document PDF viewer with highlightable exact bounding boxes.
-- Claim-level PDF citations in the JSON extraction review interface.
-- Deployment tests with larger models or the managed PBGC workstation.
-
-This work does not change \`bulk-ocr-studio\`.
+All synthetic fixtures contain fictional text; no participant records were committed. The independent Bulk OCR Studio repository remains untouched.

@@ -12,11 +12,11 @@ Save one compatible GGUF model on your computer. Obtain the standalone `index.ht
 2. Select **Choose model files**. Select the GGUF file. Select **Load model**.
 3. Select **Test model**. Read the status. If the model fails, select a different file.
 4. Select **Attach OCR export / text**. Choose a PDF, PNG, JPG, WebP, DOCX, XLSX, CSV, TXT, MD or supported JSONC/JSON export.
-5. Select **Documents**. Choose the document. Review the imported text and source notes. For scanned pages, choose **Correct OCR text** to fix errors. Corrections stay in memory and retain the original file fingerprint.
+5. Select **Documents**. Choose the document. Review the imported text and source notes. For PDF files, choose **View original PDF** to inspect a page. For scanned pages, choose **Correct OCR text** to fix errors. Corrections stay in memory and retain the original file fingerprint.
 6. Select **Extract JSON**. Review the JSON Schema. Select **Check schema**. Then select **Extract and validate**.
 7. If sections disagree, select the correct candidate **after you check the source**.
 8. If necessary, edit the JSON. Select **Validate edited JSON**.
-9. Review **each** field against the original source. Choose a source location and confirm the match.
+9. Review **each** field against the original source. For PDF citations, select **View source PDF page**. Choose a source location and confirm the match.
 10. If the app finds possible personal data, review the warning and confirm authorized local handling.
 11. Select **Export reviewed JSON**. Save it in an approved local folder.
 

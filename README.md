@@ -53,3 +53,7 @@ Download `ocr-llm-pipeline-single-html` from the successful [build workflow](htt
 ## Strict Content Security Policy
 
 JSON Schema validation is performed by a CSP-compatible interpreter, not dynamic JavaScript code generation. Imported schemas may use local JSON Pointer references, but external schema references and potentially dangerous regular-expression rules are refused with explicit errors. The **Check schema** command under Extract JSON works without a loaded model. For more, see [acceptance requirements](docs/IMPLEMENTATION_ACCEPTANCE.md).
+
+## Original PDF review and OCR correction
+
+Choose **View original PDF** to inspect the actual PDF page locally; after selecting a source citation, choose **View source PDF page** to see the page with approximate text-item overlays. For scanned pages, use **Correct OCR text** to fix recognition errors. Corrections stay in browser memory and invalidate any previous JSON extraction/review. The original file fingerprint and page identity are preserved; corrected text is explicitly marked as human-entered. These features do not verify actuarial interpretations automatically.

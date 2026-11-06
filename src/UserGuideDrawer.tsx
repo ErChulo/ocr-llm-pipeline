@@ -11,7 +11,9 @@ const steps = [
   { title: '2. Add a document', instructions: [
     'Select Attach OCR export / text.',
     'Select a PDF, PNG, JPEG, WebP, DOCX, XLSX, JSONC, JSON or text file.',
-    'Select the document. Review the source text.'
+    'Select the document. Review the source text.',
+    'For PDFs, select View original PDF.',
+    'If OCR text is wrong, select Correct OCR text.'
   ] },
   { title: '3. Extract JSON', instructions: [
     'Review the target JSON Schema.',

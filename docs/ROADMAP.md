@@ -20,8 +20,10 @@
 
 - [ ] Representative **actual instruction-tuned** GGUF benchmarks: accuracy/precision/recall, prompt injection, context overflow, latency and memory on 0.5B, 1.5B and 3B models.
 - [ ] Manual offline verification on the authorized managed PBGC Windows Chrome/Edge workstation.
-- [ ] Native PDF visual page review and precise region/quote highlighting; detect text embedded in images on otherwise text-bearing pages.
-- [ ] OCR confidence visualization and corrected text capture with provenance; larger test corpus, varied scans, multipage layouts and columns.
+- [x] Implement original PDF page viewer and approximate PDF.js text-item evidence overlays; browser verification tracked separately.
+- [ ] Exact glyph/quoted-substring highlights and robust mixed raster/text page OCR remain open. Mixed-content PDF pages currently trigger a warning.
+- [x] Human-editable OCR transcription with original-file fingerprint and page provenance preserved; correction invalidates prior extraction review.
+- [ ] OCR confidence visualization, larger multilingual corpus, handwriting, varied scans, multipage layouts and columns.
 - [ ] Thorough DOCX/XLSX layout and fidelity checks: headers/footers, tracked changes, dates/styles, formulas, merged cells, comments, embedded graphics.
 - [ ] Factual verification beyond literal text matches; full cross-document conflict resolution, no silent assumptions.
 - [ ] Comprehensive PII handling, redaction/export security, threat modeling and independent agency review.
