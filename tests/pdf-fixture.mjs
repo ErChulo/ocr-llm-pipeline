@@ -33,10 +33,11 @@ export function createSyntheticPdf(pages) {
 }
 
 /** Image-only PDF: one JPEG XObject and no text layer. */
-export function createScannedPdf(jpeg,width,height) {
+export function createScannedPdf(jpeg,width,height,heading='') {
   if(!Buffer.isBuffer(jpeg)||jpeg.length<100||!Number.isInteger(width)||!Number.isInteger(height)||
      width<1||height<1)throw new Error('Invalid synthetic image');
-  const content='q\n'+width+' 0 0 '+height+' 0 0 cm\n/Im0 Do\nQ\n';
+  const prefix=heading ? 'BT /F1 18 Tf 20 '+(height-30)+' Td ('+heading+') Tj ET\n' : '';
+  const content=prefix+'q\n'+width+' 0 0 '+height+' 0 0 cm\n/Im0 Do\nQ\n';
   const entries=[
     Buffer.from('<< /Type /Catalog /Pages 2 0 R >>'),
     Buffer.from('<< /Type /Pages /Kids [3 0 R] /Count 1 >>'),
@@ -45,7 +46,8 @@ export function createScannedPdf(jpeg,width,height) {
     Buffer.concat([
       Buffer.from('<< /Type /XObject /Subtype /Image /Width '+width+' /Height '+height+
         ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+jpeg.length+' >>\nstream\n'),
-      jpeg,Buffer.from('\nendstream')])
+      jpeg,Buffer.from('\nendstream')]),
+    Buffer.from('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>')
   ];
   const out=[Buffer.from('%PDF-1.4\n')];const offsets=[0];let total=out[0].length;
   for(let i=0;i<entries.length;i++){

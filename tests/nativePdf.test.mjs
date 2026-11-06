@@ -36,3 +36,16 @@ test('PDF headers, zero byte input, and oversized data fail safely', async () =>
   await assert.rejects(parsePdf('blank.pdf',new Uint8Array(0)),/nonempty/);
   await assert.rejects(parsePdf('huge.pdf',new Uint8Array(20*1024*1024+1)),/20 MB/);
 });
+
+test('text-bearing PDF images require explicit visual completeness warning', async()=>{
+ const {createScannedPdf}=await import('./pdf-fixture.mjs');
+ const jpeg=Uint8Array.from([
+  255,216,255,224,0,16,74,70,73,70,0,1,1,0,0,1,0,1,0,0,
+  255,219,0,67,0,...new Array(64).fill(8),
+  255,217
+ ]);
+ const parsed=await parsePdf('mixed.pdf',createScannedPdf(Buffer.from(jpeg),120,90,'PLAN HEADER'));
+ assert.match(parsed.text,/PLAN HEADER/);
+ assert.ok(parsed.warnings.some(msg=>msg.includes('not OCR checked')));
+ assert.equal(parsed.records[0].location.kind,'pdf-page');
+});

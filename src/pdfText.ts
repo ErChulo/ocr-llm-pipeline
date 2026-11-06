@@ -4,7 +4,7 @@
  * registers a main-thread handler for file://, with no CDN or fetch.
  * Scanned pages use the optional offline OCR callback; failed OCR blocks import.
  */
-import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { getDocument, OPS } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 import type { SourceDocument, SourceRecord } from './pipeline.ts';
 
@@ -82,6 +82,16 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
     for (let pageNo = 1; pageNo <= document.numPages; pageNo++) {
       const page = await document.getPage(pageNo);
       const textContent = await page.getTextContent();
+      // A searchable heading does not imply the whole page is searchable.
+      // Identify raster draw operations to disclose potentially missing text.
+      const opList = await page.getOperatorList();
+      const rasterOperations = new Set([
+        OPS.paintImageXObject, OPS.paintImageXObjectRepeat,
+        OPS.paintInlineImageXObject, OPS.paintInlineImageXObjectGroup,
+        OPS.paintImageMaskXObject, OPS.paintImageMaskXObjectRepeat,
+        OPS.paintImageMaskXObjectGroup
+      ]);
+      const containsImages=opList.fnArray.some(op=>rasterOperations.has(op));
       const items = textContent.items.filter((item): item is typeof item & TextItem => 'str' in item);
       let text = pdfPageText(items);
       let scanned=false;
@@ -103,6 +113,10 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
         ocrPages++;
         if(!text)throw new Error('OCR found no readable text on PDF page '+pageNo+'. Import was stopped.');
         if(confidence<75)warnings.push('OCR confidence on page '+pageNo+' is '+Math.round(confidence)+'%. Verify the page against its original image.');
+      }
+      if(!scanned && containsImages){
+        warnings.push('Page '+pageNo+' contains images as well as selectable text. '
+          +'Those images were not OCR checked; verify the complete page visually.');
       }
       const line = 'Page ' + pageNo + ':\n' + text + '\n\n';
       const start = chars;
