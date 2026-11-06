@@ -3,7 +3,7 @@ import { ROUTES, routeFromHash, type RouteId } from './routes';
 import { loadTheme, saveTheme, type Theme } from './theme';
 import darkLogo from './assets/logo-negro.png';
 import lightLogo from './assets/logo.svg';
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import Ajv from 'ajv';
 import { OfflineEngine, type ChatMessage, type Settings } from './engine';
 import { importFile, buildExtractionPrompt, parseModelJson, type SourceDocument } from './pipeline';
@@ -58,7 +58,7 @@ export default function App() {
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
-  useEffect(() => { document.documentElement.dataset.theme = theme; saveTheme(theme); }, [theme]);
+  useLayoutEffect(() => { document.documentElement.dataset.theme = theme; saveTheme(theme); }, [theme]);
   function navigateTo(next: RouteId) { window.location.hash = '#/' + next; setRoute(next); }
 
   async function onModelLoad() {

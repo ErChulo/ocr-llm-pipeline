@@ -38,7 +38,7 @@ Normal UI body text at least 14 CSS px; controls at least 14 CSS px; large tap t
 5. A **separate, collapsible left Guide drawer** must not replace the normal workspace navigation. Close with Escape or the close button. Include a **Print / Save PDF** action.
 6. Print **only** the guide at readable size, with a title, page numbers if supported, captions and clear diagrams. Hide controls, browser-app chrome, and model data in print.
 7. Use original, simple inline SVG workflow diagrams and labeled screenshots or step illustrations in the guide. Do not claim pending features are available.
-8. Do not introduce the official PBGC logo unless the agency-approved artwork and proper permission are available; keep logo clear space and proportions intact if ever authorized.
+8. Use the user's approved PBGC logo assets without modifying them. Preserve clear space and proportions; confirm external-distribution permission separately.
 
 ## Technical accuracy and UX safety
 
@@ -54,7 +54,7 @@ Use Impeccable during development after it is installed in a developer checkout.
 
 ## Official branding asset implementation
 
-Official logo variants are embedded without recoloring or geometric modification. **White logo on dark UI**, **black logo on light UI**. Use consistent scale, minimum display width and ample clear space. These source images are not generated artwork. This application is an independent internal-oriented tool and must not claim PBGC endorsement. Details: `docs/BRANDING_ASSETS.md`.
+The exact user-approved files are embedded unchanged: **`logo-negro.png` on a `#000000` dark site background** and **`logo.svg` on a `#FFFFFF` light site background**. Use consistent scale and clear space. These source images are not generated artwork. This application is an independent internal-oriented tool and must not claim PBGC endorsement. Details: `docs/BRANDING_ASSETS.md`.
 
 ## Exact logo and theme correction
 

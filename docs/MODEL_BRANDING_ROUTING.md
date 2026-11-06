@@ -20,7 +20,7 @@ Verified in Google Drive `pbgc-the-book-of-job/PBGC_CASEWORK_CURATED/07_SOFTWARE
 - `PBGC_logo_name_hor_wt.png` (horizontal, white).
 - `PBGC_logo_fc.png`, `PBGC_logo_wt.png`, `PBGC_logo_tagl_fc.png`, and others.
 
-The September 2025 *PBGC Branding & Editorial Style Guide* instructs that official logos must keep proportions, color and clear space; PBGC approval is needed for external logo use. Because this GitHub repository is **public**, keep a branded placeholder in committed source unless the rights/approval for redistribution of an official logo are confirmed. Approved internal release builds may embed the selected logo as a data URL; never need a remote image URL at runtime. The official logos found in Drive are not to be modified.
+The September 2025 *PBGC Branding & Editorial Style Guide* instructs that official logos must keep proportions, color and clear space; PBGC approval is needed for external logo use. The user explicitly approved committing the exact selected logo assets to the application. **The repository is currently public**, so logo files can be accessed by others until visibility is changed; making a repository private does not itself grant trademark or distribution rights. The selected logo files are embedded locally in the application and remain unchanged. See `docs/BRANDING_ASSETS.md`.
 
 ## SPA / route and app manifests
 
@@ -37,3 +37,7 @@ The request for a “manifesto” is interpreted provisionally as a **route mani
 ## Release conditions
 
 Verify `file://` navigation, model loads, extraction, schema validation, PII safeguards, source attribution, and browser no-network policy before claiming offline readiness. Do not modify `bulk-ocr-studio`.
+
+### Final user-selected pairing
+
+The prior horizontal logos were superseded by **`logo-negro.png` on a pure black (#000000) canvas** for dark theme and **`logo.svg` on a pure white (#FFFFFF) canvas** for light theme. The user explicitly confirmed this pairing. The app uses a small accessible sun/moon icon in the navigation bar.
