@@ -19,6 +19,7 @@ export type SourceDocument = {
   records?: SourceRecord[];
   warnings?: string[];
   sourceSha256?: string;
+  correctionCount?: number;
 };
 export type ImportResult = { documents: SourceDocument[]; notes: string[] };
 
