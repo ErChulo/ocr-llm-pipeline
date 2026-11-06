@@ -100,7 +100,7 @@ export default function App() {
       const validate = ajv.compile(parsed);
       const instructions = buildExtractionPrompt(active, parsed);
       if (instructions.truncated) {
-        setNotes(current => [...current, 'WARNING: Model received only the first 6,500 characters of ' + active.name + '.']);
+        throw new Error('This document exceeds the current extraction limit. No JSON was generated because it would omit part of the source. Use smaller complete documents until chunked extraction is implemented.');
       }
       await engine.current.generate(
         [{ role: 'user', content: instructions.prompt }], SYSTEM, settings,
@@ -187,11 +187,11 @@ export default function App() {
               {busy && <button className="secondary" onClick={() => engine.current.stop()}>Stop</button>}
             </div>
             <div className="heading"><h2>Candidate JSON</h2>
-              {extraction !== null && <button className="secondary" onClick={() => downloadJson({
-                status: valid ? 'schema_validated_facts_unverified' : 'review_required',
+              {extraction !== null && <button className="secondary" disabled={!valid} title={valid ? 'Export JSON that passed structure validation. Verify the facts.' : 'Resolve JSON Schema errors before exporting.'} onClick={() => downloadJson({
+                status: 'schema_validated_facts_unverified',
                 source: active?.provenance, document: active?.name,
                 extraction, validationErrors
-              })}>Export JSON</button>}
+              })}>Export schema-valid JSON</button>}
             </div>
             <pre className="preview result">{extraction !== null ? JSON.stringify(extraction, null, 2) : rawExtraction || 'No extraction yet.'}</pre>
             {extraction !== null && <p className={valid ? 'success' : 'warning'}>

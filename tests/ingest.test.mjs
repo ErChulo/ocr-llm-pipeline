@@ -17,3 +17,11 @@ test('text file imports as one document', () => {
   assert.equal(data.documents.length, 1);
   assert.equal(data.documents[0].text, 'content');
 });
+
+test('long source extracts are explicitly marked incomplete', async () => {
+  const { buildExtractionPrompt } = await import('../src/pipeline.ts');
+  const document = { id: 'd', name: 'long.txt', text: 'A'.repeat(7000), mimeType: 'text/plain', sizeBytes: 7000, provenance: {source: 'local-text', precision: 'document', fileName: 'long.txt'} };
+  const plan = buildExtractionPrompt(document, {type:'object'});
+  assert.equal(plan.truncated, true);
+  assert.match(plan.prompt, /TRUNCATED: INCOMPLETE DOCUMENT/);
+});

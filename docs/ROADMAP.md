@@ -41,3 +41,6 @@
 - [x] Responsive Guide drawer theme support.
 - [ ] Verify manual keyboard flow and logo layout under both themes.
 - [ ] Optional HTTPS PWA release build with manifest, icons, service worker and installability checks; **not** a dependency of the file:// version.
+
+- [x] Fail closed when a source exceeds the current extraction coverage; no partial-document output is treated as valid. Export is disabled on JSON Schema failure.
+- [ ] Replace the interim coverage guard with complete chunked extraction and explicit source coverage audit.
