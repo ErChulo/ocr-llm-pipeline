@@ -41,7 +41,7 @@ export function createScannedPdf(jpeg,width,height,heading='') {
   const entries=[
     Buffer.from('<< /Type /Catalog /Pages 2 0 R >>'),
     Buffer.from('<< /Type /Pages /Kids [3 0 R] /Count 1 >>'),
-    Buffer.from('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+width+' '+height+'] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>'),
+    Buffer.from('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+width+' '+height+'] /Resources << /XObject << /Im0 5 0 R >> /Font << /F1 6 0 R >> >> /Contents 4 0 R >>'),
     Buffer.from('<< /Length '+Buffer.byteLength(content)+' >>\nstream\n'+content+'endstream'),
     Buffer.concat([
       Buffer.from('<< /Type /XObject /Subtype /Image /Width '+width+' /Height '+height+
