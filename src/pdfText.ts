@@ -91,7 +91,7 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
         const original=page.getViewport({scale:1});
         const scale=Math.min(2.2,2400/Math.max(original.width,original.height));
         const viewport=page.getViewport({scale});
-        const canvas=document.createElement('canvas');
+        const canvas=globalThis.document.createElement('canvas');
         canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
         const context=canvas.getContext('2d',{willReadFrequently:true});
         if(!context)throw new Error('Canvas rendering is unavailable for OCR.');
