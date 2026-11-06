@@ -53,3 +53,28 @@ test('arrays and nested object values map to JSON pointer paths',()=>{
  const c=auditLiteralEvidence(d,{forms:['SLA','JS50'],nested:{age:65}});
  assert.deepEqual(c.map(x=>x.path),['/forms/0','/forms/1','/nested/age']);
 });
+
+test('plain text colons do not masquerade as parser labels',()=>{
+ const raw='Normal retirement age: 65. Early retirement at 55.';
+ const d={...doc,text:raw,records:undefined};
+ const checks=auditLiteralEvidence(d,{description:'Normal retirement age',age:65});
+ assert.equal(checks[0].status,'match');
+ assert.equal(checks[0].matches[0].start,0);
+ assert.equal(checks[1].status,'match');
+ assert.equal(checks[1].matches[0].start,raw.indexOf('65'));
+});
+test('special characters are literal, not regular expressions',()=>{
+ const raw='The plan specifies [SLA] as an optional form.';
+ const d={...doc,text:raw,records:undefined};
+ const checks=auditLiteralEvidence(d,{form:'[SLA]'});
+ assert.equal(checks[0].status,'match');
+ assert.equal(raw.slice(checks[0].matches[0].start,checks[0].matches[0].end),'[SLA]');
+});
+test('Unicode source offsets are against unchanged text',()=>{
+ const raw='İstanbul, normal form [SLA] and retirement 65.';
+ const d={...doc,text:raw,records:undefined};
+ const checks=auditLiteralEvidence(d,{form:'[SLA]',age:65});
+ assert.equal(checks[0].status,'match');
+ assert.equal(raw.slice(checks[0].matches[0].start,checks[0].matches[0].end),'[SLA]');
+ assert.equal(raw.slice(checks[1].matches[0].start,checks[1].matches[0].end),'65');
+});

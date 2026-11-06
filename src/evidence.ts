@@ -47,13 +47,14 @@ function fields(value: unknown, path = '', into: Array<{path:string; value: unkn
 }
 
 function bodyStart(text: string, record: SourceRecord): number {
-  const content=text.slice(record.start,Math.min(record.end,record.start+120));
-  // Parser labels are synthetic metadata, not evidence. Skip them.
-  const firstLine = content.indexOf(':\n');
-  if (firstLine >= 0) return record.start+firstLine+2;
-  const colon = content.indexOf(': ');
-  if (colon >= 0) return record.start+colon+2;
-  return record.start;
+  // Strip only a metadata label actually inserted by the parser.
+  // Plain text colons are part of the user's document.
+  const prefix = record.label + ':';
+  if (!text.startsWith(prefix, record.start)) return record.start;
+  const after = text[record.start + prefix.length];
+  return after === '\n' || after === ' '
+    ? record.start + prefix.length + 1
+    : record.start;
 }
 function recordsFor(doc: SourceDocument): Array<SourceRecord> {
   if (doc.records?.length) return doc.records;
@@ -78,32 +79,34 @@ function findMatches(doc: SourceDocument,value: unknown): EvidenceMatch[] {
   const target=tokenFor(value);
   if (!target || target.length > 800) return [];
   const matches: EvidenceMatch[]=[];
-  const lower=doc.text.toLocaleLowerCase('en-US');
-  const needle=target.toLocaleLowerCase('en-US');
+  // Regex matching returns offsets into the ORIGINAL source. Lowercasing the
+  // entire Unicode string can change its length and corrupt citation offsets.
+  const needle = new RegExp(target.replace(/[.*+?^$(){}|[\]\\]/g, '\\$&'), 'gi');
   for (const record of recordsFor(doc)) {
-    if (record.start<0 || record.end>doc.text.length || record.end<=record.start) {
+    if (!Number.isInteger(record.start) || !Number.isInteger(record.end) ||
+      record.start<0 || record.end>doc.text.length || record.end<=record.start) {
       throw new Error('Document source ranges are invalid. Evidence review is blocked.');
     }
-    let cursor=bodyStart(doc.text,record);
-    if (cursor>record.end) throw new Error('Document record label exceeds its range.');
-    while (cursor<record.end && matches.length<MAX_MATCHES) {
-      const at=lower.indexOf(needle,cursor);
-      if (at<0 || at+needle.length>record.end) break;
-      const end=at+needle.length;
+    const contentStart=bodyStart(doc.text,record);
+    if (contentStart>record.end) throw new Error('Document record label exceeds its range.');
+    needle.lastIndex=contentStart;
+    while (needle.lastIndex<record.end && matches.length<MAX_MATCHES) {
+      const matched=needle.exec(doc.text);
+      if(!matched || matched.index+matched[0].length>record.end) break;
+      const at=matched.index;
+      const end=at+matched[0].length;
       if (boundaryOkay(doc.text,at,end,value)) {
         matches.push({
           start:at,end,
-          quote:doc.text.slice(Math.max(bodyStart(doc.text,record),at-WINDOW),Math.min(record.end,end+WINDOW)).trim(),
+          quote:doc.text.slice(Math.max(contentStart,at-WINDOW),Math.min(record.end,end+WINDOW)).trim(),
           label:record.label,
           location:{...record.location}
         });
       }
-      cursor=end;
     }
   }
   return matches;
 }
-
 export function auditLiteralEvidence(doc: SourceDocument, extraction: unknown): EvidenceCheck[] {
   if (!object(extraction)) throw new Error('Only JSON objects can be reviewed.');
   return fields(extraction).map(({path,value}):EvidenceCheck=>{
