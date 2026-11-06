@@ -6,7 +6,8 @@ import lightLogo from './assets/logo.svg';
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import Ajv from 'ajv';
 import { OfflineEngine, type ChatMessage, type Settings } from './engine';
-import { importFile, buildExtractionPrompt, parseModelJson, type SourceDocument } from './pipeline';
+import { importFile, type SourceDocument } from './pipeline';
+import { extractWholeDocument, resolveCandidateValues, type ExtractionAudit } from './chunkExtraction';
 
 const DEFAULT_SCHEMA = JSON.stringify({
   type: 'object',
@@ -45,6 +46,10 @@ export default function App() {
   const [schema, setSchema] = useState(DEFAULT_SCHEMA);
   const [extraction, setExtraction] = useState<unknown>(null);
   const [rawExtraction, setRawExtraction] = useState('');
+  const [reviewDraft, setReviewDraft] = useState('');
+  const [audit, setAudit] = useState<ExtractionAudit | null>(null);
+  const [conflictChoices, setConflictChoices] = useState<Record<string, number>>({});
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [valid, setValid] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -87,35 +92,92 @@ export default function App() {
     } catch (e) { setError(errorMessage(e)); }
   }
 
+  function clearExtraction() {
+    setExtraction(null); setAudit(null); setReviewDraft(''); setConflictChoices({});
+    setRawExtraction(''); setValid(false); setValidationErrors([]); setProgress({ done: 0, total: 0 });
+  }
+
+  function validateDraft(draft: string, currentAudit: ExtractionAudit | null, choices: Record<string, number>) {
+    const errors: string[] = [];
+    let value: unknown = null;
+    try {
+      if (!currentAudit || currentAudit.documentId !== active?.id || currentAudit.documentName !== active?.name) {
+        throw new Error('Extract this document before you validate it.');
+      }
+      const unresolved = resolveCandidateValues(currentAudit, choices).unresolved;
+      if (unresolved.length) {
+        throw new Error('Resolve all ' + unresolved.length + ' conflicting field(s) before validation.');
+      }
+      const parsedSchema = JSON.parse(schema) as unknown;
+      const validator = new Ajv({ allErrors: true, strict: false }).compile(parsedSchema);
+      value = JSON.parse(draft) as unknown;
+      if (!validator(value)) {
+        errors.push(...(validator.errors ?? []).map(x => (x.instancePath || '(root)') + ' ' + x.message));
+      }
+    } catch (e) { errors.push(errorMessage(e)); }
+    setValidationErrors(errors);
+    setValid(errors.length === 0);
+    setExtraction(errors.length === 0 ? value : null);
+    setStatus(errors.length === 0
+      ? 'JSON structure passed. Review source facts before export.'
+      : 'Review the JSON and correct the listed problems.');
+  }
+
+  function chooseConflict(path: string, selection: string) {
+    if (!audit) return;
+    const next = { ...conflictChoices };
+    if (selection === '') delete next[path];
+    else next[path] = Number(selection);
+    setConflictChoices(next);
+    const merged = resolveCandidateValues(audit, next);
+    setReviewDraft(JSON.stringify(merged.data, null, 2));
+    setValid(false); setExtraction(null); setValidationErrors([]);
+  }
+
   async function onExtract() {
     if (busy || !active || !engine.current.loaded) return;
-    setError(''); setBusy(true); setExtraction(null); setRawExtraction(''); setValid(false);
-    setValidationErrors([]);
-    setStatus('Generating candidate JSON from ' + active.name + '...');
-    let output = '';
+    clearExtraction(); setError(''); setBusy(true);
+    setStatus('Checking source sections...');
     try {
       const parsed = JSON.parse(schema) as unknown;
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('JSON Schema must be an object.');
-      const ajv = new Ajv({ allErrors: true, strict: false });
-      const validate = ajv.compile(parsed);
-      const instructions = buildExtractionPrompt(active, parsed);
-      if (instructions.truncated) {
-        throw new Error('This document exceeds the current extraction limit. No JSON was generated because it would omit part of the source. Use smaller complete documents until chunked extraction is implemented.');
-      }
-      await engine.current.generate(
-        [{ role: 'user', content: instructions.prompt }], SYSTEM, settings,
-        text => { output += text; setRawExtraction(output); }
+      new Ajv({ allErrors: true, strict: false }).compile(parsed); // Fail early on invalid schema.
+      const record = await extractWholeDocument(
+        active, parsed, settings.context,
+        async (prompt, section, total) => {
+          setStatus('Extracting section ' + section.chunk + ' of ' + total + '...');
+          let produced = '';
+          setRawExtraction('');
+          await engine.current.generate(
+            [{ role: 'user', content: prompt }], SYSTEM, settings,
+            token => { produced += token; setRawExtraction(produced); }
+          );
+          return produced;
+        },
+        (done, total) => setProgress({ done, total })
       );
-      const data = parseModelJson(output);
-      const structureValid = !!validate(data);
-      setExtraction(data);
-      setValid(structureValid);
-      setValidationErrors((validate.errors ?? []).map(x => (x.instancePath || '(root)') + ' ' + x.message));
-      setStatus(structureValid
-        ? 'JSON Schema structure valid. Verify all extracted facts manually.'
-        : 'Extracted JSON failed schema validation. Review required.');
-    } catch (e) { setError(errorMessage(e)); setStatus('Extraction incomplete; review required.'); }
-    finally { setBusy(false); }
+      const merged = resolveCandidateValues(record);
+      const draft = JSON.stringify(merged.data, null, 2);
+      setAudit(record);
+      setReviewDraft(draft);
+      setRawExtraction('');
+      if (merged.unresolved.length) {
+        setValidationErrors(['Resolve ' + merged.unresolved.length + ' conflicting field(s).']);
+        setStatus('All sections processed. Review conflicting values.');
+      } else {
+        const validator = new Ajv({ allErrors: true, strict: false }).compile(parsed);
+        const okay = !!validator(merged.data);
+        setValidationErrors((validator.errors ?? []).map(x => (x.instancePath || '(root)') + ' ' + x.message));
+        setValid(okay);
+        setExtraction(okay ? merged.data : null);
+        setStatus(okay
+          ? 'All sections processed. JSON structure passed; facts need review.'
+          : 'All sections processed. Review JSON Schema errors.');
+      }
+    } catch (e) {
+      setError(errorMessage(e));
+      setAudit(null); setReviewDraft(''); setValid(false); setExtraction(null);
+      setStatus('Extraction stopped. No incomplete result can be exported.');
+    } finally { setBusy(false); }
   }
 
   async function onChat(e: FormEvent) {
@@ -181,7 +243,7 @@ export default function App() {
             {active ? <>
               <label>Document
                 <select value={documentIndex} onChange={e => {
-                  setDocumentIndex(Number(e.currentTarget.value)); setExtraction(null); setRawExtraction('');
+                  setDocumentIndex(Number(e.currentTarget.value)); clearExtraction();
                 }}>{docs.map((doc, i) => <option key={i} value={i}>{doc.name}</option>)}</select>
               </label>
               <p className="help">Provenance: {active.provenance.source} / document-level only</p>
@@ -191,27 +253,59 @@ export default function App() {
             </> : <p className="empty">Import a Bulk OCR Studio JSONC export or a local text file.</p>}
           </section>}
           {route === "extract" && <section className="card">
-            <h2>Target JSON Schema</h2>
-            <p className="help">Extraction is model-generated. Schema validation does not establish factual correctness.</p>
-            <textarea className="schema" value={schema} spellCheck={false} onChange={e => setSchema(e.currentTarget.value)}/>
+            <h2>Extract structured JSON</h2>
+            <p className="help">{active ? 'Source: ' + active.name : 'Select a document first.'} All text sections must finish before export.</p>
+            <label>Target JSON Schema
+              <textarea className="schema" aria-label="Target JSON Schema" value={schema} spellCheck={false}
+                onChange={e => { setSchema(e.currentTarget.value); setValid(false); setExtraction(null); }}/>
+            </label>
             <div className="actions">
               <button disabled={busy || !modelName || !active} onClick={() => void onExtract()}>
-                {busy ? 'Processing...' : 'Extract and validate'}
+                {busy ? 'Extracting...' : 'Extract and validate'}
               </button>
               {busy && <button className="secondary" onClick={() => engine.current.stop()}>Stop</button>}
             </div>
+            {progress.total > 0 && <p className="help" role="status">Sections complete: {progress.done} / {progress.total}</p>}
+            {audit && audit.conflicts.length > 0 && <div className="review-conflicts">
+              <h3>Choose values that need review</h3>
+              <p className="help">The model found different values in separate sections. Check the source before choosing.</p>
+              {audit.conflicts.map(conflict => <label key={conflict.path}>
+                {conflict.path}
+                <select aria-label={'Resolve ' + conflict.path}
+                  value={Object.hasOwn(conflictChoices, conflict.path) ? String(conflictChoices[conflict.path]) : ''}
+                  onChange={e => chooseConflict(conflict.path, e.currentTarget.value)}>
+                  <option value="">Choose a value</option>
+                  {conflict.candidates.map((candidate, i) => <option key={i} value={i}>
+                    {JSON.stringify(candidate.value).slice(0, 150)} (section {candidate.spans.map(x => x.chunk).join(', ')})
+                  </option>)}
+                </select>
+              </label>)}
+            </div>}
             <div className="heading"><h2>Candidate JSON</h2>
-              {extraction !== null && <button className="secondary" disabled={!valid} title={valid ? 'Export JSON that passed structure validation. Verify the facts.' : 'Resolve JSON Schema errors before exporting.'} onClick={() => downloadJson({
-                status: 'schema_validated_facts_unverified',
-                source: active?.provenance, document: active?.name,
-                extraction, validationErrors
-              })}>Export schema-valid JSON</button>}
+              {audit && <button className="secondary"
+                disabled={!valid || !extraction || busy}
+                onClick={() => downloadJson({
+                  status: 'schema_validated_facts_unverified',
+                  document: { id: audit.documentId, name: audit.documentName },
+                  coverage: { sourceCharacters: audit.length, sections: audit.chunks, complete: true },
+                  candidateSources: audit.candidates,
+                  conflictDecisions: conflictChoices,
+                  extraction,
+                  validationErrors: []
+                })}>Export schema-valid JSON</button>}
             </div>
-            <pre className="preview result">{extraction !== null ? JSON.stringify(extraction, null, 2) : rawExtraction || 'No extraction yet.'}</pre>
-            {extraction !== null && <p className={valid ? 'success' : 'warning'}>
-              {valid ? 'JSON Schema passed. Facts still require review.' : 'Schema validation failed.'}
+            <p className="help">You can correct the candidate JSON and validate it again. This checks structure, not facts.</p>
+            <textarea className="schema review-json" aria-label="Candidate JSON for review" spellCheck={false}
+              placeholder={busy ? 'The local model is extracting...' : 'No extraction yet.'}
+              value={audit ? reviewDraft : rawExtraction}
+              disabled={!audit || busy}
+              onChange={e => { setReviewDraft(e.currentTarget.value); setValid(false); setExtraction(null); }}/>
+            {audit && <div className="actions"><button type="button" className="secondary" disabled={busy}
+              onClick={() => validateDraft(reviewDraft, audit, conflictChoices)}>Validate edited JSON</button></div>}
+            {audit && <p className={valid ? 'success' : 'warning'}>
+              {valid ? 'JSON Schema passed. Verify all facts before use.' : 'JSON needs review or corrections.'}
             </p>}
-            {validationErrors.map((msg, i) => <p key={i} className="warning">{msg}</p>)}
+            {validationErrors.map((msg, i) => <p role="alert" key={i} className="warning">{msg}</p>)}
           </section>}
         </div>
         {notes.length > 0 && <section className="card notes"><h2>Import/provenance notes</h2>{notes.map((n, i) => <p key={i}>{n}</p>)}</section>}

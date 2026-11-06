@@ -64,3 +64,9 @@ nav button.active{color:var(--ink);background:var(--raised);border-color:var(--b
 .settings-card>label{max-width:300px}
 @media(max-width:900px){.shell{display:block}.sidebar section{padding:14px 20px}.columns{grid-template-columns:1fr}.workspace{padding:6px 15px}.alert{margin:12px 15px}nav{padding:14px 15px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+
+/* Local extraction review: show only actionable evidence and validation controls. */
+.review-conflicts{border:1px solid var(--border);border-radius:9px;padding:15px;margin:15px 0;background:var(--raised)}
+.review-conflicts h3{font-size:15px;margin:0 0 8px}
+.review-conflicts label{display:block;margin:12px 0;color:var(--ink);overflow-wrap:anywhere}
+.review-json{height:280px;min-height:180px;resize:vertical}

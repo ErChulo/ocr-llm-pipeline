@@ -34,10 +34,11 @@ export class OfflineEngine {
         top_p: settings.topP, cache_prompt: true
       });
       for await (const chunk of stream) {
-        if (c.signal.aborted) break;
+        if (c.signal.aborted) throw new Error('Generation canceled. No partial result was saved.');
         const txt = chunk.choices[0]?.delta?.content;
         if (txt) onText(txt);
       }
+      if (c.signal.aborted) throw new Error('Generation canceled. No partial result was saved.');
     } finally {
       if (this.controller === c) this.controller = null;
     }
