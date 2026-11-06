@@ -15,6 +15,8 @@ import { benchmarkPrompt, scoreBenchmark } from './modelBenchmark';
 import { evaluateExportGate } from './exportGate';
 import { parseModelJson } from './pipeline';
 import { ocrRecords, currentOcrText, correctOcrText } from './ocrCorrections';
+import PdfPageViewer from './PdfPageViewer';
+import './pdfViewer.css';
 
 const DEFAULT_SCHEMA = JSON.stringify({
   type: 'object',
@@ -55,6 +57,9 @@ export default function App() {
   const [ocrPageChoice, setOcrPageChoice] = useState(0);
   const [ocrEditing, setOcrEditing] = useState(false);
   const [ocrDraft, setOcrDraft] = useState('');
+  const [pdfView, setPdfView] = useState<{
+    page:number;boxes:Array<{x:number;y:number;width:number;height:number;precision:'pdf-text-item-envelope'}>
+  }|null>(null);
   const [schema, setSchema] = useState(DEFAULT_SCHEMA);
   const [extraction, setExtraction] = useState<unknown>(null);
   const [rawExtraction, setRawExtraction] = useState('');
@@ -164,7 +169,7 @@ export default function App() {
       const added = imports.flatMap(x => x.documents);
       setDocs(current => [...current, ...added]);
       setDocumentIndex(docs.length);
-      setOcrPageChoice(0); setOcrEditing(false); setOcrDraft('');
+      setOcrPageChoice(0); setOcrEditing(false); setOcrDraft(''); setPdfView(null);
       clearExtraction();
       setNotes(imports.flatMap(x => x.notes));
       setStatus('Imported ' + added.length + ' local document(s). No server was used.');
@@ -366,10 +371,12 @@ export default function App() {
               <label>Document
                 <select value={documentIndex} onChange={e => {
                   setDocumentIndex(Number(e.currentTarget.value));
-                  setOcrEditing(false);setOcrPageChoice(0);setOcrDraft('');clearExtraction();
+                  setOcrEditing(false);setOcrPageChoice(0);setOcrDraft('');setPdfView(null);clearExtraction();
                 }}>{docs.map((doc, i) => <option key={i} value={i}>{doc.name}</option>)}</select>
               </label>
               <p className="help">Source: {active.provenance.source} / {active.provenance.precision} level</p>
+              {active.pdfBytes && <div className="actions"><button className="secondary" type="button"
+                onClick={()=>setPdfView({page:1,boxes:[]})}>View original PDF</button></div>}
               <pre className="preview">{active.text.slice(0, 25000)}</pre>
               {correctablePages.length > 0 && <section className="ocr-correction">
                 <h3>Review OCR text</h3>
@@ -502,7 +509,15 @@ export default function App() {
                       </select>
                     </label>
                     {Object.hasOwn(evidenceChoices,check.path) && check.matches[evidenceChoices[check.path]] &&
-                      <blockquote className="evidence-quote">{check.matches[evidenceChoices[check.path]].quote}</blockquote>}
+                      <>
+                        <blockquote className="evidence-quote">{check.matches[evidenceChoices[check.path]].quote}</blockquote>
+                        {active?.pdfBytes && typeof check.matches[evidenceChoices[check.path]].location.page === 'number' &&
+                          <button type="button" className="secondary" onClick={()=>{
+                            const matched=check.matches[evidenceChoices[check.path]];
+                            setPdfView({page:matched.location.page as number,
+                              boxes:matched.textItemBoxes??[]});
+                          }}>View source PDF page</button>}
+                      </>}
                     <label className="evidence-confirm">
                       <input type="checkbox" disabled={!Object.hasOwn(evidenceChoices,check.path)}
                         checked={!!evidenceConfirmed[check.path]}
@@ -557,5 +572,8 @@ export default function App() {
         </div>
       </section>}
     </main>
+    {active?.pdfBytes && pdfView &&
+      <PdfPageViewer bytes={active.pdfBytes} initialPage={pdfView.page}
+        highlightBoxes={pdfView.boxes} onClose={()=>setPdfView(null)}/>}
   </div>;
 }
