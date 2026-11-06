@@ -13,7 +13,9 @@
     "ajv": "^8.17.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "@wllama/wllama-compat": "3.8.1"
+    "@wllama/wllama-compat": "3.8.1",
+    "fflate": "0.8.3",
+    "@xmldom/xmldom": "0.9.12"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

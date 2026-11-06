@@ -1,6 +1,10 @@
+import { parseDocx, parseXlsx } from './nativeOffice.ts';
+export type SourceRecord = { start: number; end: number; label: string; location: Record<string, string | number> };
 export type SourceDocument = {
   id: string; name: string; text: string; mimeType: string; sizeBytes: number;
-  provenance: { source: 'local-text' | 'bulk-ocr-jsonc'; precision: 'document'; fileName: string };
+  provenance: { source: 'local-text' | 'bulk-ocr-jsonc' | 'docx-native' | 'xlsx-native'; precision: 'document' | 'paragraph' | 'cell'; fileName: string };
+  records?: SourceRecord[];
+  warnings?: string[];
 };
 export type ImportResult = { documents: SourceDocument[]; notes: string[] };
 
@@ -69,7 +73,14 @@ export function importText(filename: string, text: string): ImportResult {
     }], notes: ['Local text imported; native PDF and image OCR are planned.'] };
 }
 export async function importFile(file: File): Promise<ImportResult> {
-  if (file.size > 20 * 1024 * 1024) throw new Error('Text import limited to 20 MB per file.');
+  if (file.size > 20 * 1024 * 1024) throw new Error('Local import limited to 20 MB per file.');
+  const ext=file.name.split('.').at(-1)?.toLowerCase();
+  if (ext === 'docx' || ext === 'xlsx') {
+    const bytes=new Uint8Array(await file.arrayBuffer());
+    const parsed=ext==='docx'?parseDocx(file.name,bytes):parseXlsx(file.name,bytes);
+    parsed.sizeBytes=file.size;
+    return {documents:[parsed],notes:parsed.warnings??[]};
+  }
   return importText(file.name, await file.text());
 }
 export function buildExtractionPrompt(doc: SourceDocument, schema: unknown, maxChars = 6500) {
