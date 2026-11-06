@@ -71,3 +71,5 @@
 - [x] Verify local GGUF text generation and zero HTTP(S)/WebSocket requests in the same browser run.
 - [ ] Implement offline Tesseract OCR and scanned-page review.
 - [ ] Add precise page-region/quotation evidence links from JSON fields; page-level parser records currently exist but are not proof of claim-level evidence.
+
+- [x] Exact local source-text evidence candidates, parser-derived PDF/DOCX/XLSX references, and mandatory field-by-field review before JSON export. Independent semantic fact checking is still pending.

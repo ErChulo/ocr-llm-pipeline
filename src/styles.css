@@ -73,3 +73,12 @@ nav button.active{color:var(--ink);background:var(--raised);border-color:var(--b
 
 .model-test-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 .model-test-actions button{flex:1;min-width:105px}
+
+.evidence-review{border:1px solid var(--border);padding:18px;margin:18px 0;border-radius:12px;background:var(--surface)}
+.evidence-review h3{font-size:15px;margin:0 0 7px}
+.evidence-field{padding:14px 0;border-bottom:1px solid var(--border);overflow-wrap:anywhere}
+.evidence-field strong{display:block;font-size:13px}
+.evidence-field label{display:block;margin:12px 0}
+.evidence-quote{margin:10px 0;padding:12px;border-left:3px solid var(--focus);background:var(--raised);font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
+.evidence-confirm{display:flex!important;align-items:center;gap:9px;font-weight:600;cursor:pointer}
+.evidence-confirm input{width:17px;height:17px;flex:none;accent-color:var(--primary)}

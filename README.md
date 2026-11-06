@@ -71,3 +71,7 @@ The app now accepts DOCX and XLSX files locally. DOCX text is labeled by paragra
 The PDF.js 6.5.438 parser is bundled locally with the application, including its no-network main-thread worker fallback. The imported text records the PDF's **actual page numbers**, not coordinates invented by AI. Every page must contain extractable text; image-only or blank pages fail closed until offline OCR is implemented. Tables, page ordering and drawings require source review. The PDF parser is subject to a 20 MB/300-page limit. It is not a document viewer and does not establish factual verification.
 
 [Native PDF ingestion milestone](docs/PDF_INGESTION.md) — verified with synthetic two-page PDF input under Chromium `file://`. Incomplete scanned pages are refused rather than silently skipped. See the GitHub Actions browser smoke workflow for the successful runtime test.
+
+## Field-level evidence review
+
+Before exporting, the user must select an exact local-text match and check each JSON value against its source. The source label and location are taken from the parser (PDF page, DOCX location or XLSX cell), not invented by the model. Missing literal matches block export, including numeric values that occur only as substrings of other numbers. These are **candidate textual citations**; they do not establish independent factual or actuarial correctness. The export includes human-reviewed evidence metadata. See `src/evidence.ts`.

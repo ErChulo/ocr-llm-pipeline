@@ -8,6 +8,7 @@ import Ajv, { type AnySchema } from 'ajv';
 import { OfflineEngine, type ChatMessage, type Settings } from './engine';
 import { importFile, type SourceDocument } from './pipeline';
 import { extractWholeDocument, resolveCandidateValues, type ExtractionAudit } from './chunkExtraction';
+import { auditLiteralEvidence, evidenceReviewComplete, exportReviewedEvidence } from './evidence';
 
 const DEFAULT_SCHEMA = JSON.stringify({
   type: 'object',
@@ -53,10 +54,18 @@ export default function App() {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [valid, setValid] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [evidenceChoices, setEvidenceChoices] = useState<Record<string,number>>({});
+  const [evidenceConfirmed, setEvidenceConfirmed] = useState<Record<string,boolean>>({});
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [message, setMessage] = useState('');
   const [chatStream, setChatStream] = useState('');
   const active = docs[documentIndex] ?? null;
+  // A literal text match is only a candidate citation. The user must review
+  // each value and confirm one actual source location before exporting.
+  const evidenceChecks = valid && extraction !== null && active && audit
+    ? auditLiteralEvidence(active, extraction)
+    : [];
+  const evidenceComplete = evidenceReviewComplete(evidenceChecks, evidenceChoices, evidenceConfirmed);
 
   useEffect(() => () => { void engine.current.unload(); }, []);
   useEffect(() => {
@@ -115,6 +124,7 @@ export default function App() {
   function clearExtraction() {
     setExtraction(null); setAudit(null); setReviewDraft(''); setConflictChoices({});
     setRawExtraction(''); setValid(false); setValidationErrors([]); setProgress({ done: 0, total: 0 });
+    setEvidenceChoices({}); setEvidenceConfirmed({});
   }
 
   function validateDraft(draft: string, currentAudit: ExtractionAudit | null, choices: Record<string, number>) {
@@ -136,6 +146,7 @@ export default function App() {
       }
     } catch (e) { errors.push(errorMessage(e)); }
     setValidationErrors(errors);
+    setEvidenceChoices({}); setEvidenceConfirmed({});
     setValid(errors.length === 0);
     setExtraction(errors.length === 0 ? value : null);
     setStatus(errors.length === 0
@@ -152,6 +163,7 @@ export default function App() {
     const merged = resolveCandidateValues(audit, next);
     setReviewDraft(JSON.stringify(merged.data, null, 2));
     setValid(false); setExtraction(null); setValidationErrors([]);
+    setEvidenceChoices({}); setEvidenceConfirmed({});
   }
 
   async function onExtract() {
@@ -282,7 +294,7 @@ export default function App() {
             <p className="help">{active ? 'Source: ' + active.name : 'Select a document first.'} All text sections must finish before export.</p>
             <label>Target JSON Schema
               <textarea className="schema" aria-label="Target JSON Schema" value={schema} spellCheck={false}
-                onChange={e => { setSchema(e.currentTarget.value); setValid(false); setExtraction(null); }}/>
+                onChange={e => { setSchema(e.currentTarget.value); setValid(false); setExtraction(null); setEvidenceChoices({}); setEvidenceConfirmed({}); }}/>
             </label>
             <div className="actions">
               <button disabled={busy || !modelName || !active} onClick={() => void onExtract()}>
@@ -308,13 +320,16 @@ export default function App() {
             </div>}
             <div className="heading"><h2>Candidate JSON</h2>
               {audit && <button className="secondary"
-                disabled={!valid || !extraction || busy}
+                disabled={!valid || !extraction || !evidenceComplete || busy}
+                title={!evidenceComplete ? 'Select and confirm source evidence for every JSON value.' : 'Export reviewed JSON and source references.'}
                 onClick={() => downloadJson({
                   status: 'schema_validated_facts_unverified',
                   document: { id: audit.documentId, name: audit.documentName },
                   coverage: { sourceCharacters: audit.length, sections: audit.chunks, complete: true },
                   candidateSources: audit.candidates,
                   conflictDecisions: conflictChoices,
+                  fieldEvidence: exportReviewedEvidence(evidenceChecks,evidenceChoices,evidenceConfirmed),
+                  evidenceStatus: 'literal_match_human_reviewed_facts_not_independently_verified',
                   extraction,
                   validationErrors: []
                 })}>Export schema-valid JSON</button>}
@@ -324,12 +339,55 @@ export default function App() {
               placeholder={busy ? 'The local model is extracting...' : 'No extraction yet.'}
               value={audit ? reviewDraft : rawExtraction}
               disabled={!audit || busy}
-              onChange={e => { setReviewDraft(e.currentTarget.value); setValid(false); setExtraction(null); }}/>
+              onChange={e => { setReviewDraft(e.currentTarget.value); setValid(false); setExtraction(null); setEvidenceChoices({}); setEvidenceConfirmed({}); }}/>
             {audit && <div className="actions"><button type="button" className="secondary" disabled={busy}
               onClick={() => validateDraft(reviewDraft, audit, conflictChoices)}>Validate edited JSON</button></div>}
             {audit && <p className={valid ? 'success' : 'warning'}>
               {valid ? 'JSON Schema passed. Verify all facts before use.' : 'JSON needs review or corrections.'}
             </p>}
+            {valid && evidenceChecks.length > 0 && <section className="evidence-review" aria-label="Source evidence review">
+              <h3>Review the source of each value</h3>
+              <p className="help">A text match is not proof of a fact. Compare each value with the original file and confirm its source.</p>
+              {evidenceChecks.map(check => <div className="evidence-field" key={check.path}>
+                <strong>{check.path} — {JSON.stringify(check.value)}</strong>
+                {check.status !== 'match'
+                  ? <p className="warning" role="alert">No exact source text supports this value. Correct the JSON and validate again. Export is blocked.</p>
+                  : <>
+                    <label>Source location
+                      <select aria-label={'Source for ' + check.path}
+                        value={Object.hasOwn(evidenceChoices,check.path)?String(evidenceChoices[check.path]):''}
+                        onChange={e => {
+                          const selected=e.currentTarget.value;
+                          setEvidenceChoices(current=>{
+                            const next={...current};
+                            if(selected==='') delete next[check.path];
+                            else next[check.path]=Number(selected);
+                            return next;
+                          });
+                          setEvidenceConfirmed(current=>({...current,[check.path]:false}));
+                        }}>
+                        <option value="">Select source</option>
+                        {check.matches.map((match,i)=><option key={i} value={i}>
+                          {match.label} — {match.quote.slice(0,110)}
+                        </option>)}
+                      </select>
+                    </label>
+                    {Object.hasOwn(evidenceChoices,check.path) && check.matches[evidenceChoices[check.path]] &&
+                      <blockquote className="evidence-quote">{check.matches[evidenceChoices[check.path]].quote}</blockquote>}
+                    <label className="evidence-confirm">
+                      <input type="checkbox" disabled={!Object.hasOwn(evidenceChoices,check.path)}
+                        checked={!!evidenceConfirmed[check.path]}
+                        onChange={e=>setEvidenceConfirmed(current=>({...current,[check.path]:e.currentTarget.checked}))}/>
+                      I checked this value against the source.
+                    </label>
+                  </>}
+              </div>)}
+              <p className={evidenceComplete?'success':'warning'}>
+                {evidenceComplete?'Every value has a confirmed source location. Export is available.':
+                  'Export remains blocked until each JSON value has a confirmed source.'}
+              </p>
+            </section>}
+
             {validationErrors.map((msg, i) => <p role="alert" key={i} className="warning">{msg}</p>)}
           </section>}
         </div>
