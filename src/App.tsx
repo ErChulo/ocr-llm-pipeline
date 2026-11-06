@@ -4,7 +4,7 @@ import { loadTheme, saveTheme, type Theme } from './theme';
 import darkLogo from './assets/logo-negro.png';
 import lightLogo from './assets/logo.svg';
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import Ajv from 'ajv';
+import Ajv, { type AnySchema } from 'ajv';
 import { OfflineEngine, type ChatMessage, type Settings } from './engine';
 import { importFile, type SourceDocument } from './pipeline';
 import { extractWholeDocument, resolveCandidateValues, type ExtractionAudit } from './chunkExtraction';
@@ -109,7 +109,7 @@ export default function App() {
         throw new Error('Resolve all ' + unresolved.length + ' conflicting field(s) before validation.');
       }
       const parsedSchema = JSON.parse(schema) as unknown;
-      const validator = new Ajv({ allErrors: true, strict: false }).compile(parsedSchema);
+      const validator = new Ajv({ allErrors: true, strict: false }).compile(parsedSchema as AnySchema);
       value = JSON.parse(draft) as unknown;
       if (!validator(value)) {
         errors.push(...(validator.errors ?? []).map(x => (x.instancePath || '(root)') + ' ' + x.message));
@@ -140,7 +140,7 @@ export default function App() {
     setStatus('Checking source sections...');
     try {
       const parsed = JSON.parse(schema) as unknown;
-      new Ajv({ allErrors: true, strict: false }).compile(parsed); // Fail early on invalid schema.
+      new Ajv({ allErrors: true, strict: false }).compile(parsed as AnySchema); // Fail early on invalid schema.
       const record = await extractWholeDocument(
         active, parsed, settings.context,
         async (prompt, section, total) => {
@@ -164,7 +164,7 @@ export default function App() {
         setValidationErrors(['Resolve ' + merged.unresolved.length + ' conflicting field(s).']);
         setStatus('All sections processed. Review conflicting values.');
       } else {
-        const validator = new Ajv({ allErrors: true, strict: false }).compile(parsed);
+        const validator = new Ajv({ allErrors: true, strict: false }).compile(parsed as AnySchema);
         const okay = !!validator(merged.data);
         setValidationErrors((validator.errors ?? []).map(x => (x.instancePath || '(root)') + ' ' + x.message));
         setValid(okay);
