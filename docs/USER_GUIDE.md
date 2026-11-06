@@ -67,8 +67,8 @@ Do not use the tool with protected case files until its security controls are ve
 
 ## Current limitations
 
-- GGUF inference works only after a supported model loads. Real offline model testing remains pending.
-- Current AI extraction reads limited text per request. Long documents need full chunk coverage before production use.
+- Local GGUF loading and text generation passed a small-model offline Chromium test. Your workstation and larger models still require testing.
+- Extraction processes text in bounded sections. Review the coverage and each source fact. Very long documents can exceed the supported section limit.
 - JSON Schema validation checks shape and data types. You must verify facts against the document.
 - PDF page, DOCX paragraph/table and XLSX cell locations are parser-derived. OCR and PDF image-region locations remain pending.
 

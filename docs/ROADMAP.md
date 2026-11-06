@@ -60,5 +60,14 @@
 - [x] Native DOCX/XLSX parsing source with paragraph/table/cell and sheet/cell location metadata; tests and file:// integration still needed.
 - [ ] Verify DOCX and XLSX parsers on synthetic workbooks, including formula caches, data formats and malformed archive handling.
 
-- [x] Implement page-indexed, local PDF text parsing, with strict rejection when a page has no text; source and browser tests pending.
+- [x] Implement page-indexed local PDF text extraction, rejecting pages without text (29 tests, build and Chromium file:// acceptance passed on November 6, 2026).
 - [ ] Add offline OCR for scanned PDF pages and images, then true region references and screenshot review.
+
+## Native PDF milestone — verified November 6, 2026
+
+- [x] Page-indexed native PDF text parsing with bounded memory and local-only assets.
+- [x] Reject mixed text/image PDFs when any page lacks extractable text.
+- [x] Verify two-page synthetic PDF in the bundled single-HTML Chromium file:// build.
+- [x] Verify local GGUF text generation and zero HTTP(S)/WebSocket requests in the same browser run.
+- [ ] Implement offline Tesseract OCR and scanned-page review.
+- [ ] Add precise page-region/quotation evidence links from JSON fields; page-level parser records currently exist but are not proof of claim-level evidence.
