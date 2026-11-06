@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@wllama/wllama": "3.8.1",
-    "ajv": "^8.17.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "@wllama/wllama-compat": "3.8.1",
@@ -18,7 +17,8 @@
     "@xmldom/xmldom": "0.9.12",
     "pdfjs-dist": "6.5.438",
     "tesseract.js": "7.0.0",
-    "@tesseract.js-data/eng": "1.0.0"
+    "@tesseract.js-data/eng": "1.0.0",
+    "@hyperjump/json-schema": "1.18.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
