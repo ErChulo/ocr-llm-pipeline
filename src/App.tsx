@@ -1,3 +1,4 @@
+import UserGuideDrawer from './UserGuideDrawer';
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import Ajv from 'ajv';
 import { OfflineEngine, type ChatMessage, type Settings } from './engine';
@@ -121,6 +122,7 @@ export default function App() {
   }
 
   return <div className="shell">
+    <UserGuideDrawer />
     <aside className="sidebar">
       <header><div className="logo">◎</div><div><h1>OCR + LLM</h1><p>Pipeline Studio · v0.2.0</p></div></header>
       <section><h2>01 — Local GGUF model</h2>
@@ -155,13 +157,13 @@ export default function App() {
           </select>
         </label>
       </section>
-      <footer>Offline runtime target · No telemetry · Experimental build</footer>
+      <footer>Your documents stay on this device.</footer>
     </aside>
     <main className="main">
       <nav><div>
         <button className={panel === 'documents' ? 'active' : ''} onClick={() => setPanel('documents')}>Documents + JSON</button>
         <button className={panel === 'chat' ? 'active' : ''} onClick={() => setPanel('chat')}>Local chat</button>
-      </div><span className="pill">file:// standalone target</span></nav>
+      </div></nav>
       {error && <div role="alert" className="alert error">{error}<button onClick={() => setError('')}>Dismiss</button></div>}
       <div role="status" className="alert">{status}</div>
       {panel === 'documents' ? <div className="workspace">
