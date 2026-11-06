@@ -1,9 +1,10 @@
 import { parseDocx, parseXlsx } from './nativeOffice.ts';
 import { parsePdf } from './pdfText.ts';
+import { parseCsv } from './csv.ts';
 export type SourceRecord = { start: number; end: number; label: string; location: Record<string, string | number> };
 export type SourceDocument = {
   id: string; name: string; text: string; mimeType: string; sizeBytes: number;
-  provenance: { source: 'local-text' | 'bulk-ocr-jsonc' | 'docx-native' | 'xlsx-native' | 'pdf-native' | 'pdf-ocr' | 'image-ocr'; precision: 'document' | 'paragraph' | 'cell' | 'page'; fileName: string };
+  provenance: { source: 'local-text' | 'bulk-ocr-jsonc' | 'docx-native' | 'xlsx-native' | 'pdf-native' | 'csv-native' | 'pdf-ocr' | 'image-ocr'; precision: 'document' | 'paragraph' | 'cell' | 'page'; fileName: string };
   records?: SourceRecord[];
   warnings?: string[];
 };
@@ -67,8 +68,12 @@ export function importText(filename: string, text: string): ImportResult {
   if (!['txt', 'md', 'csv'].includes(ext || '')) {
     throw new Error('Supported direct text formats are .jsonc, .json, .txt, .md and .csv. Use the file picker for PDF, DOCX or XLSX.');
   }
+  if(ext==='csv'){
+    const parsed=parseCsv(filename,text);
+    return {documents:[parsed],notes:parsed.warnings??[]};
+  }
   return { documents: [{
-      id: filename, name: filename, text, mimeType: ext === 'csv' ? 'text/csv' : 'text/plain',
+      id: filename, name: filename, text, mimeType: 'text/plain',
       sizeBytes: new TextEncoder().encode(text).byteLength,
       provenance: { source: 'local-text', precision: 'document', fileName: filename }
     }], notes: ['Local text imported; native PDF and image OCR are planned.'] };

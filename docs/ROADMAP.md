@@ -76,3 +76,5 @@
 
 - [x] Added bundled English Tesseract.js OCR integration for image attachments and PDF pages without text; source build/browser acceptance pending.
 - [ ] Test image and scanned-PDF OCR with synthetic fixtures under `file://`, confirm zero network requests and accuracy thresholds.
+
+- [x] CSV row/column provenance with quoted-cell parsing and no spreadsheet formula evaluation, covered by synthetic tests.

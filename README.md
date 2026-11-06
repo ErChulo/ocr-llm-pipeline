@@ -75,3 +75,7 @@ The PDF.js 6.5.438 parser is bundled locally with the application, including its
 ## Field-level evidence review
 
 Before exporting, the user must select an exact local-text match and check each JSON value against its source. The source label and location are taken from the parser (PDF page, DOCX location or XLSX cell), not invented by the model. Missing literal matches block export, including numeric values that occur only as substrings of other numbers. These are **candidate textual citations**; they do not establish independent factual or actuarial correctness. The export includes human-reviewed evidence metadata. See `src/evidence.ts`.
+
+## CSV cell provenance
+
+CSV imports are parsed without a server. Every nonempty cell is recorded as text with its actual 1-based row and column. Quoted commas, CRLF and embedded newlines are handled; malformed quotes fail closed. The first row is **not assumed to be a header**. CSV formulas are never executed. Synthetic fixtures cover the parser and preserve no personal information.
