@@ -29,6 +29,18 @@ function officeArchive(data: Uint8Array, chosen: (name: string) => boolean) {
       return true;
     }
   });
+  // Filter declarations in a ZIP are not a substitute for checking the
+  // actual inflated buffers. Reject inconsistent or unexpectedly large parts.
+  let actualBytes=0;
+  for(const [name,bytes] of Object.entries(files)){
+    if(bytes.length>MAX_XML_PART){
+      throw new Error('Office XML part exceeds the decompressed-size limit: '+name);
+    }
+    actualBytes+=bytes.length;
+    if(actualBytes>MAX_UNCOMPRESSED){
+      throw new Error('Office archive exceeds the total decompressed-size limit.');
+    }
+  }
   return { files, omitted };
 }
 function getPart(files: FileParts, name: string): string {
@@ -103,6 +115,11 @@ function appendRecords(fileName: string, kind: 'docx'|'xlsx', entries: Entry[], 
 }
 export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
   const {files, omitted}=officeArchive(data,n=>n==='word/document.xml'||n==='[Content_Types].xml');
+  // Require the Office content-type manifest; do not accept arbitrary ZIP files.
+  const types=xmlDoc(getPart(files,'[Content_Types].xml'));
+  if(!descendants(types,'Types').length){
+    throw new Error('DOCX content-type manifest is invalid.');
+  }
   const doc=xmlDoc(getPart(files,'word/document.xml'));
   const body=descendants(doc,'body')[0];
   if (!body) throw new Error('DOCX does not contain a document body.');

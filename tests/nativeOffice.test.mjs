@@ -42,3 +42,16 @@ test('Office parser fails closed when the document text is unavailable', () => {
   const unsafe=docx('<!DOCTYPE x [<!ENTITY y "danger">]><w:document xmlns:w="x"><w:body/></w:document>');
   assert.throws(()=>parseDocx('unsafe.docx',unsafe),/External or custom XML entities/);
 });
+
+test('DOCX rejects a ZIP without its Office content manifest',()=>{
+ const zippedOnly=zipSync({'word/document.xml':strToU8('<w:document xmlns:w="x"><w:body/></w:document>')},{level:0});
+ assert.throws(()=>parseDocx('fake.docx',zippedOnly),/missing \[Content_Types\]\.xml/);
+});
+test('DOCX rejects XML with an oversized inflated part',()=>{
+ const veryLong='A'.repeat(16*1024*1024);
+ const bytes=zipSync({
+  '[Content_Types].xml':strToU8('<Types/>'),
+  'word/document.xml':strToU8('<w:document xmlns:w="x"><w:body><w:p><w:t>'+veryLong+'</w:t></w:p></w:body></w:document>')
+ },{level:9});
+ assert.throws(()=>parseDocx('large.docx',bytes),/too large after decompression|decompressed-size/);
+});
