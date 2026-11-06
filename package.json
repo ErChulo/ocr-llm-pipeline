@@ -16,7 +16,9 @@
     "@wllama/wllama-compat": "3.8.1",
     "fflate": "0.8.3",
     "@xmldom/xmldom": "0.9.12",
-    "pdfjs-dist": "6.5.438"
+    "pdfjs-dist": "6.5.438",
+    "tesseract.js": "7.0.0",
+    "@tesseract.js-data/eng": "1.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

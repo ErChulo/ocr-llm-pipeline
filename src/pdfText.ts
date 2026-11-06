@@ -13,6 +13,9 @@ const MAX_PAGES = 300;
 const MAX_SOURCE_CHARS = 2_000_000;
 const MIN_PAGE_TEXT_LENGTH = 1;
 
+import type { OcrResult } from './ocr.ts';
+type OcrCallback = (canvas:HTMLCanvasElement)=>Promise<OcrResult>;
+
 type TextItem = {
   str: string;
   hasEOL?: boolean;
@@ -49,7 +52,7 @@ function pdfPageText(items: Array<TextItem>): string {
  * Extract every page. A page with no text blocks export because it may contain
  * an image with plan provisions not represented in the text layer.
  */
-export async function parsePdf(fileName: string, bytes: Uint8Array): Promise<SourceDocument> {
+export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCallback): Promise<SourceDocument> {
   if (bytes.byteLength < 8 || bytes.byteLength > MAX_PDF_BYTES) {
     throw new Error('PDF must be nonempty and no larger than 20 MB.');
   }
@@ -74,13 +77,32 @@ export async function parsePdf(fileName: string, bytes: Uint8Array): Promise<Sou
     const lines: string[] = [];
     const records: SourceRecord[] = [];
     let chars = 0;
+    let ocrPages=0;
+    const warnings:string[]=[];
     for (let pageNo = 1; pageNo <= document.numPages; pageNo++) {
       const page = await document.getPage(pageNo);
       const textContent = await page.getTextContent();
       const items = textContent.items.filter((item): item is typeof item & TextItem => 'str' in item);
-      const text = pdfPageText(items);
+      let text = pdfPageText(items);
+      let scanned=false;
+      let confidence=0;
       if (text.length < MIN_PAGE_TEXT_LENGTH) {
-        throw new Error('Page ' + pageNo + ' has no extractable text. OCR is required; no partial extraction was saved.');
+        if(!ocr)throw new Error('Page ' + pageNo + ' has no extractable text. OCR is required; no partial extraction was saved.');
+        const original=page.getViewport({scale:1});
+        const scale=Math.min(2.2,2400/Math.max(original.width,original.height));
+        const viewport=page.getViewport({scale});
+        const canvas=document.createElement('canvas');
+        canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
+        const context=canvas.getContext('2d',{willReadFrequently:true});
+        if(!context)throw new Error('Canvas rendering is unavailable for OCR.');
+        await page.render({canvas,canvasContext:context,viewport}).promise;
+        const result=await ocr(canvas);
+        text=result.text.trim();
+        confidence=result.confidence;
+        scanned=true;
+        ocrPages++;
+        if(!text)throw new Error('OCR found no readable text on PDF page '+pageNo+'. Import was stopped.');
+        if(confidence<75)warnings.push('OCR confidence on page '+pageNo+' is '+Math.round(confidence)+'%. Verify the page against its original image.');
       }
       const line = 'Page ' + pageNo + ':\n' + text + '\n\n';
       const start = chars;
@@ -89,7 +111,7 @@ export async function parsePdf(fileName: string, bytes: Uint8Array): Promise<Sou
       lines.push(line);
       records.push({
         start, end: chars, label: 'Page ' + pageNo,
-        location: { kind: 'pdf-page', page: pageNo }
+        location: scanned ? { kind: 'pdf-page-ocr', page: pageNo, confidence: Math.round(confidence) } : { kind: 'pdf-page', page: pageNo }
       });
       page.cleanup();
     }
@@ -97,12 +119,13 @@ export async function parsePdf(fileName: string, bytes: Uint8Array): Promise<Sou
       id: fileName, name: fileName,
       text: lines.join(''),
       mimeType: 'application/pdf', sizeBytes: bytes.byteLength,
-      provenance: { source: 'pdf-native', precision: 'page', fileName },
+      provenance: { source: ocrPages ? 'pdf-ocr' : 'pdf-native', precision: 'page', fileName },
       records,
       warnings: [
+        ...warnings,
         'PDF page numbers come from the document parser, not from the language model.',
         'Text reading order and tables may differ from the page layout. Verify important values against the PDF.',
-        'Images and diagrams are not OCR processed.'
+        'Pages with no text are OCR processed. Images within pages that already contain text might still be missed.'
       ]
     };
   } catch (error) {

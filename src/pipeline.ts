@@ -1,9 +1,10 @@
 import { parseDocx, parseXlsx } from './nativeOffice.ts';
 import { parsePdf } from './pdfText.ts';
+import { recognizeCanvas, recognizeImage } from './ocr.ts';
 export type SourceRecord = { start: number; end: number; label: string; location: Record<string, string | number> };
 export type SourceDocument = {
   id: string; name: string; text: string; mimeType: string; sizeBytes: number;
-  provenance: { source: 'local-text' | 'bulk-ocr-jsonc' | 'docx-native' | 'xlsx-native' | 'pdf-native'; precision: 'document' | 'paragraph' | 'cell' | 'page'; fileName: string };
+  provenance: { source: 'local-text' | 'bulk-ocr-jsonc' | 'docx-native' | 'xlsx-native' | 'pdf-native' | 'pdf-ocr' | 'image-ocr'; precision: 'document' | 'paragraph' | 'cell' | 'page'; fileName: string };
   records?: SourceRecord[];
   warnings?: string[];
 };
@@ -77,8 +78,20 @@ export async function importFile(file: File): Promise<ImportResult> {
   if (file.size > 20 * 1024 * 1024) throw new Error('Local import limited to 20 MB per file.');
   const ext=file.name.split('.').at(-1)?.toLowerCase();
   if (ext === 'pdf') {
-    const parsed=await parsePdf(file.name,new Uint8Array(await file.arrayBuffer()));
+    const parsed=await parsePdf(file.name,new Uint8Array(await file.arrayBuffer()),recognizeCanvas);
     return {documents:[parsed],notes:parsed.warnings??[]};
+  }
+  if (['png','jpg','jpeg','webp'].includes(ext||'')) {
+    const data=await recognizeImage(file);
+    if(!data.text.trim())throw new Error('OCR could not read any text from this image. No partial result was saved.');
+    const text='Image OCR:\n'+data.text+'\n';
+    return {documents:[{
+      id:file.name,name:file.name,text,mimeType:file.type,sizeBytes:file.size,
+      provenance:{source:'image-ocr',precision:'document',fileName:file.name},
+      records:[{start:0,end:text.length,label:'Image OCR',location:{kind:'image',confidence:Math.round(data.confidence)}}],
+      warnings:['OCR is probabilistic and can misread names, numbers, dates and plan formulas.',
+        'OCR confidence: '+Math.round(data.confidence)+'%. Inspect the original image for every extracted field.']
+    }],notes:['OCR processed an image locally. Human verification is required.']};
   }
   if (ext === 'docx' || ext === 'xlsx') {
     const bytes=new Uint8Array(await file.arrayBuffer());

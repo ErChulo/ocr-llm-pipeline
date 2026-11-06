@@ -73,3 +73,6 @@
 - [ ] Add precise page-region/quotation evidence links from JSON fields; page-level parser records currently exist but are not proof of claim-level evidence.
 
 - [x] Exact local source-text evidence candidates, parser-derived PDF/DOCX/XLSX references, and mandatory field-by-field review before JSON export. Independent semantic fact checking is still pending.
+
+- [x] Added bundled English Tesseract.js OCR integration for image attachments and PDF pages without text; source build/browser acceptance pending.
+- [ ] Test image and scanned-PDF OCR with synthetic fixtures under `file://`, confirm zero network requests and accuracy thresholds.

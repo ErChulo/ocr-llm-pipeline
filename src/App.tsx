@@ -7,6 +7,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type Fo
 import Ajv, { type AnySchema } from 'ajv';
 import { OfflineEngine, type ChatMessage, type Settings } from './engine';
 import { importFile, type SourceDocument } from './pipeline';
+import { terminateOcr } from './ocr';
 import { extractWholeDocument, resolveCandidateValues, type ExtractionAudit } from './chunkExtraction';
 import { auditLiteralEvidence, evidenceReviewComplete, exportReviewedEvidence } from './evidence';
 
@@ -67,7 +68,7 @@ export default function App() {
     : [];
   const evidenceComplete = evidenceReviewComplete(evidenceChecks, evidenceChoices, evidenceConfirmed);
 
-  useEffect(() => () => { void engine.current.unload(); }, []);
+  useEffect(() => () => { void engine.current.unload(); void terminateOcr(); }, []);
   useEffect(() => {
     const onHash = () => setRoute(routeFromHash(window.location.hash));
     window.addEventListener('hashchange', onHash);
@@ -111,14 +112,15 @@ export default function App() {
     const files = Array.from(e.currentTarget.files ?? []);
     e.currentTarget.value = '';
     if (!files.length) return;
-    setError('');
+    setError(''); setBusy(true); setStatus('Reading local documents. OCR may take additional time...');
     try {
       const imports = await Promise.all(files.map(f => importFile(f)));
       const added = imports.flatMap(x => x.documents);
       setDocs(current => [...current, ...added]);
       setNotes(imports.flatMap(x => x.notes));
       setStatus('Imported ' + added.length + ' local document(s). No server was used.');
-    } catch (e) { setError(errorMessage(e)); }
+    } catch (e) { setError(errorMessage(e)); setStatus('Document import stopped.'); }
+    finally { setBusy(false); }
   }
 
   function clearExtraction() {
@@ -248,9 +250,9 @@ export default function App() {
       </section>
       <section><h2>02 — Local documents</h2>
         <label className="picker">Attach OCR export / text
-          <input type="file" multiple accept=".jsonc,.json,.txt,.md,.csv,.docx,.xlsx,.pdf" onChange={e => void onAttach(e)}/>
+          <input type="file" multiple accept=".jsonc,.json,.txt,.md,.csv,.docx,.xlsx,.pdf,.png,.jpg,.jpeg,.webp" disabled={busy} onChange={e => void onAttach(e)}/>
         </label>
-        <p className="help">Supports text PDFs, DOCX, XLSX, OCR JSONC and text. Image-only PDF pages need OCR.</p>
+        <p className="help">Supports PDF (including scanned pages), images, DOCX, XLSX, OCR JSONC and text. OCR is English-only.</p>
         <p className="help">{docs.length} document(s) in this session</p>
       </section>
       <footer>Your documents stay on this device.</footer>
