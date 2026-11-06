@@ -5,23 +5,24 @@
  * Unlike a mock or tiny random-model smoke test, this measures extraction.
  */
 import { chromium } from 'playwright';
-import { resolve } from 'node:path';
+import { resolve, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, statSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 mkdirSync('tmp',{recursive:true});
-const model=resolve('tmp/qwen2.5-0.5b-instruct-q4_k_m.gguf');
+const model=resolve(process.env.MODEL_FILE || 'tmp/qwen2.5-0.5b-instruct-q4_k_m.gguf');
 assert.ok(existsSync(model),'Qwen GGUF must be downloaded and hash-checked by CI');
 const browser=await chromium.launch({headless:true,args:['--disable-gpu','--no-sandbox']});
 const page=await browser.newPage({viewport:{width:1280,height:900}});
 const external=[];
 const report={
   fixture:'synthetic pension provisions; no private records',
-  model:'Qwen2.5-0.5B-Instruct Q4_K_M (official Qwen GGUF)',
-  modelSha256:'74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db',
+  model:process.env.MODEL_LABEL || 'Official Qwen2.5-0.5B-Instruct Q4_K_M',
+  modelBytes:statSync(model).size,
+  modelSha256:process.env.MODEL_SHA256 || '74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db',
   origin:'file://',networkRequests:0,result:'not_completed',score:null
 };
 const t0=Date.now();
@@ -37,10 +38,10 @@ try {
   await page.getByRole('heading',{name:/OCR \+ LLM Pipeline Studio/i}).waitFor({timeout:15000});
   await page.locator('input[type="file"][accept=".gguf"]').setInputFiles(model);
   await page.getByRole('button',{name:'Load model'}).click();
-  await page.getByText('Loaded: qwen2.5-0.5b-instruct-q4_k_m.gguf').waitFor({timeout:180000});
+  await page.getByText('Loaded: '+basename(model)).waitFor({timeout:360000});
   report.loadMs=Date.now()-t0;
   await page.getByRole('button',{name:'Check extraction quality'}).click();
-  await page.getByText(/Synthetic sample: \d of 4 correct/).waitFor({timeout:180000});
+  await page.getByText(/Synthetic sample: \d of 4 correct/).waitFor({timeout:420000});
   const text=await page.getByText(/Synthetic sample: \d of 4 correct/).innerText();
   const found=text.match(/Synthetic sample: (\d) of 4 correct/);
   assert.ok(found,'Model must return a parsed known-answer JSON report.');
@@ -67,7 +68,7 @@ try {
   await page.getByText(/normal_retirement_age: 65/).waitFor({timeout:15000});
   await page.getByRole('button',{name:'Extract JSON',exact:true}).click();
   await page.getByRole('button',{name:'Extract and validate'}).click();
-  await page.locator('.evidence-field').first().waitFor({timeout:240000});
+  await page.locator('.evidence-field').first().waitFor({timeout:420000});
   const reviewedFields=await page.locator('.evidence-field').count();
   assert.ok(reviewedFields>=2,'Model must produce both requested plan fields.');
   for(let i=0;i<reviewedFields;i++){
