@@ -40,3 +40,7 @@ Run on a development machine:
     npm run build
 
 The GitHub Actions workflow does the same and produces a single HTML bundle on successful compilation. Actual GGUF + file:// browser acceptance still requires an independent test.
+
+## Context reservation and JSON generation
+
+The source-section budget reserves the configured `maxTokens` output space before estimating how much text can fit in the selected model context. The budget remains a heuristic because character counts are not true LLM token counts. The local Wllama adapter requests JSON-object mode **only for extraction**, not for normal chat. Any model or tokenizer that cannot support a request must report an error; the app must not silently remove source text.

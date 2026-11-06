@@ -24,15 +24,19 @@ function asObject(value: unknown): Record<string, unknown> | null {
     ? value as Record<string, unknown> : null;
 }
 
-export function textChunkBudget(contextTokens: number, schema: unknown): number {
+export function textChunkBudget(contextTokens: number, schema: unknown, maxOutputTokens = 512): number {
   if (!Number.isInteger(contextTokens) || contextTokens < 512) {
     throw new Error('Context size must be at least 512 tokens.');
   }
+  if (!Number.isInteger(maxOutputTokens) || maxOutputTokens < 16 || maxOutputTokens >= contextTokens) {
+    throw new Error('Output tokens must be less than context tokens.');
+  }
   const schemaChars = JSON.stringify(schema)?.length ?? 0;
-  // Heuristic only. The model tokenizer and chat template ultimately control context.
-  const budget = Math.min(2400, Math.floor(contextTokens * 1.6) - schemaChars - 850);
+  // Conservative heuristic, not an actual token count. Reserve room for model output
+  // and chat-template overhead; llama's tokenizer can still reject an overlong request.
+  const budget = Math.min(2400, Math.floor((contextTokens - maxOutputTokens) * 1.6) - schemaChars - 550);
   if (budget < 350) {
-    throw new Error('The JSON Schema is too large for the selected context. Increase context or simplify the schema.');
+    throw new Error('Not enough model context for source text and JSON output. Increase context, reduce maximum output, or simplify the schema.');
   }
   return budget;
 }
@@ -184,12 +188,13 @@ export function resolveCandidateValues(audit: ExtractionAudit, choices: Record<s
 export async function extractWholeDocument(
   doc: SourceDocument, schema: unknown, contextTokens: number,
   generate: (prompt: string, chunk: TextChunk, total: number) => Promise<string>,
-  onProgress?: (complete: number, total: number) => void
+  onProgress?: (complete: number, total: number) => void,
+  maxOutputTokens = 512
 ): Promise<ExtractionAudit> {
   if (!asObject(schema) || (schema as Record<string, unknown>).type !== 'object') {
     throw new Error('For multi-section extraction, the JSON Schema root must have type "object".');
   }
-  const chunks = splitWholeText(doc.text, textChunkBudget(contextTokens, schema));
+  const chunks = splitWholeText(doc.text, textChunkBudget(contextTokens, schema, maxOutputTokens));
   const outputs: unknown[] = [];
   for (const chunk of chunks) {
     const output = await generate(chunkPrompt(doc, schema, chunk, chunks.length), chunk, chunks.length);

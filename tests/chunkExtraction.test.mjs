@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   splitWholeText, textChunkBudget, collectChunkCandidates,
   resolveCandidateValues, extractWholeDocument
@@ -27,7 +28,7 @@ test('long source is covered exactly once, including line breaks and emoji', () 
 test('empty text, invalid budget and excessive input fail closed', () => {
   assert.throws(() => splitWholeText(' \n ', 200), /no text/i);
   assert.throws(() => splitWholeText('a'.repeat(4000), 200, 2), /too many/i);
-  assert.throws(() => textChunkBudget(1024,{type:'object', description:'x'.repeat(3000)}), /too large/i);
+  assert.throws(() => textChunkBudget(1024,{type:'object', description:'x'.repeat(3000)}), /Not enough model context/i);
 });
 
 test('null values do not compete with facts in another section', () => {
@@ -100,4 +101,18 @@ test('invalid model output aborts without a partial audit', async () => {
     ), /Section 2 returned invalid JSON/
   );
   assert.equal(calls,2);
+});
+
+test('section budgeting reserves context for output', () => {
+  const schema={type:'object',properties:{age:{type:'integer'}}};
+  const smallOutput=textChunkBudget(4096,schema,128);
+  const largeOutput=textChunkBudget(4096,schema,2048);
+  assert.ok(smallOutput>largeOutput);
+  assert.throws(()=>textChunkBudget(1024,schema,1024),/Output tokens/);
+});
+test('JSON mode is used for source extraction, not normal chat', () => {
+  const engineCode = readFileSync(new URL('../src/engine.ts',import.meta.url),'utf8');
+  const appCode = readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
+  assert.match(engineCode,/response_format: jsonMode/);
+  assert.match(appCode,/setRawExtraction\(produced\); \}, true/);
 });

@@ -21,7 +21,7 @@ export class OfflineEngine {
     try { await model.loadModel(sorted, { n_ctx: nCtx, n_threads: 1, n_gpu_layers: 0, n_parallel: 1 }); }
     catch (error) { await this.unload(); throw error; }
   }
-  async generate(messages: ChatMessage[], system: string, settings: Settings, onText: (text: string) => void) {
+  async generate(messages: ChatMessage[], system: string, settings: Settings, onText: (text: string) => void, jsonMode = false) {
     if (!this.model?.isModelLoaded()) throw new Error('Load a GGUF model first.');
     if (this.controller) throw new Error('Generation already running.');
     const c = new AbortController();
@@ -31,7 +31,8 @@ export class OfflineEngine {
       const stream = await this.model.createChatCompletion({
         messages: all, stream: true, abortSignal: c.signal,
         max_tokens: settings.maxTokens, temperature: settings.temperature,
-        top_p: settings.topP, cache_prompt: true
+        top_p: settings.topP, cache_prompt: true,
+        response_format: jsonMode ? { type: 'json_object' as const } : { type: 'text' as const }
       });
       for await (const chunk of stream) {
         if (c.signal.aborted) throw new Error('Generation canceled. No partial result was saved.');

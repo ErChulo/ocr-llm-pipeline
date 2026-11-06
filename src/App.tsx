@@ -149,11 +149,12 @@ export default function App() {
           setRawExtraction('');
           await engine.current.generate(
             [{ role: 'user', content: prompt }], SYSTEM, settings,
-            token => { produced += token; setRawExtraction(produced); }
+            token => { produced += token; setRawExtraction(produced); }, true
           );
           return produced;
         },
-        (done, total) => setProgress({ done, total })
+        (done, total) => setProgress({ done, total }),
+        settings.maxTokens
       );
       const merged = resolveCandidateValues(record);
       const draft = JSON.stringify(merged.data, null, 2);
