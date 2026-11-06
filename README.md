@@ -49,3 +49,7 @@ Download `ocr-llm-pipeline-single-html` from the successful [build workflow](htt
 - [Acceptance contract](docs/IMPLEMENTATION_ACCEPTANCE.md), [Impeccable setup](docs/IMPECCABLE_SETUP.md), [changelog](CHANGELOG.md).
 
 [Bulk OCR Studio](https://github.com/ErChulo/bulk-ocr-studio) is **read-only**. This repository contains a separate importer and has never modified that project.
+
+## Strict Content Security Policy
+
+JSON Schema validation is performed by a CSP-compatible interpreter, not dynamic JavaScript code generation. Imported schemas may use local JSON Pointer references, but external schema references and potentially dangerous regular-expression rules are refused with explicit errors. The **Check schema** command under Extract JSON works without a loaded model. For more, see [acceptance requirements](docs/IMPLEMENTATION_ACCEPTANCE.md).

@@ -38,3 +38,10 @@ The repository does not change `ErChulo/bulk-ocr-studio`. CI fixtures contain no
 ## Known file limits
 
 Individual inputs are bounded to 20 MB; PDF page limit is 300, extracted PDF text 2 million characters, OCR canvas 5 million pixels, source extraction at most 256 sections. Some image-rich or unusually large files are therefore intentionally rejected rather than partially accepted.
+
+## Schema-validation hardening
+
+- [x] Replaced runtime JavaScript-code-generating Ajv validation with a CSP-safe interpreted validator.
+- [x] Block external JSON Schema references, dynamic anchors, unsupported dialects and regex rules; enforce bounded schema complexity.
+- [x] Add user-triggered offline schema preflight; browser tests exercise valid and malicious schemas under `file://`.
+- [ ] Revisit safe schema pattern handling with a regex engine that cannot cause exponential backtracking and formal security review.

@@ -11,7 +11,7 @@
 * Enforce no network calls in release mode; validate CSP against every worker, inline script, WASM loader and OCR language file. Build success alone does not establish air-gapped runtime success.
 
 ## M1 — Baseline (source exists)
-* GGUF File picker; Wllama on-device chat; extraction from imported Bulk OCR Studio JSONC exports; document preview; Ajv JSON Schema validation; download output.
+* GGUF File picker; Wllama on-device chat; extraction from imported Bulk OCR Studio JSONC exports; document preview; CSP-safe interpreted JSON Schema validation; download output.
 * CI compiles/validates source and bundles HTML. No claim of successful model inference until a real GGUF smoke test.
 
 ## M2 — Native ingest and OCR
@@ -59,3 +59,7 @@ AirLLM-style one-layer-at-a-time disk streaming is a separate WASM inference bac
 * **Fact verified** = extracted value reviewed against real provenance.
 
 Do not collapse these labels into a generic “passing” claim.
+
+## Offline schema-validation security (beta)
+
+The user-selected schema must be checked without dynamically compiling JavaScript. The strict release CSP does not grant `unsafe-eval`. Schema references may point only to `#/` local JSON Pointer targets; external URLs and dynamic references are blocked before validation. Schema size and nesting limits are enforced. Pattern and patternProperties rules are temporarily refused because malicious regular expressions need a dedicated safety review. Validity is not documentary accuracy. The full UI extraction pipeline must pass actual Qwen `file://` tests before the feature is called accepted.
