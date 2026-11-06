@@ -49,3 +49,5 @@
 
 - [x] Use pure black and pure white canvases matching the exact source logo backgrounds.
 - [x] Small accessible sun/moon icon in the navigation bar; remove redundant settings-page theme controls.
+
+- [x] Added an optional local-model generation self-test and prevented stale model status after failed loads. This does not replace offline acceptance with a real GGUF.

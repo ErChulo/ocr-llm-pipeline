@@ -5,7 +5,8 @@ const steps = [
   { title: '1. Load a model', instructions: [
     'Select Choose model files.',
     'Select a GGUF file on your computer.',
-    'Select Load model. Read the status message.'
+    'Select Load model. Read the status message.',
+    'Select Test model to check local text generation.'
   ] },
   { title: '2. Add a document', instructions: [
     'Select Attach OCR export / text.',

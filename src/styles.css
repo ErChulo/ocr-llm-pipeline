@@ -70,3 +70,6 @@ nav button.active{color:var(--ink);background:var(--raised);border-color:var(--b
 .review-conflicts h3{font-size:15px;margin:0 0 8px}
 .review-conflicts label{display:block;margin:12px 0;color:var(--ink);overflow-wrap:anywhere}
 .review-json{height:280px;min-height:180px;resize:vertical}
+
+.model-test-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.model-test-actions button{flex:1;min-width:105px}

@@ -23,6 +23,7 @@ LOCAL DOCUMENT ──→ LOCAL MODEL ──→ CANDIDATE JSON
 3. Select the GGUF file.
 4. Select **Load model**.
 5. Read the status message.
+6. Select **Test model** to check local text generation.
 
 The model must load before you extract JSON.
 

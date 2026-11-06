@@ -37,6 +37,7 @@ export default function App() {
   const [selectedModels, setSelectedModels] = useState<File[]>([]);
   const [modelName, setModelName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [testingModel, setTestingModel] = useState(false);
   const [status, setStatus] = useState('Choose a GGUF model and attach OCR exports or local text.');
   const [error, setError] = useState('');
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -68,7 +69,7 @@ export default function App() {
 
   async function onModelLoad() {
     if (busy || selectedModels.length === 0) return;
-    setError(''); setStatus('Loading offline GGUF model into WebAssembly...'); setBusy(true);
+    setError(''); setModelName(''); setStatus('Loading offline GGUF model into WebAssembly...'); setBusy(true);
     try {
       const files = [...selectedModels].sort((a, b) => a.name.localeCompare(b.name));
       await engine.current.load(files, settings.context);
@@ -76,6 +77,25 @@ export default function App() {
       setStatus('Model loaded locally. Document extraction and chat are available.');
     } catch (e) { setError(errorMessage(e)); setStatus('Model failed to load.'); }
     finally { setBusy(false); }
+  }
+
+  async function onTestModel() {
+    if (busy || !engine.current.loaded) return;
+    setError(''); setBusy(true); setTestingModel(true);
+    setStatus('Checking that your local model can generate text...');
+    let output = '';
+    try {
+      await engine.current.generate(
+        [{ role: 'user', content: 'Say READY in one short sentence.' }], SYSTEM,
+        { ...settings, maxTokens: 32, temperature: 0.1 },
+        token => { output += token; }
+      );
+      if (!output.trim()) throw new Error('The model returned no text. Try a different GGUF.');
+      setStatus('Your local model generated text. Document extraction still needs source review.');
+    } catch (e) {
+      setError(errorMessage(e));
+      setStatus('The local model test did not complete.');
+    } finally { setBusy(false); setTestingModel(false); }
   }
 
   async function onAttach(e: ChangeEvent<HTMLInputElement>) {
@@ -209,6 +229,10 @@ export default function App() {
           {busy && !modelName ? 'Loading...' : 'Load model'}
         </button>
         <p className="help">{modelName ? 'Loaded: ' + modelName : 'No model loaded'}</p>
+        {modelName && <div className="model-test-actions">
+          <button type="button" className="secondary" disabled={busy} onClick={() => void onTestModel()}>Test model</button>
+          {testingModel && <button type="button" className="secondary" onClick={() => engine.current.stop()}>Stop</button>}
+        </div>}
       </section>
       <section><h2>02 — Local documents</h2>
         <label className="picker">Attach OCR export / text
