@@ -101,7 +101,7 @@ export async function validateLocalJson(schema:unknown,value:unknown):Promise<Sc
   try {
     // No unsafe-eval, no browser network requests.
     setShouldValidateFormat(true);
-    const output=await validate(uri,value as Parameters<typeof validate>[1],BASIC);
+    const output=await validate(uri,value as never,BASIC);
     return {valid:output.valid,errors:output.valid?[]:errorLines(output)};
   } finally {
     unregisterSchema(uri);
