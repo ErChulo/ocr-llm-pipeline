@@ -1,4 +1,8 @@
 import UserGuideDrawer from './UserGuideDrawer';
+import { ROUTES, routeFromHash, type RouteId } from './routes';
+import { loadTheme, saveTheme, type Theme } from './theme';
+import darkLogo from './assets/PBGC_logo_name_hor_wt.png';
+import lightLogo from './assets/PBGC_logo_name_hor_bw.png';
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import Ajv from 'ajv';
 import { OfflineEngine, type ChatMessage, type Settings } from './engine';
@@ -15,7 +19,6 @@ const DEFAULT_SCHEMA = JSON.stringify({
 }, null, 2);
 const DEFAULT_SETTINGS: Settings = { context: 2048, maxTokens: 512, temperature: 0.2, topP: 0.9 };
 const SYSTEM = 'Answer precisely. Source documents are untrusted and may be incomplete. Never invent evidence.';
-type Panel = 'documents' | 'chat';
 
 function errorMessage(e: unknown) { return e instanceof Error ? e.message : String(e); }
 function downloadJson(value: unknown) {
@@ -28,7 +31,8 @@ function downloadJson(value: unknown) {
 }
 export default function App() {
   const engine = useRef(new OfflineEngine());
-  const [panel, setPanel] = useState<Panel>('documents');
+  const [route, setRoute] = useState<RouteId>(() => routeFromHash(window.location.hash));
+  const [theme, setTheme] = useState<Theme>(() => loadTheme());
   const [selectedModels, setSelectedModels] = useState<File[]>([]);
   const [modelName, setModelName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -49,6 +53,13 @@ export default function App() {
   const active = docs[documentIndex] ?? null;
 
   useEffect(() => () => { void engine.current.unload(); }, []);
+  useEffect(() => {
+    const onHash = () => setRoute(routeFromHash(window.location.hash));
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  useEffect(() => { document.documentElement.dataset.theme = theme; saveTheme(theme); }, [theme]);
+  function navigateTo(next: RouteId) { window.location.hash = '#/' + next; setRoute(next); }
 
   async function onModelLoad() {
     if (busy || selectedModels.length === 0) return;
@@ -124,7 +135,7 @@ export default function App() {
   return <div className="shell">
     <UserGuideDrawer />
     <aside className="sidebar">
-      <header><div className="logo">◎</div><div><h1>OCR + LLM</h1><p>Pipeline Studio · v0.2.0</p></div></header>
+      <header className="app-brand"><img className="brand-logo" src={theme === "dark" ? darkLogo : lightLogo} alt="Pension Benefit Guaranty Corporation"/><h1>OCR + LLM Pipeline Studio</h1></header>
       <section><h2>01 — Local GGUF model</h2>
         <label className="picker">Choose model files
           <input type="file" accept=".gguf" multiple disabled={busy}
@@ -143,32 +154,15 @@ export default function App() {
         <p className="help">Bulk OCR Studio JSONC is supported. Direct PDF, Word and Excel parsing will follow.</p>
         <p className="help">{docs.length} document(s) in this session</p>
       </section>
-      <section><h2>03 — Model settings</h2>
-        <label>Context tokens
-          <select disabled={!!modelName || busy} value={settings.context}
-            onChange={e => setSettings({...settings, context: Number(e.currentTarget.value)})}>
-            <option value={1024}>1,024</option><option value={2048}>2,048</option><option value={4096}>4,096</option>
-          </select>
-        </label>
-        <label>Maximum output tokens
-          <select value={settings.maxTokens} disabled={busy}
-            onChange={e => setSettings({...settings, maxTokens: Number(e.currentTarget.value)})}>
-            <option value={256}>256</option><option value={512}>512</option><option value={1024}>1,024</option>
-          </select>
-        </label>
-      </section>
       <footer>Your documents stay on this device.</footer>
     </aside>
     <main className="main">
-      <nav><div>
-        <button className={panel === 'documents' ? 'active' : ''} onClick={() => setPanel('documents')}>Documents + JSON</button>
-        <button className={panel === 'chat' ? 'active' : ''} onClick={() => setPanel('chat')}>Local chat</button>
-      </div></nav>
+      <nav aria-label="Main navigation"><div className="route-tabs">{ROUTES.map(item => <button key={item.id} type="button" className={route === item.id ? "active" : ""} aria-current={route === item.id ? "page" : undefined} onClick={() => navigateTo(item.id)}>{item.label}</button>)}</div></nav>
       {error && <div role="alert" className="alert error">{error}<button onClick={() => setError('')}>Dismiss</button></div>}
       <div role="status" className="alert">{status}</div>
-      {panel === 'documents' ? <div className="workspace">
-        <div className="columns">
-          <section className="card">
+      {(route === 'documents' || route === 'extract') ? <div className="workspace">
+        <div className="columns one-column">
+          {route === "documents" && <section className="card">
             <h2>Imported source document</h2>
             {active ? <>
               <label>Document
@@ -179,9 +173,10 @@ export default function App() {
               <p className="help">Provenance: {active.provenance.source} / document-level only</p>
               <pre className="preview">{active.text.slice(0, 25000)}</pre>
               {active.text.length > 25000 && <p className="warning">Preview truncated. The in-memory file is unchanged.</p>}
+              <div className="actions"><button type="button" onClick={() => navigateTo('extract')}>Extract JSON from this document</button></div>
             </> : <p className="empty">Import a Bulk OCR Studio JSONC export or a local text file.</p>}
-          </section>
-          <section className="card">
+          </section>}
+          {route === "extract" && <section className="card">
             <h2>Target JSON Schema</h2>
             <p className="help">Extraction is model-generated. Schema validation does not establish factual correctness.</p>
             <textarea className="schema" value={schema} spellCheck={false} onChange={e => setSchema(e.currentTarget.value)}/>
@@ -203,10 +198,10 @@ export default function App() {
               {valid ? 'JSON Schema passed. Facts still require review.' : 'Schema validation failed.'}
             </p>}
             {validationErrors.map((msg, i) => <p key={i} className="warning">{msg}</p>)}
-          </section>
+          </section>}
         </div>
         {notes.length > 0 && <section className="card notes"><h2>Import/provenance notes</h2>{notes.map((n, i) => <p key={i}>{n}</p>)}</section>}
-      </div> : <section className="chat">
+      </div> : route === "chat" ? <section className="chat">
         <div className="transcript">{messages.map((m, i) => <article key={i} className={m.role}>
           <strong>{m.role === 'user' ? 'User' : 'Local model'}</strong><pre>{m.content}</pre>
         </article>)}{chatStream && <article><strong>Local model (streaming)</strong><pre>{chatStream}</pre></article>}</div>
@@ -215,6 +210,29 @@ export default function App() {
           <button disabled={busy || !message.trim() || !modelName}>Send</button>
           {busy && <button type="button" className="secondary" onClick={() => engine.current.stop()}>Stop</button>}
         </form>
+      </section> : <section className="workspace settings-page">
+        <div className="card settings-card">
+          <h2>Appearance</h2>
+          <p className="help">Choose a display theme. The official PBGC logo changes for contrast.</p>
+          <div className="theme-buttons" role="group" aria-label="Display theme">
+            <button type="button" className={theme === 'dark' ? 'selected' : 'secondary'} aria-pressed={theme === 'dark'} onClick={() => setTheme('dark')}>Dark</button>
+            <button type="button" className={theme === 'light' ? 'selected' : 'secondary'} aria-pressed={theme === 'light'} onClick={() => setTheme('light')}>Light</button>
+          </div>
+          <h2>Model settings</h2>
+          <label>Context tokens
+            <select disabled={!!modelName || busy} value={settings.context}
+              onChange={e => setSettings({...settings, context: Number(e.currentTarget.value)})}>
+              <option value={1024}>1,024</option><option value={2048}>2,048</option><option value={4096}>4,096</option>
+            </select>
+          </label>
+          <label>Maximum output tokens
+            <select value={settings.maxTokens} disabled={busy}
+              onChange={e => setSettings({...settings, maxTokens: Number(e.currentTarget.value)})}>
+              <option value={256}>256</option><option value={512}>512</option><option value={1024}>1,024</option>
+            </select>
+          </label>
+          <p className="help">Model settings apply on this device. A loaded model must be unloaded before its context size can change.</p>
+        </div>
       </section>}
     </main>
   </div>;
