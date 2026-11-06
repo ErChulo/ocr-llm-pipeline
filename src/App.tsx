@@ -10,6 +10,7 @@ import { importFile, type SourceDocument } from './pipeline';
 import { terminateOcr } from './ocr';
 import { extractWholeDocument, resolveCandidateValues, type ExtractionAudit } from './chunkExtraction';
 import { auditLiteralEvidence, evidenceReviewComplete, exportReviewedEvidence } from './evidence';
+import { screenLocalPrivacy, safePrivacySummary } from './privacy';
 
 const DEFAULT_SCHEMA = JSON.stringify({
   type: 'object',
@@ -57,10 +58,13 @@ export default function App() {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [evidenceChoices, setEvidenceChoices] = useState<Record<string,number>>({});
   const [evidenceConfirmed, setEvidenceConfirmed] = useState<Record<string,boolean>>({});
+  const [privacyReviewed, setPrivacyReviewed] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [message, setMessage] = useState('');
   const [chatStream, setChatStream] = useState('');
   const active = docs[documentIndex] ?? null;
+  const privacy = useMemo(() => active ? screenLocalPrivacy(active.text) :
+    {categories:{},requiresReview:false}, [active]);
   // A literal text match is only a candidate citation. The user must review
   // each value and confirm one actual source location before exporting.
   const evidenceChecks = useMemo(() =>
@@ -129,7 +133,7 @@ export default function App() {
   function clearExtraction() {
     setExtraction(null); setAudit(null); setReviewDraft(''); setConflictChoices({});
     setRawExtraction(''); setValid(false); setValidationErrors([]); setProgress({ done: 0, total: 0 });
-    setEvidenceChoices({}); setEvidenceConfirmed({});
+    setEvidenceChoices({}); setEvidenceConfirmed({}); setPrivacyReviewed(false);
   }
 
   function validateDraft(draft: string, currentAudit: ExtractionAudit | null, choices: Record<string, number>) {
@@ -325,7 +329,7 @@ export default function App() {
             </div>}
             <div className="heading"><h2>Candidate JSON</h2>
               {audit && <button className="secondary"
-                disabled={!valid || !extraction || !evidenceComplete || busy}
+                disabled={!valid || !extraction || !evidenceComplete || busy || (privacy.requiresReview && !privacyReviewed)}
                 title={!evidenceComplete ? 'Select and confirm source evidence for every JSON value.' : 'Export reviewed JSON and source references.'}
                 onClick={() => downloadJson({
                   status: 'schema_validated_facts_unverified',
@@ -334,6 +338,7 @@ export default function App() {
                   candidateSources: audit.candidates,
                   conflictDecisions: conflictChoices,
                   fieldEvidence: exportReviewedEvidence(evidenceChecks,evidenceChoices,evidenceConfirmed),
+                  privacyScreen: {categories:privacy.categories,reviewed:!privacy.requiresReview || privacyReviewed},
                   evidenceStatus: 'literal_match_human_reviewed_facts_not_independently_verified',
                   extraction,
                   validationErrors: []
@@ -350,6 +355,15 @@ export default function App() {
             {audit && <p className={valid ? 'success' : 'warning'}>
               {valid ? 'JSON Schema passed. Verify all facts before use.' : 'JSON needs review or corrections.'}
             </p>}
+            {active && privacy.requiresReview && <section className="privacy-review">
+              <h3>Protected information check</h3>
+              <p className="warning">Possible personal data: {safePrivacySummary(privacy)}.</p>
+              <p className="help">The check runs locally and is not exhaustive. Do not put protected information in public repositories.</p>
+              <label className="evidence-confirm">
+                <input type="checkbox" checked={privacyReviewed} onChange={e=>setPrivacyReviewed(e.currentTarget.checked)}/>
+                I reviewed this information and will save only in an authorized local location.
+              </label>
+            </section>}
             {valid && evidenceChecks.length > 0 && <section className="evidence-review" aria-label="Source evidence review">
               <h3>Review the source of each value</h3>
               <p className="help">A text match is not proof of a fact. Compare each value with the original file and confirm its source.</p>

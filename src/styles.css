@@ -82,3 +82,6 @@ nav button.active{color:var(--ink);background:var(--raised);border-color:var(--b
 .evidence-quote{margin:10px 0;padding:12px;border-left:3px solid var(--focus);background:var(--raised);font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
 .evidence-confirm{display:flex!important;align-items:center;gap:9px;font-weight:600;cursor:pointer}
 .evidence-confirm input{width:17px;height:17px;flex:none;accent-color:var(--primary)}
+
+.privacy-review{border:1px solid var(--border);border-radius:10px;padding:16px;margin:16px 0;background:var(--raised)}
+.privacy-review h3{font-size:15px;margin:0 0 8px}

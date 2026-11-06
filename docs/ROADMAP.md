@@ -78,3 +78,5 @@
 - [ ] Test image and scanned-PDF OCR with synthetic fixtures under `file://`, confirm zero network requests and accuracy thresholds.
 
 - [x] CSV row/column provenance with quoted-cell parsing and no spreadsheet formula evaluation, covered by synthetic tests.
+
+- [x] Local conservative SSN/email/payment-card/phone detection and export review acknowledgement; screening is not a comprehensive PII control or certification.

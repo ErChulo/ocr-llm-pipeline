@@ -1,0 +1,48 @@
+/** Conservative LOCAL identifier screening. Does not return or log matched values. */
+export type PrivacyCategory = 'possible_ssn'|'email'|'payment_card'|'phone';
+export type PrivacySummary = { categories: Partial<Record<PrivacyCategory,number>>; requiresReview:boolean };
+function plausibleSSN(area:number,group:number,serial:number):boolean {
+  return area>0 && area!==666 && area<900 && group>0 && serial>0;
+}
+function luhn(number:string):boolean {
+  if(number.length<13||number.length>19)return false;
+  let sum=0,double=false;
+  for(let i=number.length-1;i>=0;i--){
+    let digit=Number(number[i]);
+    if(double){digit*=2;if(digit>9)digit-=9;}
+    sum+=digit;double=!double;
+  }
+  return sum%10===0;
+}
+function countUnique(text:string, pattern:RegExp, valid:(match:string)=>boolean):number {
+  const used=new Set<string>();
+  for(const m of text.matchAll(pattern)){
+    if(valid(m[0]))used.add(m.index+'-'+(m.index+m[0].length));
+    if(used.size>10000)throw new Error('Document has too many possible identifiers for safe review.');
+  }
+  return used.size;
+}
+export function screenLocalPrivacy(text:string):PrivacySummary{
+  if(typeof text!=='string')throw new Error('Privacy screen requires local document text.');
+  const summary:PrivacySummary={categories:{},requiresReview:false};
+  const found:Record<PrivacyCategory,number>={
+    possible_ssn:countUnique(text,/\b\d{3}[- ]\d{2}[- ]\d{4}\b/g,m=>{
+      const ds=m.replace(/\D/g,'');
+      return plausibleSSN(Number(ds.slice(0,3)),Number(ds.slice(3,5)),Number(ds.slice(5)));
+    }),
+    email:countUnique(text,/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,()=>true),
+    payment_card:countUnique(text,/\b(?:\d[ -]?){12,18}\d\b/g,m=>luhn(m.replace(/\D/g,''))),
+    phone:countUnique(text,/(?:\+1[\s.-]?)?(?:\(\d{3}\)|\b\d{3})[\s.-]\d{3}[\s.-]\d{4}\b/g,()=>true)
+  };
+  for(const [kind,count] of Object.entries(found) as [PrivacyCategory,number][]){
+    if(count>0){summary.categories[kind]=count;summary.requiresReview=true;}
+  }
+  return summary;
+}
+export function safePrivacySummary(summary:PrivacySummary):string{
+  const labels:Record<PrivacyCategory,string>={
+    possible_ssn:'possible SSNs',email:'email addresses',payment_card:'possible payment cards',phone:'phone numbers'
+  };
+  return (Object.entries(summary.categories) as [PrivacyCategory,number][])
+    .map(([kind,count])=>count+' '+labels[kind]).join('; ');
+}
