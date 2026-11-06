@@ -20,3 +20,7 @@ Screenshots are uploaded only as workflow artifacts. Neither Playwright nor its 
 ## First run observation
 
 The initial Playwright run **failed**: the standalone app rendered and toggled themes, but loading `stories260K.gguf` did not complete within the test timeout. The worker logged a generic error event. This is not a passing inference result. A subsequent implementation adds bundled official compatibility assets for browsers that lack Wllama's JSPI/MEMORY64 requirements; it still requires an independent passing runtime test.
+
+## Experimental classic-worker adaptation
+
+The first real Chromium file:// smoke runs load the UI and execute a simple classic blob worker, but the Wllama module worker closes immediately with a generic Event. The output build step now converts exactly one pinned Wllama 3.8.1 module-worker constructor into a classic-worker constructor and fails if the expected source pattern is absent. This is an experiment, not verified offline inference. No upstream repository is modified.

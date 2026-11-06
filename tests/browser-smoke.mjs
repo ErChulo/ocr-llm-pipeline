@@ -55,7 +55,7 @@ try {
       new Promise(resolve => {
         const url = URL.createObjectURL(new Blob(['self.postMessage("alive")'], { type: 'text/javascript' }));
         try {
-          const w = new Worker(url);
+          const w = new Worker(url, { type: 'classic' });
           w.onmessage = e => { w.terminate(); URL.revokeObjectURL(url); resolve({ ok:true, value:e.data }); };
           w.onerror = e => { w.terminate(); URL.revokeObjectURL(url); resolve({ ok:false, message:e.message, filename:e.filename }); };
         } catch(e) { URL.revokeObjectURL(url); resolve({ ok:false, error:String(e) }); }
