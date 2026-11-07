@@ -19,7 +19,7 @@
 .guide-caution{border-left:3px solid #E4002B;padding:12px 16px;background:#17111A;border-radius:0 7px 7px 0}
 .guide-availability{border-left:3px solid #6E93C2;padding-left:14px}
 .guide-footnote{color:#CAD5E3;font-size:12px}
-.guide-content button:focus-visible,.guide-toolbar button:focus-visible,.guide-open:focus-visible{outline:3px solid #6E93C2;outline-offset:3px}
+.guide-content:focus-visible,.guide-content button:focus-visible,.guide-toolbar button:focus-visible,.guide-open:focus-visible{outline:3px solid #6E93C2;outline-offset:3px}
 @media(max-width:540px){.guide-toolbar{padding:12px}.guide-content{padding:18px}.guide-toolbar button{font-size:11px}}
 @media print{
   @page{size:A4;margin:14mm}
