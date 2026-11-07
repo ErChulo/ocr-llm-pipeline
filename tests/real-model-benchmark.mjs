@@ -94,6 +94,11 @@ try {
   assert.equal(external.length,0,'The app must make zero external network requests.');
   await page.screenshot({path:'tmp/real-model-quality.png',fullPage:true});
 
+  if(process.env.MODEL_TEST_SCOPE==='quality_only'){
+    report.fullPipeline='not_tested';
+    report.experimentScope='model_load_and_four_field_quality_only';
+    checkpoint('bounded_3b_scope_complete');
+  }else{
   // Full application test: import, extract, validate, confirm citation and
   // download. This is not a mocked LLM, and no production participant data.
   const fictional=[
@@ -155,6 +160,7 @@ try {
   report.pipelineMs=Date.now()-t0-report.loadMs;
   console.log('REAL GGUF END-TO-END: source import, JSON, evidence review and export passed.');
 
+  }
   console.log('REAL GGUF QUALITY:',JSON.stringify(report));
 } catch(error) {
   report.result='test_failed';
