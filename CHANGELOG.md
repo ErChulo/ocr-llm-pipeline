@@ -2,6 +2,8 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Record measured actual Qwen2.5-0.5B eight-case offline benchmark: 75% strict micro field precision/recall/F1, four of eight fully exact, 392.8 seconds, no browser network calls. Document observed date reformatting, normal-form extraction error, and conditional phrasing mismatch. This is below unattended production acceptance.
+
 - Harden DOCX/XLSX XML parsing against deeply nested document structures with iterative 128-depth/500,000-node traversal limits and regression fixtures. Passing tests are defense-in-depth, not a comprehensive security audit.
 
 - Add a separate eight-case real-GGUF accuracy workflow that checks official Qwen model SHA-256, tests the standalone offline Chromium app and records measured fictional-case quality. The historical five-case baseline remains separately reproducible; no unmeasured eight-case score is claimed.
