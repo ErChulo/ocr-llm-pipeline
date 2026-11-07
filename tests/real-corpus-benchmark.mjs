@@ -11,6 +11,7 @@ import { pathToFileURL } from 'node:url';
 import { mkdirSync,writeFileSync,readFileSync,statSync,existsSync } from 'node:fs';
 import { syntheticCases } from './fixtures/syntheticPensionCases.mjs';
 import { scoreCorpus } from '../src/syntheticQuality.ts';
+import {dateRepresentationAgreement} from '../src/dateRepresentation.ts';
 import assert from 'node:assert/strict';
 
 mkdirSync('tmp',{recursive:true});
@@ -102,6 +103,18 @@ try{
     return {id:item.id,expected:source.expected,actual:item.actual};
   });
   if(observations.length){
+    const dateChecks=[];
+    for(const item of report.cases){
+      const sample=samples.find(x=>x.id===item.id);
+      for(const path of sample.datePaths||[]){
+        // The fixed corpus annotates dates explicitly. No arbitrary string
+        // is parsed or reinterpreted as a date.
+        const key=path.slice(1);
+        dateChecks.push({caseId:item.id,path,
+          ...dateRepresentationAgreement(sample.expected[key],item.actual?.[key])});
+      }
+    }
+    report.dateRepresentationChecks=dateChecks;
     const score=scoreCorpus(observations);
     report.micro=score.micro;
     report.exactCases=score.exactCases;

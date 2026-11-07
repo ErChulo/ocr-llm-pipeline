@@ -13,6 +13,7 @@ export const syntheticCases=[
   {
     id:'historical-vs-amended',
     category:'amendment',
+    datePaths:['/amendment_date'],
     source:'FICTIONAL PLAN: 2018 original normal age 65. An amendment effective January 1 2025 changes normal age to 67 for future accruals. Interpretation requires effective-date review.',
     expected:{original_age:65,amended_age:67,amendment_date:'January 1 2025'},
     correct:{original_age:65,amended_age:67,amendment_date:'January 1 2025'}

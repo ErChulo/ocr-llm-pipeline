@@ -9,3 +9,7 @@ For each expected field, the evaluator assigns one TP only when both key and exa
 **Important:** Existing source tests use *prewritten correct and incorrect JSON outputs*, not real LLM inference. A perfect score on these fixtures proves the **scorer** is implemented correctly, not that Qwen or any other GGUF reliably solves these scenarios.
 
 The planned next benchmark is to feed the fixtures into the actual offline model and record real performance. Document precedence cannot be inferred merely because an amendment appears later, and a literal quote match does not establish applicability or regulatory correctness.
+
+## Unambiguous dates and strict scoring
+
+A real-model test on November 7, 2026 returned `2025-01-01` where the annotation expected `January 1 2025`. Those denote the same date but have different literal representations. The corpus retained this as a strict field mismatch (90% micro precision and recall). A separate diagnostic now checks **only explicitly annotated date paths**, and only recognizes ISO or full English month-name dates. It never accepts ambiguous numeric formats such as `01/02/2025`, never rewrites exported values, and never decides whether an amendment applies.
