@@ -1,0 +1,153 @@
+name: Full Playwright offline acceptance
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/full-playwright-acceptance.yml'
+      - 'tests/browser-smoke.mjs'
+      - 'tests/real-corpus-benchmark.mjs'
+      - 'tests/browser-accessibility.mjs'
+
+concurrency:
+  group: full-playwright-acceptance-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  document-and-model-smoke:
+    name: File HTML, PDF, Office, OCR and local GGUF
+    runs-on: ubuntu-latest
+    timeout-minutes: 23
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run deterministic unit tests and build single HTML
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+          npm run build
+      - name: Set up Chromium Playwright (CI runner only)
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Download and verify tiny GGUF for loading and generation
+        timeout-minutes: 5
+        run: |
+          mkdir -p tmp
+          curl --fail --location --silent --show-error --retry 3 \
+            'https://huggingface.co/ggml-org/models-moved/resolve/main/tinyllamas/stories260K.gguf' \
+            --output tmp/stories260K.gguf
+          printf '%s  %s\n' \
+            '270cba1bd5109f42d03350f60406024560464db173c0e387d91f0426d3bd256d' \
+            'tmp/stories260K.gguf' | sha256sum --check
+      - name: Playwright file:// full import and runtime acceptance
+        timeout-minutes: 13
+        run: node tests/browser-smoke.mjs
+      - name: Upload actual HTML, screenshots and printable Guide
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-playwright-app-and-document-evidence
+          path: |
+            dist/index.html
+            tmp/smoke-*.png
+            tmp/guide-print.pdf
+          if-no-files-found: ignore
+
+  real-qwen-json-extraction:
+    name: Actual Qwen 0.5B extraction of eight fictional cases
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install and build the actual standalone app
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Set up pinned Chromium Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Download official checksum-verified Qwen 0.5B (CI only)
+        timeout-minutes: 8
+        run: |
+          mkdir -p tmp
+          curl -fL --retry 3 --retry-all-errors \
+            'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf' \
+            -o tmp/qwen2.5-0.5b-instruct-q4_k_m.gguf
+          printf '%s  %s\n' \
+            '74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db' \
+            'tmp/qwen2.5-0.5b-instruct-q4_k_m.gguf' | sha256sum --check
+      - name: Playwright real-model JSON extraction and source accuracy
+        timeout-minutes: 20
+        env:
+          BENCHMARK_CASES: all
+          MODEL_LABEL: Official Qwen2.5-0.5B-Instruct Q4_K_M
+          MODEL_FILE: tmp/qwen2.5-0.5b-instruct-q4_k_m.gguf
+        run: node tests/real-corpus-benchmark.mjs
+      - name: Print measured synthetic acceptance summary
+        if: always()
+        run: |
+          if test -s tmp/real-corpus-report.json; then
+            node --input-type=module -e '
+              import {readFileSync} from "node:fs";
+              const r=JSON.parse(readFileSync("tmp/real-corpus-report.json","utf8"));
+              const line=[
+                "### Actual Qwen source-to-JSON Playwright result",
+                "- "+(r.cases?.length??0)+" fictional cases",
+                "- "+(r.exactCases??"not measured")+" exact cases",
+                "- Strict micro F1: "+(r.micro?.f1===undefined?"not measured":(100*r.micro.f1).toFixed(2)+"%"),
+                "- External requests: "+(r.externalRequestCount??r.externalRequests?.length??"unknown"),
+                "- Status: "+r.status,
+                "",
+                "Synthetic quality is not real-plan or PBGC acceptance."
+              ].join("\n");
+              console.log(line);
+              console.log("Status and per-case JSON are in the uploaded artifact.");
+            ' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload fictional-only model report and last screen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-playwright-real-qwen-extraction
+          path: |
+            tmp/real-corpus-report.json
+            tmp/real-corpus-final.png
+          if-no-files-found: ignore
+
+  offline-accessibility:
+    name: File HTML accessibility and keyboard Guide
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install and build
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Set up Chromium and axe on networked CI runner
+        run: |
+          npm install --no-save playwright@1.55.0 @axe-core/playwright@4.14.0
+          npx playwright install --with-deps chromium
+      - name: Playwright file:// WCAG audit and focus restoration
+        timeout-minutes: 6
+        run: node tests/browser-accessibility.mjs
+      - name: Upload accessibility findings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-playwright-accessibility-audit
+          path: tmp/accessibility-audit.json
+          if-no-files-found: ignore
