@@ -176,3 +176,37 @@ test('invented, too-short and other-section reviewer quotations cannot unlock ev
   assert.equal(check[0].status,'missing');
  }
 });
+
+
+test('Positive numeric evidence is not borrowed from negative, signed, or accounting values',()=>{
+ const text='Benefit -65. Offset −65. Adjustment -$65. Liability ($65).';
+ const d={...doc,text,records:undefined};
+ for(const value of [65,'65']){
+  const check=auditLiteralEvidence(d,{amount:value});
+  assert.equal(check[0].status,'missing','sign must not be stripped from '+JSON.stringify(value));
+ }
+ const negative=auditLiteralEvidence(d,{amount:-65});
+ assert.equal(negative[0].status,'match','negative numeric value keeps its sign');
+});
+
+test('Numeric strings do not match grouped, decimal, exponential, or coded quantities',()=>{
+ const text='Case A65 uses 1,650 units. Scale 65e3. Reference 1e65. Age 65.5.';
+ const d={...doc,text,records:undefined};
+ for(const value of [65,'65',650,'650']){
+  const check=auditLiteralEvidence(d,{number:value});
+  assert.equal(check[0].status,'missing','must not match a partial numeric token '+value);
+ }
+ const exact=auditLiteralEvidence({...d,text:text+' Normal age 65.'},{age:'65'});
+ assert.equal(exact[0].status,'match');
+ assert.equal(exact[0].matches.length,1);
+ assert.match(exact[0].matches[0].quote,/Normal age 65/);
+});
+
+test('Pension age ranges need explicit interpretation instead of matching bare numeric strings',()=>{
+ const text='Early eligibility 55-65; later text confirms age 65.';
+ const d={...doc,text,records:undefined};
+ const check=auditLiteralEvidence(d,{age:'65'});
+ assert.equal(check[0].status,'match');
+ assert.equal(check[0].matches.length,1);
+ assert.equal(check[0].matches[0].start,text.lastIndexOf('65'));
+});
