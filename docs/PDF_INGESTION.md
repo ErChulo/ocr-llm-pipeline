@@ -9,13 +9,14 @@
 - Retain original PDF bytes **in browser memory only** so the user can open and inspect each page. These bytes are not part of the JSON export.
 - For searchable text, preserve character offsets and PDF.js text-item coordinates. The reviewer can display **approximate text-item envelopes** on the original page. They are not exact glyph or quoted-substring boxes.
 - The original page viewer supports page navigation and uses no server.
-- For pages without a text layer, use English OCR and record the OCR confidence. Pages with both selectable text and images issue a warning because image-contained text might still be missed.
+- For pages without a text layer, use English OCR and record the OCR confidence. **Every OCR-transcribed page requires explicit original-page review before JSON export, regardless of the confidence score.** Pages with both selectable text and images issue a separate warning because image-contained text might still be missed.
+- For imported images, use **View original image** to compare the unmodified local file with OCR text. The original image stays in browser memory and is not exported. **Every image OCR transcription requires original-image review**, including high-confidence results.
 - Correct an OCR transcription manually. Corrections invalidate earlier extraction/review, preserve the original file SHA-256 and page identity, and are marked as human-reviewed text.
 - Refuse partial imports when OCR fails, a page is blank, limits are exceeded or the PDF is password protected.
 
 ## Important limits
 
-- OCR may misread numbers, dates, names and formulas. Always compare with the PDF.
+- OCR may misread numbers, dates, names and formulas even at 100% reported confidence. Always compare with the PDF or image; confidence is only a diagnostic.
 - Text embedded in an image on a page that already has text can remain unrecognized.
 - PDF tables, columns, rotated text and complex layouts may not preserve logical reading order.
 - A PDF text-item envelope is **not** a verified box around every character or a claim-level factual citation.
