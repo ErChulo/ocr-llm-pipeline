@@ -7,7 +7,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { statSync, mkdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
-import { createSyntheticPdf, createScannedPdf } from './pdf-fixture.mjs';
+import { createSyntheticPdf, createScannedPdf, createAnnotatedPdf } from './pdf-fixture.mjs';
 import { zipSync, strToU8 } from 'fflate';
 
 mkdirSync('tmp', { recursive: true });
@@ -139,6 +139,22 @@ try {
   await page.getByRole('button',{name:'Close PDF view'}).click();
   await page.locator('.card select').first().selectOption({label:'synthetic.pdf'});
   console.log('REAL BROWSER: multi-column PDF text geometry requires original-source review.');
+
+  // FreeText PDF annotations can contain unextracted exceptions. Links are
+  // not equivalent to such source content; a note blocks export until review.
+  await filePicker.setInputFiles({
+    name:'fictional-annotated.pdf',mimeType:'application/pdf',
+    buffer:createAnnotatedPdf('FreeText')
+  });
+  const annotationsReview=page.locator('.source-completeness');
+  await annotationsReview.getByText(/interactive fields, notes or other annotations/i)
+    .waitFor({timeout:30000});
+  assert.equal(await annotationsReview.locator('input[type="checkbox"]').count(),1);
+  assert.doesNotMatch(await page.locator('.preview').innerText(),
+    /Unverified retirement exception/);
+  await page.locator('.card select').first().selectOption({label:'synthetic.pdf'});
+  console.log('REAL BROWSER: omitted PDF annotation values require source review.');
+
 
 
 
