@@ -28,6 +28,7 @@
 - [x] Mixed PDF raster/text pages now trigger a **required original-source acknowledgement** before JSON export.
 - [x] Optional whole-page supplemental OCR on mixed raster/text pages, retaining native PDF.js text separately and requiring original-page review; separate evidence and correction records are tested in browser.
 - [x] Geometry-based review gate flags suspicious PDF column jumps, table-like wide gaps, reading-order reversals and rotated text; synthetic tests and browser review cover examples.
+- [x] Non-link PDF annotation/form omissions require original-source review; synthetic note/link fixtures and offline browser tests cover this risk. In-app annotation rendering remains unsupported.
 - [ ] Precise image-region isolation, OCR deduplication, cross-column reading-order recovery and exact glyph/quoted-substring highlights remain open.
 - [x] Human-editable OCR transcription with original-file fingerprint and page provenance preserved; correction invalidates prior extraction review.
 - [x] All scanned PDF pages and images now require original-source review, regardless of confidence; image originals can be viewed locally. Corrections reset prior acknowledgement.
