@@ -3,6 +3,8 @@ import wasmUrl from 'virtual:wllama-wasm';
 import compatWasmUrl from 'virtual:wllama-compat-wasm';
 import compatWorkerCode from 'virtual:wllama-compat-worker';
 import { assertGenerationComplete } from './completionGuard.ts';
+import { inspectGgufParts } from './ggufPreflight.ts';
+import { GenerationMeter } from './generationTiming.ts';
 export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 export type Settings = { context: number; maxTokens: number; temperature: number; topP: number };
 export class OfflineEngine {
@@ -10,7 +12,7 @@ export class OfflineEngine {
   private controller: AbortController | null = null;
   get loaded(): boolean { return this.model?.isModelLoaded() ?? false; }
   async load(files: File[], nCtx: number) {
-    if (!files.length || files.some(f => !/\.gguf$/i.test(f.name))) throw new Error('Choose local GGUF files.');
+    const profile=inspectGgufParts(files);
     const sorted = files.slice().sort((a, b) => a.name.localeCompare(b.name));
     const header = new TextDecoder().decode(await sorted[0].slice(0, 4).arrayBuffer());
     if (header !== 'GGUF') throw new Error('Invalid GGUF file header.');
@@ -32,12 +34,14 @@ export class OfflineEngine {
     this.model = model;
     try { await model.loadModel(sorted, { n_ctx: nCtx, n_threads: 1, n_gpu_layers: 0, n_parallel: 1 }); }
     catch (error) { await this.unload(); throw error; }
+    return profile;
   }
   async generate(messages: ChatMessage[], system: string, settings: Settings, onText: (text: string) => void, jsonMode = false) {
     if (!this.model?.isModelLoaded()) throw new Error('Load a GGUF model first.');
     if (this.controller) throw new Error('Generation already running.');
     const c = new AbortController();
     this.controller = c;
+    const meter=new GenerationMeter(performance.now());
     try {
       const all = [...(system.trim() ? [{role: 'system' as const, content: system.trim()}] : []), ...messages];
       const stream = await this.model.createChatCompletion({
@@ -52,12 +56,13 @@ export class OfflineEngine {
         const choice=chunk.choices[0];
         if(choice?.finish_reason)finishReason=choice.finish_reason;
         const txt = choice?.delta?.content;
-        if (txt) onText(txt);
+        if (txt){ meter.noteText(txt,performance.now());onText(txt); }
       }
       if (c.signal.aborted) throw new Error('Generation canceled. No partial result was saved.');
       // Do not accept a partial response merely because the received text
       // happens to parse as JSON. The final stream chunk can report "length".
       if(jsonMode)assertGenerationComplete(finishReason);
+      return meter.result(performance.now());
     } finally {
       if (this.controller === c) this.controller = null;
     }
