@@ -382,7 +382,17 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
         dateCells++;
         if(dateExamples.length<4)dateExamples.push(sheetName+'!'+cell);
       }
-      if(f) {formulas++;if(!value)value='[formula without cached value]';}
+      if(f){
+        formulas++;
+        if(!children(c,'v').length || !v.trim()){
+          throw new Error('Excel formula at '+sheetName+'!'+cell+
+            ' has no cached calculation result. Recalculate and save the original workbook before importing; no incomplete values were accepted.');
+        }
+      }
+      if(type==='e'){
+        throw new Error('Excel cell '+sheetName+'!'+cell+
+          ' contains a spreadsheet error ('+value+'). Correct the original workbook before importing.');
+      }
       if(value.trim()) entries.push({label:sheetName+'!'+cell,value,
         location:{kind:'xlsx-cell',sheet:sheetName,cell,
           ...(dateStyled?{excelDateStyled:1}:{})}});
