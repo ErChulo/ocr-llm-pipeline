@@ -374,6 +374,11 @@ try {
 
   await page.getByRole('button', { name: 'Test model' }).click();
   await page.getByText(/Your local model generated text/i).waitFor({ timeout: 90000 });
+  const performanceStatus=await page.getByText(/Your local model generated text/i).innerText();
+  assert.match(performanceStatus,/s until first text/);
+  assert.match(performanceStatus,/characters\/s end-to-end/);
+  console.log('REAL BROWSER: local GGUF first-output latency and character throughput reported.');
+
   // Verify the Guide really prints as a standalone readable PDF, not a
   // screenshot of the application or leaked imported document content.
   await page.getByRole('button',{name:'Guide',exact:true}).click();
