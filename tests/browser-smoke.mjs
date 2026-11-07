@@ -159,6 +159,25 @@ try {
   );
   assert.match(await page.locator('.preview').innerText(), /RETIREMENT AGE 65/i);
   console.log('REAL BROWSER: image-only scanned PDF page OCR succeeded entirely offline.');
+
+  // Mixed-content PDFs can hide provisions in images despite a valid text
+  // layer. Require the user's explicit original-page review before export.
+  const mixedPdf=createScannedPdf(Buffer.from(jpeg64,'base64'),950,230,'FICTIONAL PLAN HEADER');
+  await page.locator('input[type="file"][accept*=".pdf"]').setInputFiles({
+    name:'mixed-synthetic.pdf',mimeType:'application/pdf',buffer:mixedPdf
+  });
+  const sourcePanel=page.locator('.source-completeness');
+  await sourcePanel.getByText(/combines selectable text with image content/i).waitFor({timeout:30000});
+  await page.getByRole('button',{name:'Extract JSON',exact:true}).click();
+  await page.getByRole('button',{name:'Review source issues in Documents'}).waitFor({timeout:10000});
+  await page.getByRole('button',{name:'Review source issues in Documents'}).click();
+  await sourcePanel.locator('input[type="checkbox"]').check();
+  await sourcePanel.getByText(/Source issue acknowledgements complete/i).waitFor({timeout:10000});
+  await page.getByRole('button',{name:'View original page 1'}).click();
+  await page.getByRole('dialog',{name:'Original PDF page'}).waitFor({timeout:10000});
+  await page.getByRole('button',{name:'Close PDF view'}).click();
+  console.log('REAL BROWSER: mixed PDF image omission requires explicit source review.');
+
   await page.screenshot({path:'tmp/smoke-scanned-pdf.png',fullPage:true});
 
   console.log('REAL BROWSER: PDF.js extracted both pages with page labels from file://.');
