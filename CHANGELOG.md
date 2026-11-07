@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased — Office ingestion safeguards
+## Unreleased — Reliability and source-safety safeguards
+
+- Replace concurrent batch import with a sequential, transactional importer: at most 20 chosen files, 200 session documents, 4 million extracted characters and 80 MB source files. Reject duplicate document names or IDs. On any failure, the existing session remains unchanged.
+- Add deterministic batch quota/identity/atomicity tests and an offline browser rollback/success test. Limits are deliberately conservative for managed offline workstations.
 
 - Detect hidden worksheets and nonempty hidden rows, hidden column ranges, and merged cell ranges. Require original-workbook review before JSON export.
 - Flag external links, connections, query and pivot caches whose data are not refreshed by the offline importer.

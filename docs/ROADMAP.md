@@ -12,6 +12,7 @@
 - [x] JSON Schema validation, bounded sectioning, exact source coverage, Unicode/numeric section-boundary safeguards and conflict review with original-source excerpts for competing values; reviewer must decide which plan provision applies.
 - [x] Mandatory field-level *candidate text evidence* confirmation before export; model-originated values are checked only against their source sections, numeric and lexical tokens require complete boundaries, and reviewers may supply an exact supporting passage for interpreted/boolean fields. Passage existence never establishes factual correctness.
 - [x] Source identity check, original file SHA-256, and fail-closed export validation.
+- [x] Sequential all-or-nothing multi-file import with session-level document, text, byte and duplicate-identity limits; browser acceptance covers rollback and success.
 - [x] Conservative possible-SSN/email/phone/payment-card screening and acknowledgement.
 - [x] User-chosen dark/white logo pair, theme toggle, app routes and printable Guide.
 - [x] Real instruction-tuned Qwen2.5-0.5B GGUF: four of four known-answer fields and end-to-end TXT → JSON → source review → export passed under `file://` with zero network requests ([verified CI run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42248309834)).

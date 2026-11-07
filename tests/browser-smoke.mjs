@@ -101,6 +101,27 @@ try {
   assert.equal(await page.getByRole('dialog',{name:'Original PDF page'}).count(),0);
   console.log('REAL BROWSER: original PDF pages rendered and navigated under file URL.');
 
+  // Batch import is atomic: a duplicate in a multi-file pick must leave the
+  // previously selected document and source review state unchanged.
+  const filePicker=page.locator('input[type="file"][accept*=".pdf"]');
+  await filePicker.setInputFiles([
+    {name:'batch-duplicate.txt',mimeType:'text/plain',buffer:Buffer.from('Early retirement 55')},
+    {name:'batch-duplicate.txt',mimeType:'text/plain',buffer:Buffer.from('Normal retirement 65')}
+  ]);
+  await page.getByRole('alert').getByText(/Duplicate document identity or filename/i)
+    .waitFor({timeout:10000});
+  await page.getByText('1 document(s) in this session').waitFor({timeout:10000});
+  assert.match(await page.locator('.preview').innerText(),/Normal retirement age 65/);
+  await filePicker.setInputFiles([
+    {name:'batch-one.txt',mimeType:'text/plain',buffer:Buffer.from('Normal retirement age 65.')},
+    {name:'batch-two.txt',mimeType:'text/plain',buffer:Buffer.from('Early retirement 55 with service 10.')}
+  ]);
+  await page.getByText('3 document(s) in this session').waitFor({timeout:10000});
+  await page.locator('.card select').first().selectOption({label:'synthetic.pdf'});
+  assert.match(await page.locator('.preview').innerText(),/Page 2:/);
+  console.log('REAL BROWSER: document batch rolls back on duplicate and commits all on success.');
+
+
 
   // Image OCR uses English traineddata, WASM and Worker embedded in the HTML.
   // Synthetic sans-serif text is the expected local recognition fixture.
