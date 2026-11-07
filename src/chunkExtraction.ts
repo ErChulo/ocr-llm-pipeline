@@ -5,10 +5,11 @@
  */
 import type { SourceDocument } from './pipeline.ts';
 import { parseModelJson } from './pipeline.ts';
+import { restoreSourceDate,sourceDateField } from './sourceDateRestoration.ts';
 
 export type SourceSpan = { chunk: number; start: number; end: number };
 export type TextChunk = SourceSpan & { text: string };
-export type Candidate = { value: unknown; spans: SourceSpan[] };
+export type Candidate = { value: unknown; spans: SourceSpan[]; sourceDateRestoredFrom?: string[] };
 export type Conflict = { path: string; candidates: Candidate[] };
 export type ExtractionAudit = {
   documentId: string;
@@ -147,20 +148,31 @@ function unpack(path: string): string[] {
 }
 
 function addLeaves(obj: Record<string, unknown>, path: string, span: SourceSpan,
-  candidates: Record<string, Candidate[]>) {
+  candidates: Record<string, Candidate[]>, sectionText: string) {
   for (const [key, value] of Object.entries(obj)) {
     if (absent(value)) continue;
     const childPath = path + '/' + pointer(key);
     const nested = asObject(value);
     if (nested) {
-      addLeaves(nested, childPath, span, candidates);
+      addLeaves(nested, childPath, span, candidates, sectionText);
       continue;
     }
+    // Restore only a uniquely grounded textual date representation, never
+    // an actuarial interpretation or date from a different model section.
+    const restored=sourceDateField(key)?restoreSourceDate(value,sectionText):null;
+    const verifiedRepresentation=restored?.value??value;
     const found = candidates[childPath] ||= [];
-    const norm = canonical(value);
+    const norm = canonical(verifiedRepresentation);
     const existing = found.find(c => canonical(c.value) === norm);
-    if (existing) existing.spans.push(span);
-    else found.push({ value, spans: [span] });
+    if (existing){
+      existing.spans.push(span);
+      if(restored && !existing.sourceDateRestoredFrom?.includes(restored.modelValue)){
+        (existing.sourceDateRestoredFrom ||= []).push(restored.modelValue);
+      }
+    }else{
+      found.push({value:verifiedRepresentation,spans:[span],
+        ...(restored?{sourceDateRestoredFrom:[restored.modelValue]}:{})});
+    }
   }
 }
 
@@ -178,7 +190,7 @@ export function collectChunkCandidates(doc: SourceDocument, chunks: TextChunk[],
     last = chunk.end;
     const result = asObject(outputs[i]);
     if (!result) throw new Error('Section ' + chunk.chunk + ' did not return a JSON object.');
-    addLeaves(result, '', { chunk: chunk.chunk, start: chunk.start, end: chunk.end }, candidates);
+    addLeaves(result, '', { chunk: chunk.chunk, start: chunk.start, end: chunk.end }, candidates, chunk.text);
   }
   if (last !== doc.text.length) throw new Error('The end of the document was not processed.');
   // Incompatible container/leaf shapes cannot be reconciled safely.

@@ -675,6 +675,14 @@ export default function App() {
               <p className="help">A text match is not proof of a fact. Compare each value with the original file and confirm its source.</p>
               {evidenceChecks.map(check => <div className="evidence-field" key={check.path}>
                 <strong>{check.path} — {JSON.stringify(check.value)}</strong>
+                {audit?.candidates[check.path]?.some(candidate=>
+                  Object.is(candidate.value,check.value) &&
+                  !!candidate.sourceDateRestoredFrom?.length
+                ) && <p className="help">
+                  Source-date wording recovered from the original document section.
+                  The model used another date format; its original value remains recorded
+                  in the extraction audit. Confirm the actual date against the source.
+                </p>}
                 {check.evidenceMethod==='reviewer_quoted_passage' && <>
                   <p className="help">This value is not found literally. Copy a supporting passage from the original document (8–300 characters), then select and confirm its location. A passage match is not proof that your interpretation is correct.</p>
                   <label>Supporting passage

@@ -2,6 +2,9 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Add narrow, auditable source-date presentation restoration: a model ISO or punctuated date may be replaced by the unique exact unambiguous date literal from the same source section, with the original model value retained and original-document review still mandatory. Conflicting wording, ambiguous formats, mismatched dates and cross-section dates never rewrite facts.
+- Add negative tests for unrelated date sources, malformed calendars, conflicting source representations and non-date fields; benchmark on real Qwen before any score claim.
+
 - Real bounded 3B benchmark passed: 7.4 s loading, 73.2 s until first text, 1.3 characters/s, 3/4 synthetic facts, no browser network ([CI 42421447866](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42421447866)). Long full-document extraction remains unverified and a release blocker for any advertised 3B support.
 - Add a separately scoped real Qwen2.5-3B load/generation benchmark under `file://` with official SHA-256 and zero outbound requests. The new `MODEL_TEST_SCOPE=quality_only` path isolates loading/small inference from long full-document extraction; an explicit bounded test timeout prevents indefinite runs. Full 3B extraction acceptance remains open.
 

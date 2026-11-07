@@ -9,6 +9,7 @@
 
 ## What is implemented
 
+- **Source-exact date wording:** when a model-formatted date uniquely matches an unambiguous date literal inside the same source section, the extraction candidate uses the original wording and retains the model's initial value in the review audit. Conflicts or ambiguous formats stay unchanged; export still requires independent reviewer confirmation.
 - **Reproducible extraction settings:** factual JSON extraction uses greedy sampling (temperature 0, top-p 1), while chat retains separate conversational defaults; human source verification remains mandatory.
 - **On-device quality diagnostics:** Settings provides an opt-in eight-case fictional pension corpus benchmark. It runs the selected GGUF without network access, reports strict micro precision/recall/F1, per-case omissions and failures, and exports a synthetic-only JSON diagnostic. This is not production acceptance.
 - **Large-model diagnostics:** refuse incomplete or invalid GGUF split selections and any single part of 2 GiB or more. Large models display the one-CPU-thread/no-GPU limitation of mandatory `file://` mode; the local model self-test reports time to first text and end-to-end **characters/sec** (not tokenizer tokens/sec).
