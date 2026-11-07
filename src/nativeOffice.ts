@@ -75,10 +75,32 @@ function descendants(node: XmlNode, localName: string): XmlElement[] {
   descend(node);
   return all;
 }
+// The source importer models the displayed final revision, not Word's
+// "original" markup. Deleted/moved-from text must never support a citation.
+function removedRevision(node: XmlNode): boolean {
+  for(let current:XmlNode|null=node;current;current=current.parentNode){
+    if(current.nodeType===1 &&
+       (current.localName==='del'||current.localName==='moveFrom'))return true;
+  }
+  return false;
+}
+function hiddenRun(node: XmlNode): boolean {
+  if(node.nodeType!==1||node.localName!=='r')return false;
+  const props=children(node,'rPr')[0];
+  if(!props)return false;
+  return ['vanish','webHidden'].some(name=>children(props,name).some(flag=>{
+    const val=flag.getAttribute('w:val')||
+      flag.getAttributeNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main','val')||
+      flag.getAttribute('val');
+    return val===null || !/^(?:0|false|off)$/i.test(val);
+  }));
+}
 function textOf(node: XmlNode): string {
   let result='';
   function walk(n: XmlNode) {
     if (n.nodeType === 1) {
+      if(n.localName==='del'||n.localName==='moveFrom'||n.localName==='delText'||
+         hiddenRun(n))return;
       if (n.localName === 't') { result += n.textContent ?? ''; return; }
       if (n.localName === 'tab') { result += '\t'; return; }
       if (n.localName === 'br' || n.localName === 'cr') { result += '\n'; return; }
@@ -127,27 +149,42 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
   if (!body) throw new Error('DOCX does not contain a document body.');
   const entries:Entry[]=[];
   let paragraph=0,table=0;
-  for (const node of Array.from({length:body.childNodes.length},(_,i)=>body.childNodes.item(i))) {
-    if (!node || node.nodeType!==1) continue;
-    if (node.localName==='p') {
+  // Top-level content controls may wrap ordinary paragraphs/tables. Traverse
+  // the displayed content, retaining reading order and parser-derived labels.
+  function appendBlock(node: XmlNode):void {
+    if(node.nodeType!==1)return;
+    if(node.localName==='del'||node.localName==='moveFrom')return;
+    if(node.localName==='p'){
       paragraph++;
       const value=textOf(node);
-      if(value) entries.push({label:'Paragraph '+paragraph,value,location:{kind:'docx-paragraph',paragraph}});
-    } else if (node.localName==='tbl') {
+      if(value)entries.push({label:'Paragraph '+paragraph,value,
+        location:{kind:'docx-paragraph',paragraph}});
+    }else if(node.localName==='tbl'){
       table++;
       let row=0;
-      for (const tr of children(node,'tr')) {
+      for(const tr of children(node,'tr')){
         row++;
         let col=0;
-        for(const tc of children(tr,'tc')) {
+        for(const tc of children(tr,'tc')){
           col++;
           const value=textOf(tc);
-          if(value) entries.push({label:'Table '+table+' row '+row+' column '+col,value,
-            location:{kind:'docx-cell',table,row,column:col}});
+          if(value)entries.push({label:'Table '+table+' row '+row+' column '+col,
+            value,location:{kind:'docx-cell',table,row,column:col}});
         }
       }
+    }else if(node.localName==='sdt'){
+      for(const content of children(node,'sdtContent'))
+        for(const child of Array.from({length:content.childNodes.length},(_,i)=>content.childNodes.item(i)))
+          if(child)appendBlock(child);
+    }else if(['customXml','ins','moveTo'].includes(node.localName||'')){
+      for(const child of Array.from({length:node.childNodes.length},(_,i)=>node.childNodes.item(i)))
+        if(child)appendBlock(child);
     }
     if(entries.length>MAX_RECORDS)throw new Error('DOCX exceeds the maximum record limit.');
+  }
+  for(let i=0;i<body.childNodes.length;i++){
+    const node=body.childNodes.item(i);
+    if(node)appendBlock(node);
   }
   const warnings:string[]=[];
   for(const part of Object.keys(files).filter(n=>/^word\/(?:header|footer)\d+\.xml$/.test(n)).sort()){
@@ -156,6 +193,7 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
     let paragraphNo=0;
     for(const p of descendants(content,'p')){
       paragraphNo++;
+      if(removedRevision(p))continue;
       const value=textOf(p);
       if(value){
         entries.push({
@@ -178,7 +216,8 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
       if(rawId===null || !/^\d+$/.test(rawId))continue;
       const noteId=Number(rawId);
       if(!Number.isSafeInteger(noteId))throw new Error('Word note ID exceeds safe range.');
-      const value=descendants(note,'p').map(p=>textOf(p)).filter(Boolean).join('\n');
+      const value=descendants(note,'p').filter(p=>!removedRevision(p))
+        .map(p=>textOf(p)).filter(Boolean).join('\n');
       if(value)entries.push({
         label:section+' '+noteId,
         value,
@@ -192,16 +231,32 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
   if(entries.length>MAX_RECORDS)throw new Error('DOCX exceeds the maximum record limit.');
   if (omitted.some(n=>/^word\/media\//i.test(n)) || descendants(doc,'drawing').length ||
       descendants(doc,'pict').length) warnings.push('Images and drawing text are not OCR processed.');
-  if (descendants(doc,'altChunk').length) throw new Error('DOCX contains embedded alternate content that this parser cannot inspect.');
-  if (descendants(doc,'ins').length||descendants(doc,'del').length) warnings.push('Track changes exist. Review accepted and deleted text in Word.');
+  const inspectedParts=Object.entries(files)
+    .filter(([name])=>name==='word/document.xml'||/^word\/(?:header|footer)\d+\.xml$/.test(name)||
+      name==='word/footnotes.xml'||name==='word/endnotes.xml')
+    .map(([,bytes])=>xmlDoc(decoder.decode(bytes)));
+  if(inspectedParts.some(part=>descendants(part,'altChunk').length)){
+    throw new Error('DOCX contains embedded alternate content that this parser cannot inspect.');
+  }
+  const hasRevisions=inspectedParts.some(part=>
+    ['ins','del','moveFrom','moveTo'].some(name=>descendants(part,name).length>0));
+  const hasHiddenText=inspectedParts.some(part=>descendants(part,'r').some(hiddenRun));
+  if(hasRevisions)warnings.push(
+    'Tracked revisions exist. Deleted or moved-from text was excluded; inserted or moved-to text was included. Verify Word revision status.');
+  if(hasHiddenText)warnings.push(
+    'Directly hidden Word text was excluded. Inspect visibility and any style-based hiding in the original document.');
   const reviewIssues:SourceReviewIssue[]=[];
   if(omitted.some(n=>/^word\/(?:comments|commentsExtended)/i.test(n))){
     reviewIssues.push({id:'docx:comments',category:'office_unreviewed_content',
       message:'Word comments were omitted; inspect the original document for important qualifications.'});
   }
-  if(descendants(doc,'ins').length||descendants(doc,'del').length){
+  if(hasRevisions){
     reviewIssues.push({id:'docx:track-changes',category:'office_unreviewed_content',
-      message:'The DOCX contains tracked changes. Inspect accepted and deleted clauses in Word.'});
+      message:'Tracked changes exist. The extraction excludes deleted/moved-from text and includes inserted/moved-to text. Verify the intended revision state and all affected clauses in Word.'});
+  }
+  if(hasHiddenText){
+    reviewIssues.push({id:'docx:hidden-text',category:'office_unreviewed_content',
+      message:'Directly hidden Word runs were excluded. Review the original document for hidden provisions or text hidden through styles before export.'});
   }
   if(omitted.some(n=>/^word\/media\//i.test(n))||
     descendants(doc,'drawing').length||descendants(doc,'pict').length){

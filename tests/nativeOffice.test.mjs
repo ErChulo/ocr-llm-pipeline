@@ -166,3 +166,81 @@ test('XLSX skips chartsheets but blocks export until omitted chart content is re
  assert.match(parsed.text,/Plan!A1: 65/);
  assert.ok(parsed.reviewIssues.some(x=>x.id==='xlsx:media'));
 });
+
+
+test('Word final-view extraction excludes deleted and moved-from text without losing inserted clauses',()=>{
+ const ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+ const xml='<w:document xmlns:w="'+ns+'"><w:body>'+
+  '<w:p><w:r><w:t xml:space="preserve">Normal retirement age </w:t></w:r>'+
+    '<w:del><w:r><w:t>62</w:t></w:r></w:del>'+
+    '<w:ins><w:r><w:t>65</w:t></w:r></w:ins></w:p>'+
+  '<w:moveFrom><w:p><w:r><w:t>Removed paragraph</w:t></w:r></w:p></w:moveFrom>'+
+  '<w:moveTo><w:p><w:r><w:t>Current paragraph</w:t></w:r></w:p></w:moveTo>'+
+  '</w:body></w:document>';
+ const result=parseDocx('tracked.docx',docx(xml));
+ assert.match(result.text,/Normal retirement age 65/);
+ assert.match(result.text,/Current paragraph/);
+ assert.doesNotMatch(result.text,/Removed paragraph|62/);
+ assert.deepEqual(result.records.map(r=>r.label),['Paragraph 1','Paragraph 2']);
+ assert.ok(result.reviewIssues.some(x=>x.id==='docx:track-changes'));
+ assert.ok(result.warnings.some(x=>x.includes('moved-from')));
+});
+
+test('Word content controls and custom XML do not suppress legitimate paragraphs and tables',()=>{
+ const ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+ const xml='<w:document xmlns:w="'+ns+'"><w:body>'+
+  '<w:sdt><w:sdtPr><w:alias w:val="Plan Provisions"/></w:sdtPr><w:sdtContent>'+
+    '<w:p><w:r><w:t>Vesting after five years</w:t></w:r></w:p>'+
+    '<w:customXml w:element="section">'+
+      '<w:tbl><w:tr><w:tc><w:p><w:r><w:t>Early retirement</w:t></w:r></w:p></w:tc>'+
+      '<w:tc><w:p><w:r><w:t>55 and 10</w:t></w:r></w:p></w:tc></w:tr></w:tbl>'+
+    '</w:customXml>'+
+  '</w:sdtContent></w:sdt>'+
+  '</w:body></w:document>';
+ const result=parseDocx('content-controls.docx',docx(xml));
+ assert.deepEqual(result.records.map(x=>x.label),[
+  'Paragraph 1','Table 1 row 1 column 1','Table 1 row 1 column 2'
+ ]);
+ assert.match(result.text,/Vesting after five years/);
+ assert.match(result.text,/Early retirement/);
+ assert.match(result.text,/55 and 10/);
+});
+
+test('Directly hidden Word runs do not become source evidence, and visible false flags remain',()=>{
+ const ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+ const xml='<w:document xmlns:w="'+ns+'"><w:body><w:p>'+
+  '<w:r><w:t>Benefit 100</w:t></w:r>'+
+  '<w:r><w:rPr><w:vanish/></w:rPr><w:t>Hidden actuarial override 900</w:t></w:r>'+
+  '<w:r><w:rPr><w:webHidden w:val="0"/></w:rPr><w:t> Visible appendix</w:t></w:r>'+
+  '</w:p></w:body></w:document>';
+ const result=parseDocx('hidden.docx',docx(xml));
+ assert.match(result.text,/Benefit 100/);
+ assert.match(result.text,/Visible appendix/);
+ assert.doesNotMatch(result.text,/Hidden actuarial override|900/);
+ assert.ok(result.reviewIssues.some(x=>x.id==='docx:hidden-text'));
+});
+
+test('Deleted header and footnote paragraphs are excluded; revisions in these parts require review',()=>{
+ const ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+ const zip=zipped({
+  '[Content_Types].xml':'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>',
+  'word/document.xml':'<w:document xmlns:w="'+ns+'"><w:body><w:p><w:r><w:t>Benefit rules</w:t></w:r></w:p></w:body></w:document>',
+  'word/header1.xml':'<w:hdr xmlns:w="'+ns+'"><w:del><w:p><w:r><w:t>Obsolete header</w:t></w:r></w:p></w:del><w:p><w:r><w:t>Valid header</w:t></w:r></w:p></w:hdr>',
+  'word/footnotes.xml':'<w:footnotes xmlns:w="'+ns+'"><w:footnote w:id="8"><w:del><w:p><w:r><w:t>Old exception</w:t></w:r></w:p></w:del><w:p><w:r><w:t>Current exception</w:t></w:r></w:p></w:footnote></w:footnotes>'
+ });
+ const result=parseDocx('revised-header.docx',zip);
+ assert.match(result.text,/Valid header/);
+ assert.match(result.text,/Current exception/);
+ assert.doesNotMatch(result.text,/Obsolete header|Old exception/);
+ assert.ok(result.reviewIssues.some(x=>x.id==='docx:track-changes'));
+});
+
+test('DOCX refuses alternate unreviewable content in footnotes, not only main body',()=>{
+ const ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+ const zip=zipped({
+  '[Content_Types].xml':'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>',
+  'word/document.xml':'<w:document xmlns:w="'+ns+'"><w:body><w:p><w:r><w:t>Normal 65</w:t></w:r></w:p></w:body></w:document>',
+  'word/footnotes.xml':'<w:footnotes xmlns:w="'+ns+'"><w:footnote w:id="8"><w:altChunk r:id="rId1" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/></w:footnote></w:footnotes>'
+ });
+ assert.throws(()=>parseDocx('unreviewable.docx',zip),/embedded alternate content/);
+});
