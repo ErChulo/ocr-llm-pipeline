@@ -7,6 +7,7 @@
 import { getDocument, OPS } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 import type { SourceDocument, SourceRecord, SourceTextSpan, SourceReviewIssue } from './pipeline.ts';
+import { ocrReviewIssue } from './ocrReview.ts';
 
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
 const MAX_PAGES = 300;
@@ -138,9 +139,10 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
         if(!text)throw new Error('OCR found no readable text on PDF page '+pageNo+'. Import was stopped.');
         if(confidence<75){
           warnings.push('OCR confidence on page '+pageNo+' is '+Math.round(confidence)+'%. Verify the page against its original image.');
-          reviewIssues.push({id:'pdf:ocr:'+pageNo,category:'low_ocr_confidence',
-            page:pageNo,message:'OCR confidence is '+Math.round(confidence)+'% on page '+pageNo+'. Compare all material fields with the original scan.'});
         }
+        // Even high-confidence OCR can misread dates, numbers, or formulas.
+        // Always require original-page acknowledgement before JSON export.
+        reviewIssues.push(ocrReviewIssue('pdf',confidence,pageNo));
       }
       if(!scanned && containsImages){
         warnings.push('Page '+pageNo+' contains images as well as selectable text. '

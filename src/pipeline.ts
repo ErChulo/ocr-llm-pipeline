@@ -2,6 +2,7 @@ import { parseDocx, parseXlsx } from './nativeOffice.ts';
 import { parsePdf } from './pdfText.ts';
 import { parseCsv } from './csv.ts';
 import { sha256Bytes } from './fingerprint.ts';
+import { ocrReviewIssue } from './ocrReview.ts';
 export type SourceTextSpan = {
   start: number;
   end: number;
@@ -15,7 +16,7 @@ export type SourceRecord = {
 };
 export type SourceReviewIssue = {
   id:string;
-  category:'mixed_pdf_page'|'low_ocr_confidence'|'office_unreviewed_content';
+  category:'mixed_pdf_page'|'low_ocr_confidence'|'ocr_unverified'|'office_unreviewed_content';
   message:string;
   page?:number;
 };
@@ -29,6 +30,7 @@ export type SourceDocument = {
   processedTextSha256?: string;
   correctionCount?: number;
   pdfBytes?: Uint8Array; // browser memory only; never serialized in JSON exports
+  imageBytes?: Uint8Array; // original image bytes in memory only, never exported
 };
 export type ImportResult = { documents: SourceDocument[]; notes: string[] };
 
@@ -144,6 +146,8 @@ export async function importFile(file: File): Promise<ImportResult> {
       id:file.name,name:file.name,text,mimeType:file.type,sizeBytes:file.size,
       provenance:{source:'image-ocr',precision:'document',fileName:file.name},
       records:[{start:0,end:text.length,label:'Image OCR',location:{kind:'image',confidence:Math.round(data.confidence)}}],
+      reviewIssues:[ocrReviewIssue('image',data.confidence)],
+      imageBytes:Uint8Array.from(bytes),
       warnings:['OCR is probabilistic and can misread names, numbers, dates and plan formulas.',
         'OCR confidence: '+Math.round(data.confidence)+'%. Inspect the original image for every extracted field.']
     }],notes:['OCR processed an image locally. Human verification is required.']};

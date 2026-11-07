@@ -124,7 +124,23 @@ try {
   await page.locator('.preview').getByText(/RETIREMENT AGE 65/i).waitFor({timeout:150000});
   assert.match(await page.locator('.preview').innerText(), /^Image OCR:/);
   console.log('REAL BROWSER: embedded English OCR recognized synthetic PNG entirely offline.');
+  const imageReview=page.locator('.source-completeness');
+  await imageReview.getByText(/original image before export/i).waitFor({timeout:15000});
+  assert.equal(await imageReview.locator('input[type="checkbox"]').count(),1);
+  await page.getByRole('button',{name:'View original image'}).click();
+  const originalImage=page.locator('.original-image-preview img');
+  await originalImage.waitFor({timeout:10000});
+  assert.equal(await originalImage.evaluate(img=>img.complete&&img.naturalWidth===950),true);
+  assert.match(await originalImage.getAttribute('src'),/^blob:/);
+  await page.getByRole('button',{name:'Close original image'}).click();
+  assert.equal(await originalImage.count(),0);
+  await page.getByRole('button',{name:'Extract JSON',exact:true}).click();
+  await page.getByRole('button',{name:'Review source issues in Documents'}).waitFor({timeout:10000});
+  await page.getByRole('button',{name:'Review source issues in Documents'}).click();
+  await imageReview.locator('input[type="checkbox"]').check();
+  await imageReview.getByText(/Source issue acknowledgements complete/i).waitFor({timeout:10000});
   await page.screenshot({path:'tmp/smoke-ocr.png',fullPage:true});
+  console.log('REAL BROWSER: every image OCR result requires original-image source review.');
 
   // Correct transcription in the browser and verify source integrity is
   // clearly distinguished from OCR and no data leaves the local document.
@@ -137,7 +153,8 @@ try {
   await page.locator('.preview').getByText(/RETIREMENT AGE 65 HUMAN CONFIRMED/).waitFor({timeout:6000});
   assert.equal((await page.locator('.preview').innerText()).trim(),
     'Image OCR:\nRETIREMENT AGE 65 HUMAN CONFIRMED');
-  console.log('REAL BROWSER: OCR transcription correction saved with source references and no network.');
+  await imageReview.getByText(/1 source issue\(s\) still require review/i).waitFor({timeout:10000});
+  console.log('REAL BROWSER: OCR correction invalidates previous source acknowledgement.');
 
 
   const jpeg64=await page.evaluate(()=>{
@@ -158,7 +175,14 @@ try {
     null,{timeout:150000}
   );
   assert.match(await page.locator('.preview').innerText(), /RETIREMENT AGE 65/i);
-  console.log('REAL BROWSER: image-only scanned PDF page OCR succeeded entirely offline.');
+  const scannedReview=page.locator('.source-completeness');
+  await scannedReview.getByText(/PDF page 1 before export/i).waitFor({timeout:10000});
+  assert.equal(await scannedReview.locator('input[type="checkbox"]').count(),1);
+  await page.getByRole('button',{name:'View original page 1'}).click();
+  await page.getByRole('dialog',{name:'Original PDF page'}).waitFor({timeout:10000});
+  await page.getByRole('button',{name:'Close PDF view'}).click();
+  await scannedReview.locator('input[type="checkbox"]').check();
+  console.log('REAL BROWSER: scanned PDF OCR requires original-page review regardless of confidence.');
 
   // Mixed-content PDFs can hide provisions in images despite a valid text
   // layer. Require the user's explicit original-page review before export.
