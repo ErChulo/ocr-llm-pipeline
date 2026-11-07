@@ -21,6 +21,7 @@
 
 ## Remaining production gates — not yet accepted
 
+- [x] Real eight-case official Qwen2.5-1.5B-Instruct Q4_K_M: **87.5% strict micro F1, 6/8 exact**, 286.1 s, no network requests; both incorrect fields were reworded dates ([CI run 42420311141](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42420311141)). This does not meet unattended release acceptance.
 - [x] Official Qwen2.5-1.5B-Instruct Q4_K_M: successful local file URL inference and full JSON export; **3/4** known-answer score ([CI run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42281102968)).
 - [x] Five-case synthetic pension corpus, real 0.5B GGUF: **90% micro exact precision/recall/F1**, 4/5 entirely exact; sole discrepancy was equivalent date notation ([CI 42371798989](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42371798989)).
 - [x] Actual 0.5B GGUF eight-case prompt benchmark improved strict micro F1 from **68.75% to 87.5%** and exact cases from **4/8 to 6/8**, while still failing exact date wording and complete survivor-condition extraction ([CI run 42420035489](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42420035489)). Not production accepted.

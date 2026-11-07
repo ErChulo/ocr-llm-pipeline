@@ -16,6 +16,9 @@ import assert from 'node:assert/strict';
 
 mkdirSync('tmp',{recursive:true});
 const model=resolve(process.env.MODEL_FILE||'tmp/qwen2.5-0.5b-instruct-q4_k_m.gguf');
+const caseTimeoutMs=Number(process.env.CASE_TIMEOUT_MS||200000);
+assert.ok(Number.isSafeInteger(caseTimeoutMs)&&caseTimeoutMs>=10000&&caseTimeoutMs<=600000,
+  'CASE_TIMEOUT_MS must be between 10,000 and 600,000 milliseconds.');
 assert.ok(existsSync(model),'Select a checksum-verified local GGUF test file.');
 const benchmarkMode=process.env.BENCHMARK_CASES==='all'?'all-eight':'historical-five';
 const sampleIds=benchmarkMode==='all-eight'
@@ -79,7 +82,7 @@ try{
           .some(n=>n.textContent?.trim()==='Extracting...');
         if(running)return false;
         return (input?.value?.trim() || error) ? 'complete' : false;
-      },null,{timeout:200000});
+      },null,{timeout:caseTimeoutMs});
       const raw=await page.getByRole('textbox',{name:'Candidate JSON for review'}).inputValue();
       const alerts=await page.locator('[role="alert"]').allTextContents();
       item.errors=alerts.map(x=>x.slice(0,180));
