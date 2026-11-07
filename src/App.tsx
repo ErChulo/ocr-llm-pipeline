@@ -463,7 +463,7 @@ export default function App() {
               <button type="button" className="secondary" onClick={()=>navigateTo('documents')}>
                 Review source issues in Documents
               </button>
-            </div>
+            </div>}
             <p className="help">{active ? 'Source: ' + active.name : 'Select a document first.'} All text sections must finish before export.</p>
             <label>Target JSON Schema
               <textarea className="schema" aria-label="Target JSON Schema" value={schema} spellCheck={false}
