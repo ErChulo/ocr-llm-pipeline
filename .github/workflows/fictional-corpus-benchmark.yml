@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/fictional-corpus-benchmark.yml"
+      - "tests/real-corpus-benchmark.mjs"
+      - "tests/fixtures/syntheticPensionCases.mjs"
+      - "src/syntheticQuality.ts"
   workflow_dispatch:
 
 concurrency:
