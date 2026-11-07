@@ -26,7 +26,7 @@ The aggregate stores:
 
 ## Limits and next milestone
 
-- Estimated section size derives from model context and schema length. It is a character-based heuristic; only the model tokenizer can determine exact context use. Context overflow stops extraction; this prototype does not silently remove data.
+- Estimated section size derives from model context and schema length. It is a character-based heuristic; only the model tokenizer can determine exact context use. On a recognized model context-overflow error, extraction restarts from the beginning with smaller sections, up to **two retries**. Earlier candidates are discarded; progress resets and all sections must finish. Other failures or continued overflow block export. Nothing is silently removed.
 - At most 256 sections are accepted per document. Longer documents require an explicit batch/checkpoint workflow in a later milestone. No partial export is permitted.
 - This is **text extraction only**. PDF/DOCX/XLSX parsing, OCR, exact page/cell provenance, evidence quote verification, PII screening, and real offline GGUF acceptance tests are pending.
 - Test fixtures are synthetic and contain no PBGC case data. Passing synthetic tests and CI does not establish actuarial accuracy.
