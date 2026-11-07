@@ -2,6 +2,10 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Add explicit supplemental English OCR for PDF pages containing both selectable text and raster images. Keep native text and OCR transcription in separate records with authentic page numbers; never ascribe OCR text to PDF.js-native text-item geometry.
+- Require original-page review after the optional OCR pass; preserve the original input fingerprint and invalidate existing extractions. Corrected OCR text remains separately editable. Add browser acceptance and regression tests.
+- Full-page OCR can repeat native text and is not automatic image-region isolation; accurate reconstruction of complex tables and columns remains a production gate.
+
 - Replace concurrent batch import with a sequential, transactional importer: at most 20 chosen files, 200 session documents, 4 million extracted characters and 80 MB source files. Reject duplicate document names or IDs. On any failure, the existing session remains unchanged.
 - Add deterministic batch quota/identity/atomicity tests and an offline browser rollback/success test. Limits are deliberately conservative for managed offline workstations.
 
