@@ -34,7 +34,7 @@ jobs:
           node-version: "22"
       - name: Install and build
         run: |
-          npm install
+          npm ci --no-audit --no-fund
           npm test
           npm run build
       - name: Install Chromium on the CI runner

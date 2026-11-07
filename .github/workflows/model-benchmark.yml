@@ -11,6 +11,8 @@ on:
     paths:
       - ".github/workflows/model-benchmark.yml"
       - "tests/real-model-benchmark.mjs"
+      - "package.json"
+      - "package-lock.json"
       - "src/App.tsx"
       - "src/schemaValidation.ts"
       - "src/chunkExtraction.ts"
@@ -31,7 +33,7 @@ jobs:
           node-version: '22'
       - name: Install and build
         run: |
-          npm install
+          npm ci --no-audit --no-fund
           npm run test
           npm run build
       - name: Install test browser (CI only)

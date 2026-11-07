@@ -11,6 +11,7 @@ on:
       - "src/**"
       - "vite.config.ts"
       - "package.json"
+      - "package-lock.json"
       - "scripts/verify-build.mjs"
       - "tests/browser-smoke.mjs"
       - ".github/workflows/browser-smoke.yml"
@@ -29,7 +30,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install application
-        run: npm install
+        run: npm ci --no-audit --no-fund
       - name: Build standalone HTML
         run: npm run build
       - name: Install browser automation (CI only)

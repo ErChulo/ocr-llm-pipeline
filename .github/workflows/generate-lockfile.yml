@@ -1,10 +1,6 @@
 name: Generate exact dependency lockfile
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/generate-lockfile.yml"
   workflow_dispatch:
 
 permissions:

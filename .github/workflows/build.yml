@@ -10,7 +10,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install
+      - run: npm ci --no-audit --no-fund
       - run: npm run test
       - run: npm run build
       - name: Upload single HTML when build succeeds
