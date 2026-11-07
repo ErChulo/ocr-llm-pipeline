@@ -43,3 +43,9 @@ This local feature has deterministic automated tests and browser-control coverag
 The independent `.github/workflows/eight-case-gguf-benchmark.yml` workflow downloads the **official checksum-verified Qwen2.5-0.5B-Instruct Q4_K_M** model on the networked GitHub Actions runner, builds the standalone HTML, and opens it through `file://` with outbound Chromium requests blocked. The runner sets `BENCHMARK_CASES=all` to evaluate all eight canonical fictional cases, while the earlier five-case baseline remains reproducible with the script's default mode. The report includes the cases, strict micro precision/recall/F1, exact cases, failures, elapsed times and date-format diagnostics.
 
 The workflow is intentionally separate from routine build status. A passing workflow means a reproducible synthetic diagnostic executed, **not** that a production accuracy threshold or actuarial interpretation has been certified. Once a complete run is verified, record the actual model score and run URL here without altering expected answers.
+
+## 1.5B GGUF comparison workflow
+
+An independent [eight-case Qwen2.5-1.5B-Instruct Q4_K_M workflow](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/qwen-1p5b-corpus.yml) uses the **same eight fictional cases and strict scoring** as the 0.5B run. The official model file's SHA-256 (`6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e`) is checked before Chromium opens the bundled HTML under `file://` with external network requests blocked. It captures per-case outputs and elapsed times and retains partial diagnostic data if the evaluation fails. The model is downloaded on the networked CI runner only; no weights enter the repository or workstation.
+
+A result is documented only after the corresponding real-model CI run finishes. Compare exact-case and field-level accuracy against the same eight-case 0.5B result; do not conflate the older five-case score or substitute a synthetic stub result.
