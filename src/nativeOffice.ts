@@ -7,6 +7,8 @@ const MAX_UNCOMPRESSED = 40 * 1024 * 1024;
 const MAX_TEXT = 2 * 1024 * 1024;
 const MAX_RECORDS = 25000;
 const MAX_XML_PART = 15 * 1024 * 1024;
+const MAX_XML_DEPTH = 128;
+const MAX_XML_VISITS = 500_000;
 const decoder = new TextDecoder('utf-8', { fatal: true });
 type FileParts = Record<string, Uint8Array>;
 type Entry = { label: string; value: string; location: Record<string, string | number> };
@@ -64,15 +66,22 @@ function children(node: XmlNode, localName: string): XmlElement[] {
 }
 function descendants(node: XmlNode, localName: string): XmlElement[] {
   const all: XmlElement[] = [];
-  function descend(n: XmlNode) {
-    for (let i=0;i<n.childNodes.length;i++) {
-      const x=n.childNodes.item(i);
-      if (!x) continue;
-      if (x.nodeType === 1 && x.localName === localName) all.push(x as XmlElement);
-      descend(x);
+  const stack:Array<{node:XmlNode;depth:number}>=[];
+  for(let i=node.childNodes.length-1;i>=0;i--){
+    const child=node.childNodes.item(i);
+    if(child)stack.push({node:child,depth:1});
+  }
+  let visits=0;
+  while(stack.length){
+    const {node:n,depth}=stack.pop()!;
+    if(depth>MAX_XML_DEPTH)throw new Error('Office XML exceeds supported nesting depth.');
+    if(++visits>MAX_XML_VISITS)throw new Error('Office XML contains too many nodes to inspect safely.');
+    if(n.nodeType===1&&n.localName===localName)all.push(n as XmlElement);
+    for(let i=n.childNodes.length-1;i>=0;i--){
+      const child=n.childNodes.item(i);
+      if(child)stack.push({node:child,depth:depth+1});
     }
   }
-  descend(node);
   return all;
 }
 // The source importer models the displayed final revision, not Word's
@@ -97,20 +106,24 @@ function hiddenRun(node: XmlNode): boolean {
 }
 function textOf(node: XmlNode): string {
   let result='';
-  function walk(n: XmlNode) {
-    if (n.nodeType === 1) {
+  const stack:Array<{node:XmlNode;depth:number}>=[{node,depth:0}];
+  let visits=0;
+  while(stack.length){
+    const {node:n,depth}=stack.pop()!;
+    if(depth>MAX_XML_DEPTH)throw new Error('Office XML exceeds supported nesting depth.');
+    if(++visits>MAX_XML_VISITS)throw new Error('Office XML contains too many nodes to inspect safely.');
+    if(n.nodeType===1){
       if(n.localName==='del'||n.localName==='moveFrom'||n.localName==='delText'||
-         hiddenRun(n))return;
-      if (n.localName === 't') { result += n.textContent ?? ''; return; }
-      if (n.localName === 'tab') { result += '\t'; return; }
-      if (n.localName === 'br' || n.localName === 'cr') { result += '\n'; return; }
+         hiddenRun(n))continue;
+      if(n.localName==='t'){result+=n.textContent??'';continue;}
+      if(n.localName==='tab'){result+='\t';continue;}
+      if(n.localName==='br'||n.localName==='cr'){result+='\n';continue;}
     }
-    for (let i=0;i<n.childNodes.length;i++) {
+    for(let i=n.childNodes.length-1;i>=0;i--){
       const child=n.childNodes.item(i);
-      if (child) walk(child);
+      if(child)stack.push({node:child,depth:depth+1});
     }
   }
-  walk(node);
   return result.trim();
 }
 function appendRecords(fileName: string, kind: 'docx'|'xlsx', entries: Entry[], warnings: string[]): SourceDocument {
@@ -151,7 +164,8 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
   let paragraph=0,table=0;
   // Top-level content controls may wrap ordinary paragraphs/tables. Traverse
   // the displayed content, retaining reading order and parser-derived labels.
-  function appendBlock(node: XmlNode):void {
+  function appendBlock(node: XmlNode,depth=0):void {
+    if(depth>MAX_XML_DEPTH)throw new Error('Office XML exceeds supported nesting depth.');
     if(node.nodeType!==1)return;
     if(node.localName==='del'||node.localName==='moveFrom')return;
     if(node.localName==='p'){
@@ -175,10 +189,10 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
     }else if(node.localName==='sdt'){
       for(const content of children(node,'sdtContent'))
         for(const child of Array.from({length:content.childNodes.length},(_,i)=>content.childNodes.item(i)))
-          if(child)appendBlock(child);
+          if(child)appendBlock(child,depth+1);
     }else if(['customXml','ins','moveTo'].includes(node.localName||'')){
       for(const child of Array.from({length:node.childNodes.length},(_,i)=>node.childNodes.item(i)))
-        if(child)appendBlock(child);
+        if(child)appendBlock(child,depth+1);
     }
     if(entries.length>MAX_RECORDS)throw new Error('DOCX exceeds the maximum record limit.');
   }
