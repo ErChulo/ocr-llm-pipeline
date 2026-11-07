@@ -96,3 +96,23 @@ test('date-formatted Excel numeric cells are flagged for manual review without g
  assert.ok(parsed.reviewIssues.some(x=>x.id==='xlsx:date-styles'));
  assert.match(parsed.reviewIssues.find(x=>x.id==='xlsx:date-styles').message,/Verify the original/);
 });
+
+test('XLSX charts and comments require acknowledgement even without embedded images',()=>{
+ const sheet='<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><v>100</v></c></row></sheetData></worksheet>';
+ const workbook='<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Plan Data" sheetId="1" r:id="rId1"/></sheets></workbook>';
+ const rels='<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>';
+ const bytes=zipped({
+  'xl/workbook.xml':workbook,
+  'xl/_rels/workbook.xml.rels':rels,
+  'xl/worksheets/sheet1.xml':sheet,
+  'xl/charts/chart1.xml':'<chart/>',
+  'xl/drawings/drawing1.xml':'<drawing/>',
+  'xl/comments1.xml':'<comments/>'
+ });
+ const parsed=parseXlsx('chart-comments.xlsx',bytes);
+ assert.match(parsed.text,/Plan Data!A1: 100/);
+ assert.ok(parsed.reviewIssues.some(x=>x.id==='xlsx:media'));
+ assert.ok(parsed.reviewIssues.some(x=>x.id==='xlsx:annotations'));
+ assert.ok(parsed.warnings.some(x=>x.includes('charts')));
+ assert.ok(parsed.warnings.some(x=>x.includes('comments')));
+});
