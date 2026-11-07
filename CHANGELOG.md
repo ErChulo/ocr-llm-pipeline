@@ -32,6 +32,9 @@
 - Require full lexical matches for string-valued evidence; form codes and terms cannot be supported by substrings of longer identifiers, hyphenated codes, or slash-joined alternatives. Reviewer-quoted source passages remain available for interpreted facts.
 - Add tests for code-prefix collisions, Unicode word boundaries and reviewer-quoted passages.
 
+- Fail closed when Excel formula cells lack saved calculation results or contain spreadsheet errors; never insert a generated placeholder as if it were source data. Existing cached formula results continue to require original-workbook review.
+- Add synthetic tests for missing caches, cached formulas, and Excel error cells.
+
 ## 0.3.0-beta.1 — November 6, 2026
 
 - Single-file `file://` Chromium test covers local model generation, text PDF, scanned-PDF/image OCR and DOCX/XLSX/CSV source import.
