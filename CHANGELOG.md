@@ -2,6 +2,9 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Detect potentially ambiguous native-PDF reading order from PDF.js text-item geometry, including wide tabular gaps, reverse item placement, column restarts, and rotation. Require original-PDF page review before JSON export without fabricating coordinates or claiming to reconstruct tables.
+- Add synthetic geometry tests and offline Chromium acceptance using a two-column PDF fixture.
+
 - Add explicit supplemental English OCR for PDF pages containing both selectable text and raster images. Keep native text and OCR transcription in separate records with authentic page numbers; never ascribe OCR text to PDF.js-native text-item geometry.
 - Require original-page review after the optional OCR pass; preserve the original input fingerprint and invalidate existing extractions. Corrected OCR text remains separately editable. Add browser acceptance and regression tests.
 - Full-page OCR can repeat native text and is not automatic image-region isolation; accurate reconstruction of complex tables and columns remains a production gate.
