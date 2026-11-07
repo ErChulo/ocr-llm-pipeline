@@ -64,3 +64,24 @@ test('text-bearing PDF with image content requires source-completeness acknowled
  const parsed=await parsePdf('synthetic.pdf',createScannedPdf(jpeg,360,160,'PLAN HEADER'));
  assert.ok(parsed.reviewIssues?.some(x=>x.id==='pdf:mixed:1'&&x.page===1));
 });
+
+
+test('PDF FreeText notes omitted from native text require explicit original annotation review',async()=>{
+ const {createAnnotatedPdf}=await import('./pdf-fixture.mjs');
+ const result=await parsePdf('annotated.pdf',new Uint8Array(createAnnotatedPdf('FreeText')));
+ assert.match(result.text,/Normal retirement age 65/);
+ assert.doesNotMatch(result.text,/Unverified retirement exception/);
+ const issue=result.reviewIssues.find(i=>i.id==='pdf:annotations:1');
+ assert.ok(issue,'unextracted annotation needs source review');
+ assert.equal(issue.category,'pdf_annotation_review');
+ assert.equal(issue.page,1);
+ assert.match(issue.message,/approved PDF viewer showing annotations/);
+ assert.ok(result.warnings.some(w=>w.includes('non-link annotation')));
+});
+
+test('ordinary PDF hyperlink annotations are not confused with text or form fields',async()=>{
+ const {createAnnotatedPdf}=await import('./pdf-fixture.mjs');
+ const result=await parsePdf('hyperlink.pdf',new Uint8Array(createAnnotatedPdf('Link')));
+ assert.equal(result.reviewIssues.some(i=>i.category==='pdf_annotation_review'),false);
+ assert.match(result.text,/Normal retirement age 65/);
+});
