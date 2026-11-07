@@ -62,6 +62,8 @@ try{
     'Guide dialog must focus its close button');
   await page.keyboard.press('Escape');
   await modal.waitFor({state:'detached',timeout:10000});
+  await page.waitForFunction(()=>document.activeElement instanceof HTMLButtonElement &&
+    document.activeElement.textContent?.trim()==='Guide',null,{timeout:10000});
   assert.equal(await page.getByRole('button',{name:'Guide',exact:true}).evaluate(
     el=>el===document.activeElement),true,
     'Closing the guide restores focus');
