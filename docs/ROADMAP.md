@@ -23,6 +23,7 @@
 
 - [x] Official Qwen2.5-1.5B-Instruct Q4_K_M: successful local file URL inference and full JSON export; **3/4** known-answer score ([CI run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42281102968)).
 - [x] Five-case synthetic pension corpus, real 0.5B GGUF: **90% micro exact precision/recall/F1**, 4/5 entirely exact; sole discrepancy was equivalent date notation ([CI 42371798989](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42371798989)).
+- [x] Structured JSON extraction now uses greedy sampling (temperature 0, top-p 1) independently of chat, reducing avoidable sampling variation. Quality must still be measured and reviewed on an actual model.
 - [ ] Broader adversarial accuracy, precision/recall, cross-document applicability, context overflow, latency and RAM on 0.5B/1.5B/3B. **Measured 0.5B eight-case benchmark: 75% strict micro F1, 4/8 exact, 392.8s, zero browser network** ([CI 42408879295](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42408879295)); larger models and representative source validation remain open. A separate, checksum-verified real 0.5B eight-case CI benchmark now provides an additional reproducible measurement. A bounded two-retry context-overflow fallback has source tests; 3B end-to-end extraction has repeatedly timed out and still needs real-model testing.
 - [ ] Manual offline verification on the authorized managed PBGC Windows Chrome/Edge workstation.
 - [x] Implement original PDF page viewer and approximate PDF.js text-item evidence overlays; browser verification tracked separately.
