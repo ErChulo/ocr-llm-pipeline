@@ -1,0 +1,66 @@
+name: Experimental eight-case real GGUF pension corpus
+
+concurrency:
+  group: eight-case-gguf-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/eight-case-gguf-benchmark.yml"
+      - "tests/real-corpus-benchmark.mjs"
+      - "src/fictionalPensionCorpus.ts"
+      - "src/localCorpusBenchmark.ts"
+      - "src/syntheticQuality.ts"
+      - "src/engine.ts"
+      - "src/chunkExtraction.ts"
+      - "src/App.tsx"
+
+permissions:
+  contents: read
+
+jobs:
+  eight-case-real-gguf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 32
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install exact-pinned dependencies and build offline HTML
+        run: |
+          npm ci --no-audit --no-fund
+          npm run test
+          npm run build
+      - name: Install Chromium automation (CI runner only)
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Download and checksum official Qwen 0.5B GGUF (CI only)
+        timeout-minutes: 8
+        run: |
+          mkdir -p tmp
+          curl -fL --retry 3 --retry-all-errors \
+            'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf' \
+            -o tmp/qwen2.5-0.5b-instruct-q4_k_m.gguf
+          printf '%s  %s\n' \
+            '74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db' \
+            'tmp/qwen2.5-0.5b-instruct-q4_k_m.gguf' | sha256sum -c -
+      - name: Measure eight fictional cases in real offline Chromium
+        timeout-minutes: 20
+        env:
+          BENCHMARK_CASES: all
+          MODEL_LABEL: Official Qwen2.5-0.5B-Instruct Q4_K_M
+          MODEL_FILE: tmp/qwen2.5-0.5b-instruct-q4_k_m.gguf
+        run: node tests/real-corpus-benchmark.mjs
+      - name: Upload synthetic-only quality report and screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eight-case-real-gguf-quality-report
+          path: |
+            tmp/real-corpus-report.json
+            tmp/real-corpus-final.png
+          if-no-files-found: ignore
