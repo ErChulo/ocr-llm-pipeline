@@ -265,3 +265,22 @@ test('spreadsheet calculation errors cannot masquerade as extracted plan values'
  const sheet='<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><v>65</v></c><c r="B1" t="e"><f>1/0</f><v>#DIV/0!</v></c></row></sheetData></worksheet>';
  assert.throws(()=>parseXlsx('error.xlsx',xlsx({sheet})),/cell Plan Data!B1 contains a spreadsheet error/);
 });
+
+
+test('deeply nested DOCX XML is rejected without recursive call-stack failure',()=>{
+ const deep='<w:container>'.repeat(145)+
+   '<w:p><w:r><w:t>Fictional normal age 65</w:t></w:r></w:p>'+
+   '</w:container>'.repeat(145);
+ const xml='<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'+
+   '<w:body>'+deep+'</w:body></w:document>';
+ assert.throws(()=>parseDocx('deep.docx',docx(xml)),/Office XML exceeds supported nesting depth/);
+});
+
+test('deeply nested XLSX XML is rejected before extracting a partial value',()=>{
+ const deep='<nested>'.repeat(145)+
+   '<row r="1"><c r="A1"><v>65</v></c></row>'+
+   '</nested>'.repeat(145);
+ const xml='<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
+   '<sheetData>'+deep+'</sheetData></worksheet>';
+ assert.throws(()=>parseXlsx('deep.xlsx',xlsx({sheet:xml})),/Office XML exceeds supported nesting depth/);
+});
