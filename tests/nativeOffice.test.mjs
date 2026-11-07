@@ -77,3 +77,22 @@ test('Word header, footer and footnote text are included with honest part IDs',(
  assert.equal(note.location.noteId,7);
  assert.ok(doc.warnings.some(x=>x.includes('without a verified page location')));
 });
+
+test('date-formatted Excel numeric cells are flagged for manual review without guessing dates',()=>{
+ const workbook='<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Dates" sheetId="1" r:id="rId1"/></sheets></workbook>';
+ const rels='<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>';
+ const styles='<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cellXfs count="2"><xf numFmtId="0"/><xf numFmtId="14" applyNumberFormat="1"/></cellXfs></styleSheet>';
+ const sheet='<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" s="1"><v>45500</v></c><c r="B1"><v>55</v></c></row></sheetData></worksheet>';
+ const bytes=zipped({
+  'xl/workbook.xml':workbook,
+  'xl/_rels/workbook.xml.rels':rels,
+  'xl/styles.xml':styles,
+  'xl/worksheets/sheet1.xml':sheet
+ });
+ const parsed=parseXlsx('synthetic.xlsx',bytes);
+ assert.match(parsed.text,/Dates!A1: 45500/);
+ assert.equal(parsed.records[0].location.excelDateStyled,1);
+ assert.equal(parsed.records[1].location.excelDateStyled,undefined);
+ assert.ok(parsed.reviewIssues.some(x=>x.id==='xlsx:date-styles'));
+ assert.match(parsed.reviewIssues.find(x=>x.id==='xlsx:date-styles').message,/Verify the original/);
+});

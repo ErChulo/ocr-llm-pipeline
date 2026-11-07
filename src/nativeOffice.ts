@@ -218,9 +218,37 @@ function workbookTarget(name: string) {
   if (!resolved.startsWith('xl/')) throw new Error('Excel workbook references an invalid sheet path.');
   return resolved;
 }
+const BUILTIN_DATE_FORMATS=new Set([14,15,16,17,18,19,20,21,22,45,46,47]);
+function excelDateStyles(files:FileParts):Set<number>{
+  const bytes=files['xl/styles.xml'];
+  if(!bytes)return new Set();
+  const xml=xmlDoc(decoder.decode(bytes));
+  const custom=new Map<number,string>();
+  for(const nf of descendants(xml,'numFmt')){
+    const id=Number(nf.getAttribute('numFmtId'));
+    const format=nf.getAttribute('formatCode');
+    if(Number.isInteger(id)&&format)custom.set(id,format);
+  }
+  const styleBlock=descendants(xml,'cellXfs')[0];
+  const styles=new Set<number>();
+  if(!styleBlock)return styles;
+  children(styleBlock,'xf').forEach((xf,index)=>{
+    const formatId=Number(xf.getAttribute('numFmtId')||'0');
+    const fmt=custom.get(formatId)||'';
+    // Strip escaped, quoted and locale-labeled literals. Detect only
+    // plausible date/time formats. Never silently convert Excel serials.
+    const simplified=fmt.replace(/"[^"]*"/g,'').replace(/\\./g,'')
+      .replace(/\[[^\]]*\]/g,'').replace(/_.|\*./g,'');
+    if(BUILTIN_DATE_FORMATS.has(formatId) || /[dyhs]/i.test(simplified)){
+      styles.add(index);
+    }
+  });
+  return styles;
+}
+
 export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
   const keep=(n:string)=>n==='xl/workbook.xml'||n==='xl/_rels/workbook.xml.rels'||
-    n==='xl/sharedStrings.xml'||n.startsWith('xl/worksheets/')&&n.endsWith('.xml');
+    n==='xl/sharedStrings.xml'||n==='xl/styles.xml'||n.startsWith('xl/worksheets/')&&n.endsWith('.xml');
   const {files,omitted}=officeArchive(data,keep);
   const workbook=xmlDoc(getPart(files,'xl/workbook.xml'));
   const rel=xmlDoc(getPart(files,'xl/_rels/workbook.xml.rels'));
@@ -229,6 +257,9 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
     .map(item=>descendants(item,'t').map(x=>x.textContent||'').join('')) : [];
   const entries:Entry[]=[];
   const warnings:string[]=[];
+  const dateStyles=excelDateStyles(files);
+  let dateCells=0;
+  const dateExamples:string[]=[];
   let formulas=0;
   for(const sheet of descendants(workbook,'sheet')) {
     const sheetName=sheet.getAttribute('name')||'Unnamed';
@@ -254,16 +285,34 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
       } else if(type==='b') value=v==='1'?'TRUE':v==='0'?'FALSE':v;
       else if(type==='str'||type==='n'||type===''||type==='e'||type==='d') value=v;
       else throw new Error('Unsupported Excel cell type at '+sheetName+'!'+cell+': '+type);
+      const styleIndex=Number(c.getAttribute('s')||'0');
+      if(!Number.isInteger(styleIndex)||styleIndex<0||styleIndex>100000)
+        throw new Error('Invalid Excel cell style index at '+sheetName+'!'+cell);
+      const dateStyled=dateStyles.has(styleIndex) && (type==='n'||type==='') &&
+        value.trim()!=='' && Number.isFinite(Number(value));
+      if(dateStyled){
+        dateCells++;
+        if(dateExamples.length<4)dateExamples.push(sheetName+'!'+cell);
+      }
       if(f) {formulas++;if(!value)value='[formula without cached value]';}
       if(value.trim()) entries.push({label:sheetName+'!'+cell,value,
-        location:{kind:'xlsx-cell',sheet:sheetName,cell}});
+        location:{kind:'xlsx-cell',sheet:sheetName,cell,
+          ...(dateStyled?{excelDateStyled:1}:{})}});
       if(entries.length>MAX_RECORDS)throw new Error('XLSX exceeds the maximum record limit.');
     }
   }
   if(formulas) warnings.push(formulas+' formula cells found. Cached values were read, not recalculated.');
   if(omitted.some(n=>/^xl\/media\//.test(n)))warnings.push('Workbook images and charts are not extracted.');
-  warnings.push('Excel date styles are not interpreted; numeric date serials need review.');
+  if(dateCells){
+    warnings.push(dateCells+' Excel numeric cells are date/time styled, including '+
+      dateExamples.join(', ')+'. Their raw serials were retained; compare original displayed dates.');
+  }else{
+    warnings.push('Excel date formats are not converted. Numeric date serials without recognizable styles may remain.');
+  }
   const reviewIssues:SourceReviewIssue[]=[];
+  if(dateCells>0)reviewIssues.push({id:'xlsx:date-styles',category:'office_unreviewed_content',
+    message:dateCells+' numeric date/time-styled cells were read as raw Excel serials, including '+
+      dateExamples.join(', ')+'. Verify the original spreadsheet date displays before export.'});
   if(formulas>0)reviewIssues.push({id:'xlsx:formulas',category:'office_unreviewed_content',
     message:formulas+' formula cells were imported from cached results only. Check the original workbook calculations.'});
   if(omitted.some(n=>/^xl\/media\//.test(n)))reviewIssues.push({
