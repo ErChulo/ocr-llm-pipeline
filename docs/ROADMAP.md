@@ -26,6 +26,7 @@
 - [x] Mixed PDF raster/text pages now trigger a **required original-source acknowledgement** before JSON export.
 - [ ] Exact glyph/quoted-substring highlights and robust mixed raster/text page OCR remain open.
 - [x] Human-editable OCR transcription with original-file fingerprint and page provenance preserved; correction invalidates prior extraction review.
+- [x] All scanned PDF pages and images now require original-source review, regardless of confidence; image originals can be viewed locally. Corrections reset prior acknowledgement.
 - [ ] OCR confidence visualization, larger multilingual corpus, handwriting, varied scans, multipage layouts and columns.
 - [ ] Thorough DOCX/XLSX layout and fidelity checks: headers/footers, tracked changes, dates/styles, formulas, merged cells, comments, embedded graphics. **Partial source implementation:** DOCX tracked-revision visibility, direct hidden text, content controls and altChunk review safeguards; XLSX date-style alerts, hidden content, merged ranges, chartsheets, comments, external data/link omissions, and malicious sheet relationship rejection have targeted regression tests. Real-file visual fidelity verification remains open.
 - [ ] Factual verification beyond literal text matches; full cross-document conflict resolution, no silent assumptions.
