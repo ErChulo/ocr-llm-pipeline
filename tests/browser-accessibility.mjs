@@ -12,7 +12,8 @@ import assert from 'node:assert/strict';
 
 mkdirSync('tmp',{recursive:true});
 const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-gpu']});
-const page=await browser.newPage({viewport:{width:1280,height:900}});
+const context=await browser.newContext({viewport:{width:1280,height:900}});
+const page=await context.newPage();
 const violations=[];
 const externalRequests=[];
 const report={origin:'file://',fictionalOnly:true,
