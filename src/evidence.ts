@@ -78,7 +78,7 @@ function boundaryOkay(source: string,start: number,end: number,value: unknown): 
   // Schemas often represent pension ages / amounts as strings.
   const token=typeof value==='number' && Number.isFinite(value)?String(value):
     typeof value==='string'?value.trim():'';
-  if(!/^[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?$/.test(token)){
+  if(!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(token)){
     return true;
   }
   const before=source[start-1]||'',after=source[end]||'';
@@ -90,7 +90,7 @@ function boundaryOkay(source: string,start: number,end: number,value: unknown): 
   // Do not cite positive numbers from negative/signed source amounts,
   // including -65, -$65, Unicode minus, or 65 embedded in a range.
   if(!/^[+-]/.test(token) && /[-+−–]/.test(before))return false;
-  if(/[-+−–]\\s*[$€£]?\\s*$/.test(source.slice(Math.max(0,start-8),start)) &&
+  if(/[-+−–]\s*[$€£]?\s*$/.test(source.slice(Math.max(0,start-8),start)) &&
      !/^[+-]/.test(token))return false;
   // Accounting negatives such as (65) and ($65) are not positive 65.
   if(after===')'&&(before==='('||(before==='
