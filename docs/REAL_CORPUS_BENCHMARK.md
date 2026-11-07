@@ -43,3 +43,16 @@ This local feature has deterministic automated tests and browser-control coverag
 The independent `.github/workflows/eight-case-gguf-benchmark.yml` workflow downloads the **official checksum-verified Qwen2.5-0.5B-Instruct Q4_K_M** model on the networked GitHub Actions runner, builds the standalone HTML, and opens it through `file://` with outbound Chromium requests blocked. The runner sets `BENCHMARK_CASES=all` to evaluate all eight canonical fictional cases, while the earlier five-case baseline remains reproducible with the script's default mode. The report includes the cases, strict micro precision/recall/F1, exact cases, failures, elapsed times and date-format diagnostics.
 
 The workflow is intentionally separate from routine build status. A passing workflow means a reproducible synthetic diagnostic executed, **not** that a production accuracy threshold or actuarial interpretation has been certified. Once a complete run is verified, record the actual model score and run URL here without altering expected answers.
+
+## Verified eight-case real-model result — November 7, 2026
+
+[GitHub Actions run 42408879295](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42408879295) completed successfully with the official checksum-verified **Qwen2.5-0.5B-Instruct Q4_K_M** model, in a Chromium `file://` session with **zero browser network requests**.
+
+- **8 fictional cases**, **4/8 entirely exact**, 12 true-positive fields, 4 false positives and 4 false negatives, **strict micro precision = recall = F1 = 75%**. Elapsed time: **392.8 seconds** (~6.5 minutes), including model loading and eight source runs.
+- Entirely exact: simple eligibility, rate precision, unknown data, and quoted prompt injection.
+- Historical amendment date: returned `2025-01-01` instead of the source's `January 1 2025`; exact string mismatch and literal citation review blocked unsubstantiated normalization.
+- Normal form: returned `FICTIONAL PLAN` rather than the documented `SLA` for single participants. This is a **substantively incorrect extraction**.
+- Survivor condition: returned `QPSA eligibility requires a vested participant with a surviving spouse.` instead of the expected exact condition `vested participant with a surviving spouse`; the underlying meaning overlaps but the field is not exact.
+- Separation/freeze date: returned `2022-08-01` instead of `August 1 2022`. The source-evidence gate blocked unsupported literal date representation.
+
+The older five-case run scored 90% strict F1; its corpus is different, so the 75% eight-case result is **not** a like-for-like regression measurement. Both are small fictional datasets, not representative pension plan accuracy. Current 0.5B quality is inadequate for unattended production extraction. Verify whether 1.5B/3B GGUF results justify their higher runtime and memory costs before release.

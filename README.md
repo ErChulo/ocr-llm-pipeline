@@ -67,3 +67,7 @@ Choose **View original PDF** to inspect the actual PDF page locally; after selec
 ### First real five-document benchmark
 
 The official 0.5B GGUF achieved 90% **exact-field** micro precision/recall/F1 on five fictional pension inputs, with zero external network requests ([CI evidence](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42371798989)). Its one mismatch was an unambiguous date normalization, not a different calendar date. This is a small synthetic diagnostic, **not** production acceptance. See [measured cases](docs/REAL_CORPUS_BENCHMARK.md).
+
+### Current eight-case real-model result
+
+The [actual Qwen2.5-0.5B eight-case offline run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42408879295) measured **75% strict micro F1**, four entirely exact cases out of eight, and **392.8 seconds**. A wrong single-participant normal-form value and two date-reformatting issues were observed; user source-review gates blocked unsupported dates. This is **below production accuracy**; see [the detailed per-case report](docs/REAL_CORPUS_BENCHMARK.md). The historical five-case benchmark had a different cohort and is not directly comparable.
