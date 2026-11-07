@@ -127,7 +127,7 @@ try {
   assert.ok(reviewedFields>=2,'Model must produce both requested plan fields.');
   for(let i=0;i<reviewedFields;i++){
     const field=page.locator('.evidence-field').nth(i);
-    const missing=await field.getByText(/No exact source text supports this value/).count();
+    const missing=await field.getByText(/No exact source (?:text|passage)|source section where the model proposed this value/).count();
     assert.equal(missing,0,'Every model value needs real source text.');
     await field.locator('select').selectOption('0');
     await field.locator('input[type="checkbox"]').check();

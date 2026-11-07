@@ -171,7 +171,7 @@ test('invented, too-short and other-section reviewer quotations cannot unlock ev
  const audit={documentId:d.id,documentName:d.name,sourceText:d.text,length:d.text.length,
   chunks:[{chunk:1,start:0,end:first.length},{chunk:2,start:first.length,end:d.text.length}],
   candidates:{'/continued':[{value:true,spans:[{chunk:1,start:0,end:first.length}]}]},conflicts:[]};
- for(const quote of ['invented passage', 'continues', 'Unrelated section discusses disability']){
+ for(const quote of ['invented passage', 'service', 'Unrelated section discusses disability']){
   const check=auditLiteralEvidence(d,{continued:true},audit,{'/continued':quote});
   assert.equal(check[0].status,'missing');
  }
