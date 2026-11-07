@@ -71,6 +71,7 @@ export default function App() {
   const [valid, setValid] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [schemaFeedback, setSchemaFeedback] = useState('');
+  const [reviewerQuotes, setReviewerQuotes] = useState<Record<string,string>>({});
   const [evidenceChoices, setEvidenceChoices] = useState<Record<string,number>>({});
   const [evidenceConfirmed, setEvidenceConfirmed] = useState<Record<string,boolean>>({});
   const [privacyReviewed, setPrivacyReviewed] = useState(false);
@@ -86,8 +87,8 @@ export default function App() {
   // each value and confirm one actual source location before exporting.
   const evidenceChecks = useMemo(() =>
     valid && extraction !== null && active && audit
-      ? auditLiteralEvidence(active, extraction, audit) : [],
-    [valid, extraction, active, audit]);
+      ? auditLiteralEvidence(active, extraction, audit, reviewerQuotes) : [],
+    [valid, extraction, active, audit, reviewerQuotes]);
   const evidenceComplete = evidenceReviewComplete(evidenceChecks, evidenceChoices, evidenceConfirmed);
   const exportGate = evaluateExportGate({
     document: active, audit, value: extraction, schemaValid:valid, busy,
@@ -211,7 +212,7 @@ export default function App() {
   function clearExtraction() {
     setExtraction(null); setAudit(null); setReviewDraft(''); setConflictChoices({});
     setRawExtraction(''); setValid(false); setValidationErrors([]); setProgress({ done: 0, total: 0 });
-    setEvidenceChoices({}); setEvidenceConfirmed({}); setPrivacyReviewed(false);
+    setReviewerQuotes({}); setEvidenceChoices({}); setEvidenceConfirmed({}); setPrivacyReviewed(false);
   }
 
   async function validateDraft(draft: string, currentAudit: ExtractionAudit | null, choices: Record<string, number>) {
@@ -234,7 +235,7 @@ export default function App() {
     } catch (e) { errors.push(errorMessage(e)); }
     finally { setBusy(false); }
     setValidationErrors(errors);
-    setEvidenceChoices({}); setEvidenceConfirmed({});
+    setReviewerQuotes({}); setEvidenceChoices({}); setEvidenceConfirmed({});
     setValid(errors.length === 0);
     setExtraction(errors.length === 0 ? value : null);
     setStatus(errors.length === 0
@@ -251,7 +252,7 @@ export default function App() {
     const merged = resolveCandidateValues(audit, next);
     setReviewDraft(JSON.stringify(merged.data, null, 2));
     setValid(false); setExtraction(null); setValidationErrors([]);
-    setEvidenceChoices({}); setEvidenceConfirmed({});
+    setReviewerQuotes({}); setEvidenceChoices({}); setEvidenceConfirmed({});
   }
 
   async function onCheckSchema() {
@@ -426,7 +427,7 @@ export default function App() {
             <p className="help">{active ? 'Source: ' + active.name : 'Select a document first.'} All text sections must finish before export.</p>
             <label>Target JSON Schema
               <textarea className="schema" aria-label="Target JSON Schema" value={schema} spellCheck={false}
-                onChange={e => { setSchema(e.currentTarget.value); setSchemaFeedback(''); setValid(false); setExtraction(null); setEvidenceChoices({}); setEvidenceConfirmed({}); }}/>
+                onChange={e => { setSchema(e.currentTarget.value); setSchemaFeedback(''); setValid(false); setExtraction(null); setReviewerQuotes({}); setEvidenceChoices({}); setEvidenceConfirmed({}); }}/>
             </label>
             <div className="actions">
               <button className="secondary" disabled={busy} onClick={() => void onCheckSchema()}>
@@ -478,7 +479,7 @@ export default function App() {
               placeholder={busy ? 'The local model is extracting...' : 'No extraction yet.'}
               value={audit ? reviewDraft : rawExtraction}
               disabled={!audit || busy}
-              onChange={e => { setReviewDraft(e.currentTarget.value); setValid(false); setExtraction(null); setEvidenceChoices({}); setEvidenceConfirmed({}); }}/>
+              onChange={e => { setReviewDraft(e.currentTarget.value); setValid(false); setExtraction(null); setReviewerQuotes({}); setEvidenceChoices({}); setEvidenceConfirmed({}); }}/>
             {audit && <div className="actions"><button type="button" className="secondary" disabled={busy}
               onClick={() => void validateDraft(reviewDraft, audit, conflictChoices)}>Validate edited JSON</button></div>}
             {audit && <p className={valid ? 'success' : 'warning'}>
@@ -498,12 +499,29 @@ export default function App() {
               <p className="help">A text match is not proof of a fact. Compare each value with the original file and confirm its source.</p>
               {evidenceChecks.map(check => <div className="evidence-field" key={check.path}>
                 <strong>{check.path} — {JSON.stringify(check.value)}</strong>
+                {check.evidenceMethod==='reviewer_quoted_passage' && <>
+                  <p className="help">This value is not found literally. Copy a supporting passage from the original document (8–300 characters), then select and confirm its location. A passage match is not proof that your interpretation is correct.</p>
+                  <label>Supporting passage
+                    <textarea className="schema evidence-passage"
+                      aria-label={'Supporting passage for '+check.path}
+                      maxLength={300}
+                      value={reviewerQuotes[check.path]||''}
+                      onChange={event=>{
+                        const quote=event.currentTarget.value;
+                        setReviewerQuotes(current=>({...current,[check.path]:quote}));
+                        setEvidenceChoices(current=>{const next={...current};delete next[check.path];return next;});
+                        setEvidenceConfirmed(current=>({...current,[check.path]:false}));
+                      }}/>
+                  </label>
+                </>}
                 {check.sourceScope==='reviewer_edited' && <p className="help">This value does not match a model candidate. Review it as a manual correction.</p>}
+                {check.evidenceMethod==='reviewer_quoted_passage' && check.status==='match' &&
+                  <p className="help">Reviewer-supplied source passage found. Confirm the relationship between the passage and the JSON value manually.</p>}
                 {check.status !== 'match'
                   ? <p className="warning" role="alert">
                       {check.sourceScope==='model_sections'
                         ? 'The source section where the model proposed this value does not contain a matching passage. Correct and revalidate the JSON. Export is blocked.'
-                        : 'No exact source text supports this value. Correct the JSON and validate again. Export is blocked.'}
+                        : 'No exact source passage supports this value. Copy a genuine supporting passage or correct the JSON. Export is blocked.'}
                     </p>
                   : <>
                     <label>Source location

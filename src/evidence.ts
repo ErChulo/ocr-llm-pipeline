@@ -14,6 +14,7 @@ export type EvidenceMatch = {
   location: Record<string, string | number>;
   textItemBoxes?: Array<{ x:number; y:number; width:number; height:number; precision:'pdf-text-item-envelope' }>;
   sourceScope?: 'model_sections' | 'reviewer_edited';
+  evidenceMethod?: 'literal_value' | 'reviewer_quoted_passage';
 };
 export type EvidenceCheck = {
   path: string;
@@ -21,6 +22,7 @@ export type EvidenceCheck = {
   matches: EvidenceMatch[];
   status: 'match' | 'missing' | 'unsupported';
   sourceScope?: 'model_sections' | 'reviewer_edited';
+  evidenceMethod?: 'literal_value' | 'reviewer_quoted_passage';
 };
 
 const MAX_MATCHES = 32;
@@ -146,18 +148,30 @@ function findMatches(doc: SourceDocument,value: unknown,allowed:SourceSpan[] | n
   return matches;
 }
 export function auditLiteralEvidence(doc: SourceDocument, extraction: unknown,
-  audit?: ExtractionAudit): EvidenceCheck[] {
+  audit?: ExtractionAudit, reviewerQuotes:Record<string,string>={}): EvidenceCheck[] {
   if (!object(extraction)) throw new Error('Only JSON objects can be reviewed.');
   return fields(extraction).map(({path,value}):EvidenceCheck=>{
     if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') {
       return {path,value:String(value),matches:[],status:'unsupported'};
     }
     const scoped=candidateSectionSpans(audit,path,value);
-    const matches=findMatches(doc,value,scoped);
+    const originalMatches=findMatches(doc,value,scoped);
+    const rawQuote=reviewerQuotes[path]?.trim()||'';
+    // A reviewer can cite an exact passage for a boolean or normalized value.
+    // Merely typing "true" or inventing a quote must never satisfy evidence.
+    const quoteMatches=rawQuote.length>=8&&rawQuote.length<=300
+      ? findMatches(doc,rawQuote,scoped) : [];
+    const method: 'literal_value' | 'reviewer_quoted_passage'=
+      originalMatches.length?'literal_value':'reviewer_quoted_passage';
+    const matches=originalMatches.length?originalMatches:quoteMatches;
     const sourceScope=audit?(scoped?'model_sections':'reviewer_edited'):undefined;
     return {path,value,
-      matches:sourceScope?matches.map(match=>({...match,sourceScope})):matches,
+      matches:matches.map(match=>({
+        ...match, evidenceMethod:method,
+        ...(sourceScope?{sourceScope}:{})
+      })),
       status:matches.length?'match':'missing',
+      evidenceMethod:method,
       ...(sourceScope?{sourceScope}:{})};
   });
 }

@@ -146,3 +146,33 @@ test('exported citations disclose whether their candidate came from a model sect
  assert.equal(result['/age'].sourceScope,'model_sections');
  assert.equal(result['/age'].location.kind,'document');
 });
+
+test('human-supplied exact source passage supports a boolean without inventing a literal true value',()=>{
+ const text='Vesting service may continue after the benefit accrual freeze date.';
+ const d={...doc,text,records:undefined};
+ const audit={documentId:d.id,documentName:d.name,sourceText:text,length:text.length,
+  chunks:[{chunk:1,start:0,end:text.length}],
+  candidates:{'/vesting_continues':[{value:true,spans:[{chunk:1,start:0,end:text.length}]}]},
+  conflicts:[]};
+ const none=auditLiteralEvidence(d,{vesting_continues:true},audit);
+ assert.equal(none[0].status,'missing');
+ const quote='Vesting service may continue after the benefit accrual freeze date';
+ const supported=auditLiteralEvidence(d,{vesting_continues:true},audit,{'/vesting_continues':quote});
+ assert.equal(supported[0].status,'match');
+ assert.equal(supported[0].evidenceMethod,'reviewer_quoted_passage');
+ assert.equal(supported[0].matches[0].evidenceMethod,'reviewer_quoted_passage');
+ assert.equal(evidenceReviewComplete(supported,{},{}),false);
+ assert.equal(evidenceReviewComplete(supported,{'/vesting_continues':0},{'/vesting_continues':true}),true);
+});
+test('invented, too-short and other-section reviewer quotations cannot unlock evidence',()=>{
+ const first='Rule says vesting service continues.\n';
+ const second='Unrelated section discusses disability.\n';
+ const d={...doc,text:first+second,records:undefined};
+ const audit={documentId:d.id,documentName:d.name,sourceText:d.text,length:d.text.length,
+  chunks:[{chunk:1,start:0,end:first.length},{chunk:2,start:first.length,end:d.text.length}],
+  candidates:{'/continued':[{value:true,spans:[{chunk:1,start:0,end:first.length}]}]},conflicts:[]};
+ for(const quote of ['invented passage', 'continues', 'Unrelated section discusses disability']){
+  const check=auditLiteralEvidence(d,{continued:true},audit,{'/continued':quote});
+  assert.equal(check[0].status,'missing');
+ }
+});

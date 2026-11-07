@@ -90,3 +90,5 @@ nav button.active{color:var(--ink);background:var(--raised);border-color:var(--b
 .ocr-correction h3{font-size:15px;margin:0 0 6px}
 .ocr-correction label{display:block;margin:10px 0}
 .ocr-edit{min-height:180px;resize:vertical}
+
+.evidence-passage{min-height:84px;resize:vertical}

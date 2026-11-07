@@ -10,7 +10,7 @@
 - [x] Synthetic PDF, scanned PDF, image OCR, DOCX, XLSX, CSV browser acceptance on local HTML.
 - [x] Source offsets and actual parser-derived PDF page, DOCX paragraph/table, XLSX sheet/cell and CSV row/column references.
 - [x] JSON Schema validation, bounded sectioning, exact source coverage and conflict review.
-- [x] Mandatory field-level *candidate text evidence* confirmation before export; model-originated values are checked only against their candidate source sections, while manually edited values are labeled distinctly.
+- [x] Mandatory field-level *candidate text evidence* confirmation before export; model-originated values are checked only against their source sections, and reviewers may supply an exact supporting passage for interpreted/boolean fields. Passage existence never establishes factual correctness.
 - [x] Source identity check, original file SHA-256, and fail-closed export validation.
 - [x] Conservative possible-SSN/email/phone/payment-card screening and acknowledgement.
 - [x] User-chosen dark/white logo pair, theme toggle, app routes and printable Guide.
