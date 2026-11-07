@@ -2,6 +2,9 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Replace recursive traversal of DOCX/XLSX XML descendants and text with bounded iterative walks. Reject excessively deep or large XML trees before they can exhaust JavaScript call stacks; limit nested content-control traversal.
+- Add maliciously nested synthetic Word/Excel fixtures. This is a defense-in-depth change, not a comprehensive dependency or parser security audit.
+
 - Add an opt-in eight-case GGUF accuracy benchmark under Settings, running entirely on the local workstation with fictional source text. Measure strict-field precision, recall, F1, case completeness, generation failures and elapsed time; save synthetic-only JSON results.
 - Centralize the fictional pension corpus for UI and CI, preventing evaluation fixture drift. Add unit tests for exact scoring, adversarial source handling, cancellation and runtime failure. A passing stub test is not an actual GGUF accuracy result.
 
