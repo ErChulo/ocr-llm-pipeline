@@ -24,6 +24,9 @@
 - Restart the full-document extraction with smaller sections on recognized model context-overflow errors (maximum two retries). Discard previous candidates; never mix attempts or silently truncate source text. Cancelled operations, invalid JSON, and unrelated errors remain fail-closed.
 - Add synthetic tests for complete coverage after retry, bounded attempts, and cancellation behavior. Real GGUF context limits still require independent validation.
 
+- Reject local Wllama completion streams terminated by the output token cap (`finish_reason: length`). A syntactically valid but token-limited JSON response is never treated as completed extraction.
+- Add a deterministic completion-status test. Exact model stream behavior remains covered by the independent file:// browser workflow.
+
 ## 0.3.0-beta.1 — November 6, 2026
 
 - Single-file `file://` Chromium test covers local model generation, text PDF, scanned-PDF/image OCR and DOCX/XLSX/CSV source import.
