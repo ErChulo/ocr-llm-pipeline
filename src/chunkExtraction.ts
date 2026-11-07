@@ -44,6 +44,30 @@ export function textChunkBudget(contextTokens: number, schema: unknown, maxOutpu
   return budget;
 }
 
+/**
+ * A UTF-16 character count does not guarantee a safe language-model prompt
+ * boundary. Never split a surrogate pair, combining sequence, ZWJ emoji, or
+ * contiguous numeric atom (dates, decimals, signed values and thousands).
+ * Offset arithmetic stays in the original UTF-16 coordinate system.
+ */
+function unsafeChunkCut(text:string,at:number):boolean{
+  if(at<=0 || at>=text.length)return false;
+  const left=text.charCodeAt(at-1),right=text.charCodeAt(at);
+  if(left>=0xD800 && left<=0xDBFF && right>=0xDC00 && right<=0xDFFF)return true;
+  if(text[at-1]==='\u200D'||text[at]==='\u200D')return true;
+  const rightPoint=text.codePointAt(at);
+  if(rightPoint!==undefined && /\p{Mark}/u.test(String.fromCodePoint(rightPoint)))return true;
+  const before=text[at-1],after=text[at];
+  const digit=(value:string|undefined)=>value!==undefined && /[0-9]/.test(value);
+  // A numeric atom can include decimal/group separators, signs, or an
+  // ISO-date separator. Reject boundaries within these uninterrupted runs.
+  if(digit(before)&&digit(after))return true;
+  if(digit(before)&&/[.,/%:+\-]/.test(after)&&digit(text[at+1]))return true;
+  if(digit(after)&&/[.,/%:+\-]/.test(before)&&digit(text[at-2]))return true;
+  if(digit(after)&&/[+\-$€£]/.test(before))return true;
+  return false;
+}
+
 export function splitWholeText(text: string, maxChars: number, maxChunks = 256): TextChunk[] {
   if (!text.trim()) throw new Error('The source document contains no text.');
   if (!Number.isInteger(maxChars) || maxChars < 200) throw new Error('Invalid source section size.');
@@ -59,9 +83,18 @@ export function splitWholeText(text: string, maxChars: number, maxChunks = 256):
       const boundary = start + Math.floor(maxChars * 0.65);
       for (const delimiter of ['\n\n', '\n', '. ', ' ']) {
         const at = text.lastIndexOf(delimiter, end);
-        if (at >= boundary) { end = at + delimiter.length; break; }
+        if (at >= boundary && at + delimiter.length <= end) {
+          end = at + delimiter.length; break;
+        }
       }
     }
+    // Never send half a Unicode character or numeric value to the model.
+    // A single numeric atom larger than maxChars is unrepresentable safely:
+    // refuse import rather than make false section-coverage claims.
+    while(end>start && unsafeChunkCut(text,end))end--;
+    if(end===start)throw new Error(
+      'A Unicode or numeric source value exceeds the model section size. Extraction stopped without splitting it.'
+    );
     if (end <= start) throw new Error('Could not divide the source text safely.');
     output.push({ chunk: output.length + 1, start, end, text: text.slice(start, end) });
     start = end;
