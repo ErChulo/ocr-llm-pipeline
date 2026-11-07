@@ -10,6 +10,10 @@ on:
     paths:
       - '.github/workflows/1p5b-gguf-benchmark.yml'
       - 'tests/real-corpus-benchmark.mjs'
+      - 'src/chunkExtraction.ts'
+      - 'src/sourceDateRestoration.ts'
+      - 'src/dateRepresentation.ts'
+      - 'src/App.tsx'
 
 permissions:
   contents: read
