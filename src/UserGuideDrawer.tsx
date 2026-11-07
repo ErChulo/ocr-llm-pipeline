@@ -52,16 +52,26 @@ function WorkflowVisual() {
 export default function UserGuideDrawer() {
   const [open, setOpen] = useState(false);
   const closeRef=useRef<HTMLButtonElement|null>(null);
+  const triggerRef=useRef<HTMLButtonElement|null>(null);
+  const shouldRestoreFocus=useRef(false);
   useEffect(() => {
-    if (!open) return;
-    const previous=document.activeElement as HTMLElement|null;
+    if (!open) {
+      // The trigger is unmounted while the dialog is open; only after React
+      // remounts it can keyboard focus reliably return to that same control.
+      if(shouldRestoreFocus.current){
+        triggerRef.current?.focus();
+        shouldRestoreFocus.current=false;
+      }
+      return;
+    }
+    shouldRestoreFocus.current=true;
     closeRef.current?.focus();
     function onKeyDown(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false); }
     window.addEventListener('keydown', onKeyDown);
-    return () => { window.removeEventListener('keydown', onKeyDown); previous?.focus(); };
+    return () => { window.removeEventListener('keydown', onKeyDown); };
   }, [open]);
   return <div className="guide-host">
-    {!open && <button className="guide-open" type="button" onClick={() => setOpen(true)} aria-expanded={false} aria-controls="guide-drawer">Guide</button>}
+    {!open && <button ref={triggerRef} className="guide-open" type="button" onClick={() => setOpen(true)} aria-expanded={false} aria-controls="guide-drawer">Guide</button>}
     {open && <>
       <div className="guide-scrim" onClick={() => setOpen(false)} aria-hidden="true"/>
       <aside id="guide-drawer" className="guide-drawer" role="dialog" aria-modal="true" aria-label="User guide">
