@@ -10,7 +10,7 @@
 ## What is implemented
 
 - **Local GGUF inference:** Wllama / WebAssembly model picker, chat and a local generation self-test. Small-model generation passed the `file://` Chromium workflow without external requests.
-- **Source ingestion:** native text PDFs, English OCR for scanned PDF pages and PNG/JPEG/WebP images, DOCX, XLSX, CSV, TXT, MD, and Bulk OCR Studio JSONC/JSON exports. Source-location precision varies by format.
+- **Source ingestion:** native text PDFs, English OCR for scanned PDF pages and PNG/JPEG/WebP images, DOCX, XLSX, CSV, TXT, MD, and Bulk OCR Studio JSONC/JSON exports. Source-location precision varies by format. XLSX import highlights hidden content, merged ranges and external data/graphics omissions for mandatory original-workbook review; spreadsheet formulas are not recalculated.
 - **JSON extraction:** bounded whole-source sectioning, JSON Schema validation, conflict review, editable JSON, and fail-closed handling of incomplete sections.
 - **Source evidence:** literal value searches with parser-derived document/page/paragraph/table/cell locations. Users must inspect and confirm each match before export. Literal matches and valid JSON **do not independently establish factual or actuarial accuracy**.
 - **Safety:** local possible-PII flags, protected-export acknowledgement, SHA-256 fingerprints of original input files, and export gates that refuse changed source text, unresolved conflicts, missing evidence and invalid JSON. The privacy screen is not comprehensive.
