@@ -6,6 +6,8 @@ import lightLogo from './assets/logo.svg';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { compileLocalSchema, validateLocalJson } from './schemaValidation';
 import { OfflineEngine, type ChatMessage, type Settings } from './engine';
+import type { GgufProfile } from './ggufPreflight';
+import { formatGenerationTiming } from './generationTiming';
 import { importFile, type SourceDocument } from './pipeline';
 import { importDocumentBatch } from './importBatch';
 import { terminateOcr } from './ocr';
@@ -49,6 +51,7 @@ export default function App() {
   const [theme, setTheme] = useState<Theme>(() => loadTheme());
   const [selectedModels, setSelectedModels] = useState<File[]>([]);
   const [modelName, setModelName] = useState('');
+  const [modelProfile, setModelProfile] = useState<GgufProfile|null>(null);
   const [busy, setBusy] = useState(false);
   const [testingModel, setTestingModel] = useState(false);
   const [benchmarkStatus, setBenchmarkStatus] = useState('');
@@ -129,12 +132,14 @@ export default function App() {
 
   async function onModelLoad() {
     if (busy || selectedModels.length === 0) return;
-    setError(''); setModelName(''); setBenchmarkStatus(''); setStatus('Loading offline GGUF model into WebAssembly...'); setBusy(true);
+    setError(''); setModelName(''); setModelProfile(null); setBenchmarkStatus(''); setStatus('Loading offline GGUF model into WebAssembly...'); setBusy(true);
     try {
       const files = [...selectedModels].sort((a, b) => a.name.localeCompare(b.name));
-      await engine.current.load(files, settings.context);
-      setModelName(files[0].name);
-      setStatus('Model loaded locally. Document extraction and chat are available.');
+      const profile=await engine.current.load(files, settings.context);
+      setModelProfile(profile);
+      setModelName(profile.name);
+      setStatus('Model loaded locally. Document extraction and chat are available.'+
+        (profile.largeForSingleThread?' Large model: single-thread CPU inference may be slow.':''));
     } catch (e) { setError(errorMessage(e)); setStatus('Model failed to load.'); }
     finally { setBusy(false); }
   }
@@ -145,13 +150,14 @@ export default function App() {
     setStatus('Checking that your local model can generate text...');
     let output = '';
     try {
-      await engine.current.generate(
+      const timing=await engine.current.generate(
         [{ role: 'user', content: 'Say READY in one short sentence.' }], SYSTEM,
         { ...settings, maxTokens: 32, temperature: 0.1 },
         token => { output += token; }
       );
       if (!output.trim()) throw new Error('The model returned no text. Try a different GGUF.');
-      setStatus('Your local model generated text. Document extraction still needs source review.');
+      setStatus('Local model generated text. '+formatGenerationTiming(timing)+
+        ' Document extraction still needs source review.');
     } catch (e) {
       setError(errorMessage(e));
       setStatus('The local model test did not complete.');
@@ -163,7 +169,7 @@ export default function App() {
     setBusy(true);setError('');setBenchmarkStatus('Checking known-answer synthetic sample...');
     let output='';
     try{
-      await engine.current.generate(
+      const timing=await engine.current.generate(
         [{role:'user',content:benchmarkPrompt()}],
         'You extract JSON from untrusted documents. Never guess or invent.',
         {...settings,maxTokens:256,temperature:0,topP:1},
@@ -179,7 +185,7 @@ export default function App() {
         'Synthetic sample: '+report.correct+' of '+report.total+' correct. '+
         (report.complete?'Sample passed.':'More accurate model or settings needed.')+
         (issues.length?' Check: '+issues.join(', ')+'.':'')+
-        ' This alone does not certify extraction accuracy.'
+        ' '+formatGenerationTiming(timing)+' This alone does not certify extraction accuracy.'
       );
     }catch(error){
       setBenchmarkStatus('Synthetic extraction check did not pass.');
@@ -438,6 +444,9 @@ export default function App() {
           {busy && !modelName ? 'Loading...' : 'Load model'}
         </button>
         <p className="help">{modelName ? 'Loaded: ' + modelName : 'No model loaded'}</p>
+        {modelProfile?.largeForSingleThread && <p className="help" role="status">
+          {modelProfile.advice}
+        </p>}
         {modelName && <div className="model-test-actions">
           <button type="button" className="secondary" disabled={busy} onClick={() => void onTestModel()}>Test model</button>
           {testingModel && <button type="button" className="secondary" onClick={() => engine.current.stop()}>Stop</button>}
