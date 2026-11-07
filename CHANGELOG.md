@@ -14,6 +14,9 @@
 - Traverse top-level DOCX content controls and custom XML wrappers in reading order; reject embedded alternate content in every included Word part, including footnotes.
 - Add synthetic tests for all behaviors. Passing source tests does not certify Word layout or tracked-revision interpretation in actual production files.
 
+- Tighten literal numeric evidence to distinguish positive and negative values, numeric strings, grouped amounts, scientific notation, and alphanumeric codes; reviewer-supplied source quotations remain possible for nonliteral interpretations.
+- Add deterministic numeric-boundary regression tests; literal matching is not independent actuarial verification.
+
 ## 0.3.0-beta.1 — November 6, 2026
 
 - Single-file `file://` Chromium test covers local model generation, text PDF, scanned-PDF/image OCR and DOCX/XLSX/CSV source import.
