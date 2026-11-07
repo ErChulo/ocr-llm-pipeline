@@ -12,13 +12,13 @@ export function ocrReviewIssue(source:'pdf'|'image',confidence:number,page?:numb
   const score=Number.isFinite(confidence)
     ? Math.min(100,Math.max(0,Math.round(confidence))) : 0;
   const low=score<75;
-  const context=source==='pdf'?'PDF page '+page:'original image';
+  const context=source==='pdf'?'original PDF page '+page:'original image';
   return {
     id:source==='pdf'?'pdf:ocr:'+page:'image:ocr',
     category:low?'low_ocr_confidence':'ocr_unverified',
     ...(source==='pdf'?{page}:{}),
     message:(low?'Low OCR confidence ('+score+'%). ':'OCR confidence is '+score+'%; this does not verify accuracy. ')+
-      'Compare all material names, dates, amounts, and formulas on '+context+
-      ' with the original before export.'
+      'Compare all material names, dates, amounts, and formulas against the '+context+
+      ' before export.'
   };
 }
