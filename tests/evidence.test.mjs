@@ -90,3 +90,46 @@ test('PDF literal match contains actual PDF text-item envelopes for review', asy
  assert.ok(matched.textItemBoxes?.length>0);
  assert.equal(matched.textItemBoxes[0].precision,'pdf-text-item-envelope');
 });
+
+test('GGUF candidate matches must be within the model source section, not elsewhere',()=>{
+ const first='Normal age is 65, and this section does not mention a later amendment.\n';
+ const second='A later amendment says normal age is 67.\n';
+ const d={...doc,text:first+second,records:undefined};
+ const audit={
+  documentId:d.id,documentName:d.name,sourceText:d.text,length:d.text.length,
+  chunks:[{chunk:1,start:0,end:first.length},{chunk:2,start:first.length,end:d.text.length}],
+  candidates:{'/age':[{value:67,spans:[{chunk:1,start:0,end:first.length}]}]},
+  conflicts:[]
+ };
+ const restricted=auditLiteralEvidence(d,{age:67},audit);
+ assert.equal(restricted[0].status,'missing');
+ assert.equal(restricted[0].sourceScope,'model_sections');
+ const whole=auditLiteralEvidence(d,{age:67});
+ assert.equal(whole[0].status,'match');
+});
+
+test('explicit reviewer-edited values may find any source but require source confirmation',()=>{
+ const text='Early age 55, normal age 65.';
+ const d={...doc,text,records:undefined};
+ const audit={
+  documentId:d.id,documentName:d.name,sourceText:d.text,length:d.text.length,
+  chunks:[{chunk:1,start:0,end:text.length}],
+  candidates:{'/age':[{value:55,spans:[{chunk:1,start:0,end:text.length}]}]},conflicts:[]
+ };
+ const checks=auditLiteralEvidence(d,{age:65},audit);
+ assert.equal(checks[0].status,'match');
+ assert.equal(checks[0].sourceScope,'reviewer_edited');
+ assert.equal(evidenceReviewComplete(checks,{},{}),false);
+});
+
+test('array element matches inherit the model candidate source span',()=>{
+ const a='Normal forms SLA and JS50.\n',b='An unrelated glossary repeats JS50.\n';
+ const d={...doc,text:a+b,records:undefined};
+ const audit={documentId:d.id,documentName:d.name,sourceText:d.text,length:d.text.length,
+  chunks:[{chunk:1,start:0,end:a.length},{chunk:2,start:a.length,end:d.text.length}],
+  candidates:{'/forms':[{value:['SLA','JS50'],spans:[{chunk:1,start:0,end:a.length}]}]},conflicts:[]};
+ const c=auditLiteralEvidence(d,{forms:['SLA','JS50']},audit);
+ assert.equal(c[1].matches.length,1);
+ assert.ok(c[1].matches[0].start<a.length);
+ assert.equal(c[1].sourceScope,'model_sections');
+});

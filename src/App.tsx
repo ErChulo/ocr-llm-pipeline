@@ -86,7 +86,7 @@ export default function App() {
   // each value and confirm one actual source location before exporting.
   const evidenceChecks = useMemo(() =>
     valid && extraction !== null && active && audit
-      ? auditLiteralEvidence(active, extraction) : [],
+      ? auditLiteralEvidence(active, extraction, audit) : [],
     [valid, extraction, active, audit]);
   const evidenceComplete = evidenceReviewComplete(evidenceChecks, evidenceChoices, evidenceConfirmed);
   const exportGate = evaluateExportGate({

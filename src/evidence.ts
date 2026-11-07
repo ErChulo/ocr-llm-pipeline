@@ -4,6 +4,7 @@
  * Never turn a text section offset into a fabricated PDF/page/region citation.
  */
 import type { SourceDocument, SourceRecord } from './pipeline.ts';
+import type { ExtractionAudit, SourceSpan } from './chunkExtraction.ts';
 
 export type EvidenceMatch = {
   start: number;
@@ -18,6 +19,7 @@ export type EvidenceCheck = {
   value: string | number | boolean;
   matches: EvidenceMatch[];
   status: 'match' | 'missing' | 'unsupported';
+  sourceScope?: 'model_sections' | 'reviewer_edited';
 };
 
 const MAX_MATCHES = 32;
@@ -76,7 +78,37 @@ function boundaryOkay(source: string,start: number,end: number,value: unknown): 
     !(after==='.' && /[0-9]/.test(source[end+1]||'')) &&
     !(before==='.' && /[0-9]/.test(source[start-2]||''));
 }
-function findMatches(doc: SourceDocument,value: unknown): EvidenceMatch[] {
+/**
+ * When a field exactly matches a value returned by the GGUF, only offer
+ * evidence inside the source section(s) used to produce that candidate.
+ * Review-edited values are allowed to search the full document, but still
+ * require explicit human source confirmation.
+ */
+function candidateSectionSpans(audit: ExtractionAudit | undefined,path:string,value:unknown)
+  : SourceSpan[] | null {
+  if(!audit) return null;
+  const segments=path.split('/').slice(1).map(x=>x.replace(/~1/g,'/').replace(/~0/g,'~'));
+  for(let count=segments.length;count>=1;count--){
+    const candidatePath='/'+segments.slice(0,count).map(x=>x.replace(/~/g,'~0').replace(/\//g,'~1')).join('/');
+    const options=audit.candidates[candidatePath];
+    if(!options)continue;
+    const spans:SourceSpan[]=[];
+    for(const option of options){
+      let current:unknown=option.value;
+      for(const segment of segments.slice(count)){
+        if(Array.isArray(current) && /^\d+$/.test(segment)){
+          current=current[Number(segment)];
+        }else if(current&&typeof current==='object'&&!Array.isArray(current)){
+          current=(current as Record<string,unknown>)[segment];
+        }else{current=undefined;break;}
+      }
+      if(Object.is(current,value))spans.push(...option.spans);
+    }
+    if(spans.length)return spans;
+  }
+  return null;
+}
+function findMatches(doc: SourceDocument,value: unknown,allowed:SourceSpan[] | null=null): EvidenceMatch[] {
   const target=tokenFor(value);
   if (!target || target.length > 800) return [];
   const matches: EvidenceMatch[]=[];
@@ -96,7 +128,8 @@ function findMatches(doc: SourceDocument,value: unknown): EvidenceMatch[] {
       if(!matched || matched.index+matched[0].length>record.end) break;
       const at=matched.index;
       const end=at+matched[0].length;
-      if (boundaryOkay(doc.text,at,end,value)) {
+      if (boundaryOkay(doc.text,at,end,value) &&
+        (!allowed || allowed.some(section=>at>=section.start&&end<=section.end))) {
         matches.push({
           start:at,end,
           quote:doc.text.slice(Math.max(contentStart,at-WINDOW),Math.min(record.end,end+WINDOW)).trim(),
@@ -111,14 +144,17 @@ function findMatches(doc: SourceDocument,value: unknown): EvidenceMatch[] {
   }
   return matches;
 }
-export function auditLiteralEvidence(doc: SourceDocument, extraction: unknown): EvidenceCheck[] {
+export function auditLiteralEvidence(doc: SourceDocument, extraction: unknown,
+  audit?: ExtractionAudit): EvidenceCheck[] {
   if (!object(extraction)) throw new Error('Only JSON objects can be reviewed.');
   return fields(extraction).map(({path,value}):EvidenceCheck=>{
     if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') {
       return {path,value:String(value),matches:[],status:'unsupported'};
     }
-    const matches=findMatches(doc,value);
-    return {path,value,matches,status:matches.length?'match':'missing'};
+    const scoped=candidateSectionSpans(audit,path,value);
+    const matches=findMatches(doc,value,scoped);
+    return {path,value,matches,status:matches.length?'match':'missing',
+      ...(audit?{sourceScope:scoped?'model_sections':'reviewer_edited'}:{})};
   });
 }
 export function evidenceReviewComplete(
