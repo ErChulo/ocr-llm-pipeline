@@ -74,12 +74,28 @@ function tokenFor(value: unknown): string | null {
   return null;
 }
 function boundaryOkay(source: string,start: number,end: number,value: unknown): boolean {
-  if (typeof value !== 'number') return true;
-  // "65" must not match "1965", "650", or "65.5".
+  // Match whole numeric tokens, including numeric strings from JSON schemas.
+  const token=typeof value==='number' && Number.isFinite(value)?String(value):
+    typeof value==='string'?value.trim():'';
+  if(!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(token))return true;
   const before=source[start-1]||'', after=source[end]||'';
-  return !/[0-9]/.test(before) && !/[0-9]/.test(after) &&
-    !(after==='.' && /[0-9]/.test(source[end+1]||'')) &&
-    !(before==='.' && /[0-9]/.test(source[start-2]||''));
+  const prev=source[start-2]||'', next=source[end+1]||'';
+  // Do not cite part of a larger number, field code, amount, or exponent.
+  if(/[0-9A-Za-z_]/.test(before)||/[0-9A-Za-z_]/.test(after))return false;
+  if((before==='.'||before===',')&&/[0-9]/.test(prev))return false;
+  if((after==='.'||after===',')&&/[0-9]/.test(next))return false;
+  // Positive values must not be backed by a negative or signed quantity.
+  if(!/^[+-]/.test(token)){
+    if(/[-+−–]/.test(before))return false;
+    if(/[-+−–]\s*[$€£]?\s*$/.test(source.slice(Math.max(0,start-8),start)))return false;
+  }
+  // Parentheses may indicate a negative accounting amount.
+  if(after===')' && before==='(')return false;
+  if(after===')' && before==='$' && prev==='(')return false;
+  // Scientific notation is not the same as the bare mantissa/exponent.
+  if(/^[eE][+-]?\d/.test(source.slice(end,end+4)))return false;
+  if(/[eE]/.test(before)&&/[0-9]/.test(prev))return false;
+  return true;
 }
 /**
  * When a field exactly matches a value returned by the GGUF, only offer
