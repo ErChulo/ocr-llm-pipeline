@@ -17,14 +17,17 @@ import assert from 'node:assert/strict';
 mkdirSync('tmp',{recursive:true});
 const model=resolve(process.env.MODEL_FILE||'tmp/qwen2.5-0.5b-instruct-q4_k_m.gguf');
 assert.ok(existsSync(model),'Select a checksum-verified local GGUF test file.');
-const sampleIds=['simple-eligibility','historical-vs-amended','rate-precision',
-  'unknown-data','quoted-injection'];
+const benchmarkMode=process.env.BENCHMARK_CASES==='all'?'all-eight':'historical-five';
+const sampleIds=benchmarkMode==='all-eight'
+  ? syntheticCases.map(x=>x.id)
+  : ['simple-eligibility','historical-vs-amended','rate-precision',
+     'unknown-data','quoted-injection'];
 const samples=sampleIds.map(id=>syntheticCases.find(x=>x.id===id));
 assert.ok(samples.every(Boolean),'Missing a synthetic benchmark source.');
 const report={
   model:process.env.MODEL_LABEL||'Qwen2.5-0.5B-Instruct Q4_K_M',
   modelBytes:statSync(model).size,
-  fixtureCount:samples.length,source:'fictional-only',origin:'file://',
+  benchmarkMode,fixtureCount:samples.length,source:'fictional-only',origin:'file://',
   cases:[],externalRequests:[],status:'starting',startedAt:new Date().toISOString()
 };
 const persist=()=>writeFileSync('tmp/real-corpus-report.json',JSON.stringify(report,null,2));
