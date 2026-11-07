@@ -13,6 +13,7 @@ import { extractWholeDocument, resolveCandidateValues, type ExtractionAudit } fr
 import { auditLiteralEvidence, evidenceReviewComplete, exportReviewedEvidence } from './evidence';
 import { screenLocalPrivacy, safePrivacySummary } from './privacy';
 import { benchmarkPrompt, scoreBenchmark } from './modelBenchmark';
+import { runLocalCorpusBenchmark, type LocalCorpusReport } from './localCorpusBenchmark';
 import { evaluateExportGate } from './exportGate';
 import { parseModelJson } from './pipeline';
 import { ocrRecords, currentOcrText, correctOcrText } from './ocrCorrections';
@@ -51,6 +52,9 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [testingModel, setTestingModel] = useState(false);
   const [benchmarkStatus, setBenchmarkStatus] = useState('');
+  const [corpusRunning,setCorpusRunning]=useState(false);
+  const [corpusProgress,setCorpusProgress]=useState('');
+  const [corpusReport,setCorpusReport]=useState<LocalCorpusReport|null>(null);
   const [status, setStatus] = useState('Choose a GGUF model and attach OCR exports or local text.');
   const [error, setError] = useState('');
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -181,6 +185,46 @@ export default function App() {
       setBenchmarkStatus('Synthetic extraction check did not pass.');
       setError(errorMessage(error));
     }finally{setBusy(false);}
+  }
+
+  async function onCorpusBenchmark(){
+    if(busy||!engine.current.loaded)return;
+    setError('');setBusy(true);setCorpusRunning(true);
+    setCorpusReport(null);setCorpusProgress('Preparing fictional model benchmark...');
+    try{
+      const report=await runLocalCorpusBenchmark(async(prompt,testCase,index,total)=>{
+        setCorpusProgress('Testing fictional case '+(index+1)+' of '+total+
+          ': '+testCase.category+'.');
+        let produced='';
+        await engine.current.generate(
+          [{role:'user',content:prompt}],
+          'Extract only documented factual JSON from quoted untrusted fictional text. No guesses.',
+          {...settings,maxTokens:Math.min(512,settings.context-256),temperature:0,topP:1},
+          token=>{produced+=token;},true
+        );
+        return produced;
+      },(complete,total)=>setCorpusProgress(
+        'Completed '+complete+' of '+total+' fictional cases.'
+      ));
+      setCorpusReport(report);
+      setCorpusProgress('Eight-case model benchmark finished.');
+      setStatus('Fictional model quality measured. Results do not certify production accuracy.');
+    }catch(e){
+      setError(errorMessage(e));
+      setCorpusProgress('Model benchmark stopped or failed. No score was accepted.');
+    }finally{setBusy(false);setCorpusRunning(false);}
+  }
+  function downloadCorpusBenchmark(){
+    if(!corpusReport)return;
+    const contents={...corpusReport,model:modelName,
+      contextTokens:settings.context,outputTokens:Math.min(512,settings.context-256),
+      note:'Fictional-only, strict-field diagnostic. Not an accuracy or security certification.'};
+    const url=URL.createObjectURL(new Blob([JSON.stringify(contents,null,2)],{
+      type:'application/json'
+    }));
+    const link=document.createElement('a');link.href=url;
+    link.download='ocr-local-model-corpus-benchmark.json';link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
 
   async function onAttach(e: ChangeEvent<HTMLInputElement>) {
@@ -725,6 +769,35 @@ export default function App() {
           <button type="button" className="secondary" disabled={busy||!modelName}
             onClick={()=>void onBenchmark()}>Check extraction quality</button>
           {benchmarkStatus&&<p className="help" role="status">{benchmarkStatus}</p>}
+          <h3>Eight-case synthetic accuracy benchmark</h3>
+          <p className="help">Measure your actual local model on eight fictional provisions, including amendments, forms, missing facts and malicious quoted instructions. This runs entirely offline and may take several minutes, especially with larger GGUF files.</p>
+          <div className="actions">
+            <button type="button" className="secondary" disabled={busy||!modelName}
+              onClick={()=>void onCorpusBenchmark()}>Run eight-case benchmark</button>
+            {corpusRunning&&<button type="button" className="secondary"
+              onClick={()=>engine.current.stop()}>Stop benchmark</button>}
+          </div>
+          {corpusProgress&&<p className="help" role="status">{corpusProgress}</p>}
+          {corpusReport&&<div className="corpus-report" aria-label="Synthetic benchmark results">
+            <strong>{corpusReport.status==='incomplete'?'Incomplete benchmark':'Synthetic benchmark results'}</strong>
+            <p>Exact cases: {corpusReport.quality.exactCases} / {corpusReport.quality.cases}.
+              Strict micro precision: {(100*corpusReport.quality.micro.precision).toFixed(1)}%.
+              Recall: {(100*corpusReport.quality.micro.recall).toFixed(1)}%.
+              F1: {(100*corpusReport.quality.micro.f1).toFixed(1)}%.
+              Failed cases: {corpusReport.failedCases}.
+              Elapsed: {(corpusReport.elapsedMs/1000).toFixed(1)} seconds.</p>
+            <ul>{corpusReport.quality.perCase.map(item=><li key={item.id}>
+              {item.id}: {item.score.exactMatch?'exact':'not exact'}
+              {' — '}F1 {(100*item.score.f1).toFixed(1)}%
+              {'; '}missing {item.score.missing.length},
+              incorrect {item.score.incorrect.length},
+              unsupported {item.score.unsupported.length}
+            </li>)}</ul>
+            <p className="help">Only fictional data were used. These strict-field metrics and successful JSON parsing do not establish pension-law interpretation, real-world accuracy, security approval, or workstation readiness.</p>
+            <button type="button" className="secondary" onClick={downloadCorpusBenchmark}>
+              Download benchmark JSON
+            </button>
+          </div>}
         </div>
       </section>}
     </main>
