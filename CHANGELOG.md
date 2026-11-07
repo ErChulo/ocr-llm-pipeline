@@ -2,6 +2,8 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Add a separately scoped real Qwen2.5-3B load/generation benchmark under `file://` with official SHA-256 and zero outbound requests. The new `MODEL_TEST_SCOPE=quality_only` path isolates loading/small inference from long full-document extraction; an explicit bounded test timeout prevents indefinite runs. Full 3B extraction acceptance remains open.
+
 - Measured the real offline 0.5B Qwen eight-case corpus after verbatim prompt refinement: 87.5% strict micro F1, six of eight exact, zero external browser requests. Two remaining errors concern date-string normalization and missing a qualifying condition ([CI 42420035489](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42420035489)); no claim of production accuracy.
 - Instruct JSON extraction to copy short, verbatim field values, preserve source date/percentage notation, and avoid whole-sentence answers for eligibility conditions; increase conservative prompt-context overhead. Strict benchmark evaluation is required before claiming any accuracy gain.
 - Use deterministic sampling for structured factual JSON extraction, independent of chat defaults: temperature 0, top-p 1. This reduces random sampling variance but does not guarantee correct answers or identical results on different systems.
