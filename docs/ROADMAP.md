@@ -15,6 +15,7 @@
 - [x] Sequential all-or-nothing multi-file import with session-level document, text, byte and duplicate-identity limits; browser acceptance covers rollback and success.
 - [x] Conservative possible-SSN/email/phone/payment-card screening and acknowledgement.
 - [x] User-chosen dark/white logo pair, theme toggle, app routes and printable Guide.
+- [x] Optional eight-case built-in fictional model benchmark with strict field scores, per-case status, elapsed time and downloadable JSON. The app and source tests share one canonical fictional corpus; actual full eight-case GGUF scores still need measurement on representative hardware.
 - [x] Real instruction-tuned Qwen2.5-0.5B GGUF: four of four known-answer fields and end-to-end TXT → JSON → source review → export passed under `file://` with zero network requests ([verified CI run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42248309834)).
 
 ## Remaining production gates — not yet accepted

@@ -31,3 +31,9 @@ The workflow is isolated from the standard build badge. Tests may report poor pr
 The single strict mismatch was a date representation; both strings identify January 1, 2025. This is not automatically treated as a verified date conversion because an unambiguous comparison does not prove which amendment applies. A human reviewer can cite the original passage with the controlled quotation mechanism. The optional unambiguous-date diagnostic is now part of the suite.
 
 These numbers are **not** production accuracy. The corpus is small, synthetic, mostly short, and scored against known-answer annotations. Do not extrapolate them to complex plan documents, actuarial calculations, or confidential PBGC data.
+
+## On-device eight-case benchmark (development feature)
+
+The Settings route now offers an optional **Run eight-case benchmark** action for the currently loaded GGUF. It uses the same eight canonical fictional cases as source tests: normal/early retirement, amended age, percentage strings, normal form, unknown-data abstention, quoted prompt injection, survivor conditions, and separation/accrual freeze. The actual model's outputs are scored with strict field-level micro precision/recall/F1 and per-case exact matches. Invalid JSON or model generation errors are recorded as failed cases and lower the score; a canceled run produces no report. The result can be downloaded as `ocr-local-model-corpus-benchmark.json` and shared without private plan data.
+
+This local feature has deterministic automated tests and browser-control coverage, but **no new eight-case accuracy score may be claimed until a specific model completes the full run**. In particular, the historical five-case 90% diagnostic above must not be mislabeled as an eight-case result. Neither score establishes factual or actuarial correctness in real pension documents.

@@ -362,6 +362,16 @@ try {
   await page.locator('input[type="file"][accept=".gguf"]').setInputFiles(fixture);
   await page.getByRole('button', { name: 'Load model' }).click();
   await page.getByText('Loaded: stories260K.gguf').waitFor({ timeout: 30000 });
+
+  await page.getByRole('button',{name:'Settings',exact:true}).click();
+  const corpusButton=page.getByRole('button',{name:'Run eight-case benchmark'});
+  await corpusButton.waitFor({timeout:10000});
+  assert.equal(await corpusButton.isEnabled(),true);
+  await page.getByText(/Measure your actual local model on eight fictional provisions/i)
+    .waitFor({timeout:10000});
+  await page.getByRole('button',{name:'Documents',exact:true}).click();
+  console.log('REAL BROWSER: on-device eight-case fictional benchmark UI is available offline.');
+
   await page.getByRole('button', { name: 'Test model' }).click();
   await page.getByText(/Your local model generated text/i).waitFor({ timeout: 90000 });
   // Verify the Guide really prints as a standalone readable PDF, not a

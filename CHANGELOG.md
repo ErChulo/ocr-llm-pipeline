@@ -2,6 +2,9 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Add an opt-in eight-case GGUF accuracy benchmark under Settings, running entirely on the local workstation with fictional source text. Measure strict-field precision, recall, F1, case completeness, generation failures and elapsed time; save synthetic-only JSON results.
+- Centralize the fictional pension corpus for UI and CI, preventing evaluation fixture drift. Add unit tests for exact scoring, adversarial source handling, cancellation and runtime failure. A passing stub test is not an actual GGUF accuracy result.
+
 - Detect potentially ambiguous native-PDF reading order from PDF.js text-item geometry, including wide tabular gaps, reverse item placement, column restarts, and rotation. Require original-PDF page review before JSON export without fabricating coordinates or claiming to reconstruct tables.
 - Add synthetic geometry tests and offline Chromium acceptance using a two-column PDF fixture.
 
