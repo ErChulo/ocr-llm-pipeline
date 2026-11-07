@@ -213,6 +213,22 @@ try {
   });
   const sourcePanel=page.locator('.source-completeness');
   await sourcePanel.getByText(/combines selectable text with image content/i).waitFor({timeout:30000});
+
+  // Run supplemental local OCR explicitly. Keep PDF.js native text and
+  // unverified OCR words as separate page-derived evidence records.
+  await page.getByRole('button',{name:'OCR mixed PDF pages'}).click();
+  await page.locator('.preview').getByText(/Page 1 supplementary OCR:/)
+    .waitFor({timeout:150000});
+  const mixedPreview=await page.locator('.preview').innerText();
+  assert.match(mixedPreview,/Page 1:\nFICTIONAL PLAN HEADER/);
+  assert.match(mixedPreview,/Page 1 supplementary OCR:/);
+  await sourcePanel.getByText(/Supplemental full-page OCR was run separately/i)
+    .waitFor({timeout:10000});
+  assert.equal(await sourcePanel.locator('input[type="checkbox"]').count(),1);
+  assert.equal(await page.getByRole('button',{name:'OCR mixed PDF pages'}).isDisabled(),true);
+  await page.screenshot({path:'tmp/smoke-mixed-pdf-supplemental.png',fullPage:true});
+  console.log('REAL BROWSER: supplemental mixed PDF OCR kept separate from native PDF text.');
+
   await page.getByRole('button',{name:'Extract JSON',exact:true}).click();
   await page.getByRole('button',{name:'Review source issues in Documents'}).waitFor({timeout:10000});
   await page.getByRole('button',{name:'Review source issues in Documents'}).click();
@@ -221,7 +237,7 @@ try {
   await page.getByRole('button',{name:'View original page 1'}).click();
   await page.getByRole('dialog',{name:'Original PDF page'}).waitFor({timeout:10000});
   await page.getByRole('button',{name:'Close PDF view'}).click();
-  console.log('REAL BROWSER: mixed PDF image omission requires explicit source review.');
+  console.log('REAL BROWSER: mixed PDF supplemental OCR requires original-page review.');
 
   await page.screenshot({path:'tmp/smoke-scanned-pdf.png',fullPage:true});
 
