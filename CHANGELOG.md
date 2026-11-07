@@ -2,6 +2,10 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Validate selected local GGUF segments before entering WebAssembly: fail closed on invalid, duplicate, incomplete or oversized split parts (2 GiB per part); surface the enforced CPU single-thread/no-GPU limitation for large models.
+- Measure streaming first-text latency, wall-clock completion time and end-to-end character throughput in the actual local model self-test and synthetic extraction check. Character throughput is not a token-rate claim; 3B timeout diagnosis remains open.
+- Add tests for GGUF part admission and deterministic timing plus an offline Chromium assertion that model performance metrics are visible.
+
 - Record measured actual Qwen2.5-0.5B eight-case offline benchmark: 75% strict micro field precision/recall/F1, four of eight fully exact, 392.8 seconds, no browser network calls. Document observed date reformatting, normal-form extraction error, and conditional phrasing mismatch. This is below unattended production acceptance.
 
 - Harden DOCX/XLSX XML parsing against deeply nested document structures with iterative 128-depth/500,000-node traversal limits and regression fixtures. Passing tests are defense-in-depth, not a comprehensive security audit.
