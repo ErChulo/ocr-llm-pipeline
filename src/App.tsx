@@ -156,7 +156,7 @@ export default function App() {
         token => { output += token; }
       );
       if (!output.trim()) throw new Error('The model returned no text. Try a different GGUF.');
-      setStatus('Local model generated text. '+formatGenerationTiming(timing)+
+      setStatus('Your local model generated text. '+formatGenerationTiming(timing)+
         ' Document extraction still needs source review.');
     } catch (e) {
       setError(errorMessage(e));
