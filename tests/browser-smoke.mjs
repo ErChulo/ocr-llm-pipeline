@@ -199,6 +199,43 @@ try {
   );
   console.log('REAL BROWSER: DOCX paragraph provenance verified offline.');
 
+  // Verify that the bundled browser actually uses final-view DOCX text and
+  // requires the original-document review for unaccepted revisions / hidden runs.
+  const revisedDocxMarkup='<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'+
+    '<w:p><w:r><w:t xml:space="preserve">Normal retirement </w:t></w:r>'+
+      '<w:del><w:r><w:t>62</w:t></w:r></w:del>'+
+      '<w:ins><w:r><w:t>65</w:t></w:r></w:ins>'+
+      '<w:r><w:rPr><w:vanish/></w:rPr><w:t>Secret obsolete amendment</w:t></w:r></w:p>'+
+    '<w:sdt><w:sdtContent><w:p><w:r><w:t>Vesting service 5</w:t></w:r></w:p></w:sdtContent></w:sdt>'+
+    '</w:body></w:document>';
+  const revisedDocxFile=zipSync({
+    '[Content_Types].xml':strToU8('<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>'),
+    'word/document.xml':strToU8(revisedDocxMarkup)
+  },{level:0});
+  await page.locator('input[type="file"][accept*=".docx"]').setInputFiles({
+    name:'synthetic-revisions.docx',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    buffer:Buffer.from(revisedDocxFile)
+  });
+  await page.waitForFunction(() =>
+    document.querySelector('.preview')?.textContent?.includes('Paragraph 2: Vesting service 5'),
+    null,{timeout:30000}
+  );
+  const revisedText=await page.locator('.preview').innerText();
+  assert.match(revisedText,/Paragraph 1: Normal retirement 65/);
+  assert.doesNotMatch(revisedText,/Secret obsolete amendment|Normal retirement 62/);
+  const revisedReview=page.locator('.source-completeness');
+  await revisedReview.getByText(/Tracked changes exist/i).waitFor({timeout:10000});
+  await revisedReview.getByText(/Directly hidden Word runs were excluded/i).waitFor({timeout:10000});
+  assert.equal(await revisedReview.locator('input[type="checkbox"]').count(),2);
+  await page.getByRole('button',{name:'Extract JSON',exact:true}).click();
+  await page.getByRole('button',{name:'Review source issues in Documents'}).waitFor({timeout:10000});
+  await page.getByRole('button',{name:'Review source issues in Documents'}).click();
+  for(let i=0;i<2;i++)await revisedReview.locator('input[type="checkbox"]').nth(i).check();
+  await revisedReview.getByText(/Source issue acknowledgements complete/i).waitFor({timeout:10000});
+  await page.screenshot({path:'tmp/smoke-docx-revisions.png',fullPage:true});
+  console.log('REAL BROWSER: DOCX revision/hidden-text exclusions and source review verified offline.');
+
+
   const sheetXml='<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>NormalAge</t></is></c><c r="B1"><v>65</v></c></row></sheetData></worksheet>';
   const xlsxFile=zipSync({
     'xl/workbook.xml':strToU8('<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Plan Data" sheetId="1" r:id="rId1"/></sheets></workbook>'),
