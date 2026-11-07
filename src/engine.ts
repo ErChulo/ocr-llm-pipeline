@@ -2,6 +2,7 @@ import { Wllama } from '@wllama/wllama';
 import wasmUrl from 'virtual:wllama-wasm';
 import compatWasmUrl from 'virtual:wllama-compat-wasm';
 import compatWorkerCode from 'virtual:wllama-compat-worker';
+import { assertGenerationComplete } from './completionGuard.ts';
 export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 export type Settings = { context: number; maxTokens: number; temperature: number; topP: number };
 export class OfflineEngine {
@@ -45,12 +46,18 @@ export class OfflineEngine {
         top_p: settings.topP, cache_prompt: true,
         response_format: jsonMode ? { type: 'json_object' as const } : { type: 'text' as const }
       });
+      let finishReason:string|null=null;
       for await (const chunk of stream) {
         if (c.signal.aborted) throw new Error('Generation canceled. No partial result was saved.');
-        const txt = chunk.choices[0]?.delta?.content;
+        const choice=chunk.choices[0];
+        if(choice?.finish_reason)finishReason=choice.finish_reason;
+        const txt = choice?.delta?.content;
         if (txt) onText(txt);
       }
       if (c.signal.aborted) throw new Error('Generation canceled. No partial result was saved.');
+      // Do not accept a partial response merely because the received text
+      // happens to parse as JSON. The final stream chunk can report "length".
+      assertGenerationComplete(finishReason);
     } finally {
       if (this.controller === c) this.controller = null;
     }
