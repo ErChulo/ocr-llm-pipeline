@@ -53,3 +53,25 @@ test('image OCR can be reviewed with no fabricated PDF page number',()=>{
  assert.equal(fixed.records[0].location.kind,'image-ocr-reviewed');
  assert.equal(fixed.records[0].location.page,undefined);
 });
+
+
+test('mixed-PDF supplemental OCR remains an independently editable source record',()=>{
+ const text='Page 1:\nNative retirement age 65\n\nPage 1 supplementary OCR:\nImage text 55\n\n';
+ const at=text.indexOf('Page 1 supplementary OCR:');
+ const d={...doc(),text,
+   records:[
+     {start:0,end:at,label:'Page 1',location:{kind:'pdf-page',page:1}},
+     {start:at,end:text.length,label:'Page 1 supplementary OCR',
+       location:{kind:'pdf-page-ocr-mixed',page:1,confidence:98}}
+   ]
+ };
+ assert.deepEqual(ocrRecords(d).map(r=>r.index),[1]);
+ assert.equal(currentOcrText(d,1),'Image text 55');
+ const fixed=correctOcrText(d,1,'Verified image text 55');
+ assert.match(fixed.text,/Native retirement age 65/);
+ assert.match(fixed.text,/Verified image text 55/);
+ assert.equal(fixed.records[1].location.kind,'pdf-page-ocr-mixed-reviewed');
+ assert.equal(fixed.records[1].location.page,1);
+ assert.equal(fixed.records[0].location.kind,'pdf-page');
+ assert.equal(fixed.sourceSha256,d.sourceSha256);
+});
