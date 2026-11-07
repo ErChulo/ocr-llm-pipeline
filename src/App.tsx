@@ -59,6 +59,7 @@ export default function App() {
   const [ocrPageChoice, setOcrPageChoice] = useState(0);
   const [ocrEditing, setOcrEditing] = useState(false);
   const [ocrDraft, setOcrDraft] = useState('');
+  const [imageViewUrl, setImageViewUrl] = useState('');
   const [pdfView, setPdfView] = useState<{
     page:number;boxes:Array<{x:number;y:number;width:number;height:number;precision:'pdf-text-item-envelope'}>
   }|null>(null);
@@ -104,6 +105,15 @@ export default function App() {
   });
 
   useEffect(() => () => { void engine.current.unload(); void terminateOcr(); }, []);
+  // Blob URLs are generated only on user request, never from a remote URL.
+  // Revoke the previous view on document change, close, or unmount.
+  useEffect(() => () => { if(imageViewUrl) URL.revokeObjectURL(imageViewUrl); }, [imageViewUrl]);
+  function openOriginalImage(){
+    if(!active?.imageBytes)return;
+    setImageViewUrl(URL.createObjectURL(new Blob(
+      [Uint8Array.from(active.imageBytes)],{type:active.mimeType}
+    )));
+  }
   useEffect(() => {
     const onHash = () => setRoute(routeFromHash(window.location.hash));
     window.addEventListener('hashchange', onHash);
@@ -183,6 +193,7 @@ export default function App() {
       setDocs(current => [...current, ...added]);
       setDocumentIndex(docs.length);
       setOcrPageChoice(0); setOcrEditing(false); setOcrDraft(''); setPdfView(null);
+      setImageViewUrl('');
       setSourceIssuesReviewed({});
       clearExtraction();
       setNotes(imports.flatMap(x => x.notes));
@@ -390,12 +401,25 @@ export default function App() {
                 <select value={documentIndex} onChange={e => {
                   setDocumentIndex(Number(e.currentTarget.value));
                   setOcrEditing(false);setOcrPageChoice(0);setOcrDraft('');setPdfView(null);
+                  setImageViewUrl('');
                   setSourceIssuesReviewed({});clearExtraction();
                 }}>{docs.map((doc, i) => <option key={i} value={i}>{doc.name}</option>)}</select>
               </label>
               <p className="help">Source: {active.provenance.source} / {active.provenance.precision} level</p>
               {active.pdfBytes && <div className="actions"><button className="secondary" type="button"
                 onClick={()=>setPdfView({page:1,boxes:[]})}>View original PDF</button></div>}
+              {active.imageBytes && <>
+                <div className="actions">
+                  <button type="button" className="secondary" aria-expanded={!!imageViewUrl}
+                    onClick={()=>imageViewUrl?setImageViewUrl(''):openOriginalImage()}>
+                    {imageViewUrl?'Close original image':'View original image'}
+                  </button>
+                </div>
+                {imageViewUrl && <figure className="original-image-preview">
+                  <img src={imageViewUrl} alt={'Original imported image: '+active.name}/>
+                  <figcaption>Original image from this device. Compare it with the OCR transcription before export.</figcaption>
+                </figure>}
+              </>}
               {(active.reviewIssues?.length??0)>0 && <section className="source-completeness">
                 <h3>Source completeness review</h3>
                 <p className="help">These risks can hide important provisions. Check the original file and acknowledge each issue before JSON export.</p>
