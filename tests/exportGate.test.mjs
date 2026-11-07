@@ -49,3 +49,46 @@ test('source-completeness warnings block export until each item is acknowledged'
  assert.equal(evaluateExportGate({...safe,sourceIssuesUnreviewed:2}).allowed,false);
  assert.equal(evaluateExportGate({...safe,sourceIssuesUnreviewed:0}).allowed,true);
 });
+
+
+test('export refuses a gap or overlap in the middle of otherwise plausible source coverage',()=>{
+ const doc={...d,text:'ABCDEFGHIJKLMNOPQRST'};
+ const correct={...audit,sourceText:doc.text,length:doc.text.length,chunks:[
+  {chunk:1,start:0,end:7},{chunk:2,start:7,end:14},{chunk:3,start:14,end:20}
+ ]};
+ assert.equal(evaluateExportGate({...safe,document:doc,audit:correct}).allowed,true);
+ const malformed=[
+  [{chunk:1,start:0,end:7},{chunk:2,start:8,end:14},{chunk:3,start:14,end:20}],
+  [{chunk:1,start:0,end:7},{chunk:2,start:6,end:14},{chunk:3,start:14,end:20}],
+  [{chunk:1,start:0,end:7},{chunk:3,start:7,end:14},{chunk:4,start:14,end:20}],
+  [{chunk:1,start:0,end:7},{chunk:2,start:7,end:7},{chunk:3,start:7,end:20}]
+ ];
+ for(const chunks of malformed){
+  assert.equal(evaluateExportGate({...safe,document:doc,audit:{...correct,chunks}}).allowed,false);
+ }
+});
+
+test('candidate citations cannot refer to fabricated or altered source sections',()=>{
+ const good={...audit,candidates:{'/age':[{value:65,spans:[{chunk:1,start:0,end:9}]}]}};
+ assert.equal(evaluateExportGate({...safe,audit:good}).allowed,true);
+ const forged=[
+  [{value:65,spans:[{chunk:2,start:0,end:9}]}],
+  [{value:65,spans:[{chunk:1,start:0,end:8}]}],
+  [{value:65,spans:[]}],
+  [{value:65,spans:[{chunk:1,start:1,end:9}]}]
+ ];
+ for(const candidates of forged){
+  const altered={...audit,candidates:{'/age':candidates}};
+  assert.equal(evaluateExportGate({...safe,audit:altered}).allowed,false);
+ }
+});
+
+test('all multi-section candidate source spans must match an audited section exactly',()=>{
+ const document={...d,text:'ABCDEFGHIJKLMNOPQRST'};
+ const good={...audit,sourceText:document.text,length:20,
+  chunks:[{chunk:1,start:0,end:10},{chunk:2,start:10,end:20}],
+  candidates:{'/age':[{value:65,spans:[{chunk:1,start:0,end:10},{chunk:2,start:10,end:20}]}]}};
+ assert.equal(evaluateExportGate({...safe,document,audit:good}).allowed,true);
+ const bad={...good,candidates:{'/age':[{value:65,spans:[{chunk:2,start:9,end:20}]}]}};
+ assert.equal(evaluateExportGate({...safe,document,audit:bad}).allowed,false);
+});

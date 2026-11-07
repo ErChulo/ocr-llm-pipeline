@@ -23,6 +23,37 @@ export type ExportGateInputs = {
 };
 export type ExportGate = {allowed:boolean;reasons:string[]};
 
+/**
+ * Recheck the complete source/candidate chain at the moment of export.
+ * Checking only the first and last spans can hide missing middle sections.
+ * Candidate citations may refer only to sections that were actually read.
+ */
+function verifiedProvenance(audit:ExtractionAudit,sourceLength:number):boolean{
+  if(!Array.isArray(audit.chunks)||!audit.chunks.length)return false;
+  let previous=0;
+  const spans=new Set<string>();
+  for(let i=0;i<audit.chunks.length;i++){
+    const chunk=audit.chunks[i];
+    if(!chunk||!Number.isSafeInteger(chunk.chunk)||chunk.chunk!==i+1||
+       !Number.isSafeInteger(chunk.start)||!Number.isSafeInteger(chunk.end)||
+       chunk.start!==previous||chunk.end<=chunk.start||chunk.end>sourceLength)return false;
+    spans.add(chunk.chunk+':'+chunk.start+':'+chunk.end);
+    previous=chunk.end;
+  }
+  if(previous!==sourceLength||!audit.candidates||
+     typeof audit.candidates!=='object')return false;
+  for(const candidates of Object.values(audit.candidates)){
+    if(!Array.isArray(candidates)||!candidates.length)return false;
+    for(const candidate of candidates){
+      if(!candidate||!Array.isArray(candidate.spans)||!candidate.spans.length)return false;
+      for(const span of candidate.spans){
+        if(!span||!spans.has(span.chunk+':'+span.start+':'+span.end))return false;
+      }
+    }
+  }
+  return true;
+}
+
 export function evaluateExportGate(input:ExportGateInputs):ExportGate{
   const reasons:string[]=[];
   const {document,audit,value}=input;
@@ -33,8 +64,7 @@ export function evaluateExportGate(input:ExportGateInputs):ExportGate{
       audit.length!==document.text.length || audit.sourceText!==document.text ||
       audit.sourceSha256!==document.sourceSha256 ||
       audit.processedTextSha256!==document.processedTextSha256 ||
-      audit.chunks.length===0 || audit.chunks[0].start!==0 ||
-      audit.chunks.at(-1)?.end!==document.text.length)){
+      !verifiedProvenance(audit,document.text.length))){
     reasons.push('The current document does not match the reviewed extraction.');
   }
   if(input.busy)reasons.push('A local operation is still running.');
