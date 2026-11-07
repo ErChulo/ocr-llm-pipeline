@@ -57,3 +57,7 @@ JSON Schema validation is performed by a CSP-compatible interpreter, not dynamic
 ## Original PDF review and OCR correction
 
 Choose **View original PDF** to inspect the actual PDF page locally; after selecting a source citation, choose **View source PDF page** to see the page with approximate text-item overlays. For scanned pages, use **Correct OCR text** to fix recognition errors. Corrections stay in browser memory and invalidate any previous JSON extraction/review. The original file fingerprint and page identity are preserved; corrected text is explicitly marked as human-entered. These features do not verify actuarial interpretations automatically.
+
+### First real five-document benchmark
+
+The official 0.5B GGUF achieved 90% **exact-field** micro precision/recall/F1 on five fictional pension inputs, with zero external network requests ([CI evidence](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42371798989)). Its one mismatch was an unambiguous date normalization, not a different calendar date. This is a small synthetic diagnostic, **not** production acceptance. See [measured cases](docs/REAL_CORPUS_BENCHMARK.md).

@@ -41,3 +41,7 @@ This confirms that the **small synthetic end-to-end path** worked. It does *not*
 ## Phase diagnostics (November 2026)
 
 The integration test records checkpoints for loading, known-answer scoring, extraction, citation review and export. If extraction fails, it captures bounded UI messages, any parser or schema errors, and optional Chromium JS heap metrics. These diagnostics use **fictional** documents only; the browser remains offline. A large-model timeout is not automatically classified as a memory failure or a hallucination: the report distinguishes an application-level error from a timeout and records the last completed phase. JavaScript heap metrics do not measure all WebAssembly allocations.
+
+## 3B development limitation
+
+The official 3B GGUF passed file verification but did not complete the full extraction/export test before the 420-second per-step timeout in [CI run 42370925133](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42370925133). This is a known runtime/accuracy acceptance failure, not evidence of a corrupt model. New phase diagnostics are included in subsequent benchmark source for distinguishing slow generation, schema errors, and browser resource exhaustion. No 3B production-readiness claim is made.
