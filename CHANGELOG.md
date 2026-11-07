@@ -17,6 +17,10 @@
 - Tighten literal numeric evidence to distinguish positive and negative values, numeric strings, grouped amounts, scientific notation, and alphanumeric codes; reviewer-supplied source quotations remain possible for nonliteral interpretations.
 - Add deterministic numeric-boundary regression tests; literal matching is not independent actuarial verification.
 
+- Make original-source acknowledgement mandatory for **all** OCR pages and images, regardless of recognizer confidence. Confidence alone is not evidence of fidelity.
+- Keep original image bytes in browser memory and add a local image preview for direct comparison. Object URLs are revoked after closing or changing sources; image bytes are excluded from JSON export.
+- Add deterministic review classification tests and offline browser checks for image display, scanned-PDF review and correction invalidation.
+
 ## 0.3.0-beta.1 — November 6, 2026
 
 - Single-file `file://` Chromium test covers local model generation, text PDF, scanned-PDF/image OCR and DOCX/XLSX/CSV source import.
