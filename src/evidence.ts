@@ -77,7 +77,22 @@ function boundaryOkay(source: string,start: number,end: number,value: unknown): 
   // Match whole numeric tokens, including numeric strings from JSON schemas.
   const token=typeof value==='number' && Number.isFinite(value)?String(value):
     typeof value==='string'?value.trim():'';
-  if(!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(token))return true;
+  if(!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(token)){
+    if(typeof value!=='string')return true;
+    // A code or quoted phrase must not be supported by a substring of a
+    // longer token (e.g. "SLA" from "SLA99", "service" from "services").
+    // Hyphens and slashes between words can also change a pension form code.
+    const word=/[\p{L}\p{N}\p{M}_]/u;
+    const characters=Array.from(token);
+    const first=characters[0],last=characters.at(-1);
+    const before=source[start-1]||'',after=source[end]||'';
+    const prev=source[start-2]||'',next=source[end+1]||'';
+    if(word.test(first) && word.test(before))return false;
+    if(word.test(last) && word.test(after))return false;
+    if(word.test(first) && /[-–/]/.test(before) && word.test(prev))return false;
+    if(word.test(last) && /[-–/]/.test(after) && word.test(next))return false;
+    return true;
+  }
   const before=source[start-1]||'', after=source[end]||'';
   const prev=source[start-2]||'', next=source[end+1]||'';
   // Do not cite part of a larger number, field code, amount, or exponent.
