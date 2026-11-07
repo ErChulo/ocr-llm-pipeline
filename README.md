@@ -9,6 +9,7 @@
 
 ## What is implemented
 
+- **On-device quality diagnostics:** Settings provides an opt-in eight-case fictional pension corpus benchmark. It runs the selected GGUF without network access, reports strict micro precision/recall/F1, per-case omissions and failures, and exports a synthetic-only JSON diagnostic. This is not production acceptance.
 - **Local GGUF inference:** Wllama / WebAssembly model picker, chat and a local generation self-test. Small-model generation passed the `file://` Chromium workflow without external requests.
 - **Bounded batch import:** process at most 20 selected files sequentially and commit none if any fail; prevent duplicate document names/IDs and cap each browser session at 200 documents, 4 million extracted characters, and 80 MB of source files. Restart the page for a new session.
 - **PDF reading-order review:** suspicious column jumps, widely separated text and rotated text trigger mandatory inspection of the original page; this flags risk but does not automatically reconstruct table structure.
