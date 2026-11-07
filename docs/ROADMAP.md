@@ -20,7 +20,7 @@
 
 - [x] Official Qwen2.5-1.5B-Instruct Q4_K_M: successful local file URL inference and full JSON export; **3/4** known-answer score ([CI run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42281102968)).
 - [x] Five-case synthetic pension corpus, real 0.5B GGUF: **90% micro exact precision/recall/F1**, 4/5 entirely exact; sole discrepancy was equivalent date notation ([CI 42371798989](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42371798989)).
-- [ ] Broader adversarial accuracy, precision/recall, cross-document applicability, context overflow, latency and RAM on 0.5B/1.5B/3B. The 3B end-to-end extraction test has repeatedly timed out.
+- [ ] Broader adversarial accuracy, precision/recall, cross-document applicability, context overflow, latency and RAM on 0.5B/1.5B/3B. A bounded two-retry context-overflow fallback has source tests; 3B end-to-end extraction has repeatedly timed out and still needs real-model testing.
 - [ ] Manual offline verification on the authorized managed PBGC Windows Chrome/Edge workstation.
 - [x] Implement original PDF page viewer and approximate PDF.js text-item evidence overlays; browser verification tracked separately.
 - [x] Mixed PDF raster/text pages now trigger a **required original-source acknowledgement** before JSON export.

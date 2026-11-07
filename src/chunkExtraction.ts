@@ -198,6 +198,14 @@ export function resolveCandidateValues(audit: ExtractionAudit, choices: Record<s
   return { data, unresolved };
 }
 
+function isContextOverflow(error:unknown):boolean {
+  const message=error instanceof Error?error.message:String(error);
+  // Retry only recognizable context-limit errors. Never retry cancellation,
+  // malformed JSON, memory exhaustion, I/O, or arbitrary model failures.
+  return /\b(?:context (?:window|length|size|limit|overflow)|maximum context|n_ctx|prompt (?:is )?too long|too many (?:input |prompt )?tokens|(?:exceed|exceeds).{0,50}\bcontext)\b/i.test(message);
+}
+const MAX_CONTEXT_ATTEMPTS=3;
+
 export async function extractWholeDocument(
   doc: SourceDocument, schema: unknown, contextTokens: number,
   generate: (prompt: string, chunk: TextChunk, total: number) => Promise<string>,
@@ -207,13 +215,35 @@ export async function extractWholeDocument(
   if (!asObject(schema) || (schema as Record<string, unknown>).type !== 'object') {
     throw new Error('For multi-section extraction, the JSON Schema root must have type "object".');
   }
-  const chunks = splitWholeText(doc.text, textChunkBudget(contextTokens, schema, maxOutputTokens));
-  const outputs: unknown[] = [];
-  for (const chunk of chunks) {
-    const output = await generate(chunkPrompt(doc, schema, chunk, chunks.length), chunk, chunks.length);
-    try { outputs.push(parseModelJson(output)); }
-    catch { throw new Error('Section ' + chunk.chunk + ' returned invalid JSON. Extraction stopped; no export is available.'); }
-    onProgress?.(outputs.length, chunks.length);
+  let budget=textChunkBudget(contextTokens,schema,maxOutputTokens);
+  for(let attempt=0;attempt<MAX_CONTEXT_ATTEMPTS;attempt++){
+    // Every attempt starts at offset zero. Partially generated candidates
+    // are discarded; never merge values across different chunk boundaries.
+    const chunks=splitWholeText(doc.text,budget);
+    const outputs:unknown[]=[];
+    if(attempt>0)onProgress?.(0,chunks.length);
+    let retry=false;
+    for(const chunk of chunks){
+      let output:string;
+      try{
+        output=await generate(chunkPrompt(doc,schema,chunk,chunks.length),
+          chunk,chunks.length);
+      }catch(error){
+        if(attempt+1<MAX_CONTEXT_ATTEMPTS && isContextOverflow(error)){
+          const smaller=Math.max(350,Math.floor(budget*0.6));
+          if(smaller<budget){
+            budget=smaller;
+            retry=true;
+            break;
+          }
+        }
+        throw error;
+      }
+      try {outputs.push(parseModelJson(output));}
+      catch {throw new Error('Section '+chunk.chunk+' returned invalid JSON. Extraction stopped; no export is available.');}
+      onProgress?.(outputs.length,chunks.length);
+    }
+    if(!retry)return collectChunkCandidates(doc,chunks,outputs);
   }
-  return collectChunkCandidates(doc, chunks, outputs);
+  throw new Error('Model context limit could not be resolved within the bounded retry budget.');
 }
