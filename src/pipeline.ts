@@ -16,7 +16,7 @@ export type SourceRecord = {
 };
 export type SourceReviewIssue = {
   id:string;
-  category:'mixed_pdf_page'|'pdf_layout_review'|'low_ocr_confidence'|'ocr_unverified'|'office_unreviewed_content';
+  category:'mixed_pdf_page'|'pdf_layout_review'|'pdf_annotation_review'|'low_ocr_confidence'|'ocr_unverified'|'office_unreviewed_content';
   message:string;
   page?:number;
 };
