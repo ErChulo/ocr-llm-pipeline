@@ -116,3 +116,53 @@ test('XLSX charts and comments require acknowledgement even without embedded ima
  assert.ok(parsed.warnings.some(x=>x.includes('charts')));
  assert.ok(parsed.warnings.some(x=>x.includes('comments')));
 });
+
+
+test('XLSX flags hidden cells, merged ranges and external data; absolute package sheet targets work',()=>{
+ const workbook='<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Hidden Plan" state="veryHidden" sheetId="1" r:id="rId1"/></sheets></workbook>';
+ const rels='<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Target="/xl/worksheets/sheet1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/></Relationships>';
+ const sheet='<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" hidden="1"/></cols><sheetData><row r="1" hidden="1"><c r="A1"><v>65</v></c></row></sheetData><mergeCells count="1"><mergeCell ref="A1:B1"/></mergeCells></worksheet>';
+ const data=zipped({
+  'xl/workbook.xml':workbook,'xl/_rels/workbook.xml.rels':rels,
+  'xl/worksheets/sheet1.xml':sheet,
+  'xl/externalLinks/externalLink1.xml':'<externalLink/>'
+ });
+ const result=parseXlsx('hidden.xlsx',data);
+ assert.match(result.text,/Hidden Plan!A1: 65/);
+ assert.deepEqual(result.reviewIssues.map(x=>x.id).sort(),[
+  'xlsx:external-data','xlsx:hidden-content','xlsx:merged-cells'
+ ]);
+ assert.ok(result.warnings.some(x=>x.includes('hidden sheet Hidden Plan')));
+ assert.ok(result.warnings.some(x=>x.includes('merged cells')));
+});
+
+test('XLSX never follows external worksheet relationships or traversal targets',()=>{
+ const workbook='<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Plan" sheetId="1" r:id="rId1"/></sheets></workbook>';
+ const sheet='<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><v>65</v></c></row></sheetData></worksheet>';
+ const makeData=relationship=>zipped({
+  'xl/workbook.xml':workbook,
+  'xl/_rels/workbook.xml.rels':'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+relationship+'</Relationships>',
+  'xl/worksheets/sheet1.xml':sheet
+ });
+ assert.throws(()=>parseXlsx('external.xlsx',makeData(
+  '<Relationship Id="rId1" TargetMode="External" Target="https://example.invalid/xl/worksheets/sheet1.xml"/>'
+ )),/External worksheet relationships/);
+ assert.throws(()=>parseXlsx('remote.xlsx',makeData(
+  '<Relationship Id="rId1" Target="https://example.invalid/xl/worksheets/sheet1.xml"/>'
+ )),/invalid or external sheet path/);
+ assert.throws(()=>parseXlsx('traversal.xlsx',makeData(
+  '<Relationship Id="rId1" Target="../xl/worksheets/sheet1.xml"/>'
+ )),/path traversal/);
+});
+
+test('XLSX skips chartsheets but blocks export until omitted chart content is reviewed',()=>{
+ const workbook='<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Plan" sheetId="1" r:id="rId1"/><sheet name="Chart 1" sheetId="2" r:id="rId2"/></sheets></workbook>';
+ const rels='<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Target="worksheets/sheet1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/><Relationship Id="rId2" Target="chartsheets/sheet1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chartsheet"/></Relationships>';
+ const sheet='<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><v>65</v></c></row></sheetData></worksheet>';
+ const parsed=parseXlsx('chartsheet.xlsx',zipped({
+  'xl/workbook.xml':workbook,'xl/_rels/workbook.xml.rels':rels,
+  'xl/worksheets/sheet1.xml':sheet,'xl/chartsheets/sheet1.xml':'<chartsheet/>'
+ }));
+ assert.match(parsed.text,/Plan!A1: 65/);
+ assert.ok(parsed.reviewIssues.some(x=>x.id==='xlsx:media'));
+});
