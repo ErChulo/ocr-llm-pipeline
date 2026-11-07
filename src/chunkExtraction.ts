@@ -37,7 +37,7 @@ export function textChunkBudget(contextTokens: number, schema: unknown, maxOutpu
   const schemaChars = JSON.stringify(schema)?.length ?? 0;
   // Conservative heuristic, not an actual token count. Reserve room for model output
   // and chat-template overhead; llama's tokenizer can still reject an overlong request.
-  const budget = Math.min(2400, Math.floor((contextTokens - maxOutputTokens) * 1.6) - schemaChars - 550);
+  const budget = Math.min(2400, Math.floor((contextTokens - maxOutputTokens) * 1.6) - schemaChars - 700);
   if (budget < 350) {
     throw new Error('Not enough model context for source text and JSON output. Increase context, reduce maximum output, or simplify the schema.');
   }
