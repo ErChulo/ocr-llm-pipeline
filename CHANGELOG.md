@@ -6,6 +6,8 @@
 - Flag external links, connections, query and pivot caches whose data are not refreshed by the offline importer.
 - Handle absolute internal OOXML worksheet targets, reject remote or traversal targets, and skip chartsheets with explicit omitted-content review.
 - Add synthetic regression cases for all of the above. This source change is not a claim of a completed CI run or production acceptance.
+- Bound imported Bulk OCR JSON/JSONC to 200 documents, 2 million characters per document and 4 million per batch; reject blank sources and duplicate IDs. Validate supplied byte counts and require bounded local TXT/MD imports.
+- Add importer boundary tests; automated acceptance status is tracked by the build workflow.
 
 
 ## 0.3.0-beta.1 — November 6, 2026
