@@ -1,0 +1,61 @@
+name: Experimental bounded 3B GGUF feasibility
+
+concurrency:
+  group: bounded-3b-feasibility-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/3b-feasibility.yml'
+      - 'tests/real-model-benchmark.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  real-3b-load-generation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build and source tests
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+          npm run build
+      - name: Install Chromium automation (networked runner only)
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Download and verify official Qwen 3B weights (CI only)
+        timeout-minutes: 10
+        run: |
+          mkdir -p tmp
+          curl -fL --retry 3 --retry-all-errors \
+            'https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf' \
+            -o tmp/qwen2.5-3b-instruct-q4_k_m.gguf
+          printf '%s  %s\n' \
+            '626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d' \
+            'tmp/qwen2.5-3b-instruct-q4_k_m.gguf' | sha256sum -c -
+      - name: Measure bounded 3B load and four-field generation
+        timeout-minutes: 9
+        env:
+          MODEL_TEST_SCOPE: quality_only
+          MODEL_LABEL: Official Qwen2.5-3B-Instruct Q4_K_M
+          MODEL_SHA256: 626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d
+          MODEL_FILE: tmp/qwen2.5-3b-instruct-q4_k_m.gguf
+        run: node tests/real-model-benchmark.mjs
+      - name: Upload fictional-only performance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-3b-bounded-feasibility-report
+          path: |
+            tmp/real-model-report.json
+            tmp/real-model-*.png
+          if-no-files-found: ignore

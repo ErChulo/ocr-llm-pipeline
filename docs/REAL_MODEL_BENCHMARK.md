@@ -45,3 +45,7 @@ The integration test records checkpoints for loading, known-answer scoring, extr
 ## 3B development limitation
 
 The official 3B GGUF passed file verification but did not complete the full extraction/export test before the 420-second per-step timeout in [CI run 42370925133](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42370925133). This is a known runtime/accuracy acceptance failure, not evidence of a corrupt model. New phase diagnostics are included in subsequent benchmark source for distinguishing slow generation, schema errors, and browser resource exhaustion. No 3B production-readiness claim is made.
+
+## Bounded 3B feasibility test
+
+The separate [3B feasibility workflow](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/3b-feasibility.yml) runs a checksum-verified official Qwen2.5-3B-Instruct Q4_K_M (~2.105 GB) against the same single-file offline browser. It measures **model loading plus the four-field synthetic model-quality check only**, with a nine-minute step cutoff. It reports checkpoint phases and download-free/offline-browser status without attempting long full-document extraction. The full 3B pipeline has previously exceeded a 420-second extraction wait and remains **unverified**. Distinguishing the fast loading phase from the slow generation phase is essential before changing the runtime backend or claiming production support.
