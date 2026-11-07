@@ -244,3 +244,24 @@ test('DOCX refuses alternate unreviewable content in footnotes, not only main bo
  });
  assert.throws(()=>parseDocx('unreviewable.docx',zip),/embedded alternate content/);
 });
+
+
+test('Excel formulas without cached values cannot become invented evidence placeholders',()=>{
+ const sheet='<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><v>65</v></c><c r="B1"><f>A1*2</f></c></row></sheetData></worksheet>';
+ assert.throws(()=>parseXlsx('uncached.xlsx',xlsx({sheet})),/formula at Plan Data!B1 has no cached calculation result/);
+ const empty='<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><f>IF(FALSE,1,"")</f><v></v></c></row></sheetData></worksheet>';
+ assert.throws(()=>parseXlsx('empty-cache.xlsx',xlsx({sheet:empty})),/no cached calculation result/);
+});
+
+test('cached formula results remain readable but mandate original Excel review',()=>{
+ const sheet='<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><f>60+5</f><v>65</v></c></row></sheetData></worksheet>';
+ const result=parseXlsx('cached.xlsx',xlsx({sheet}));
+ assert.match(result.text,/Plan Data!A1: 65/);
+ assert.ok(result.reviewIssues.some(x=>x.id==='xlsx:formulas'));
+ assert.ok(!result.text.includes('[formula without cached value]'));
+});
+
+test('spreadsheet calculation errors cannot masquerade as extracted plan values',()=>{
+ const sheet='<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><v>65</v></c><c r="B1" t="e"><f>1/0</f><v>#DIV/0!</v></c></row></sheetData></worksheet>';
+ assert.throws(()=>parseXlsx('error.xlsx',xlsx({sheet})),/cell Plan Data!B1 contains a spreadsheet error/);
+});
