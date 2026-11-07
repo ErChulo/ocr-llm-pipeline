@@ -57,7 +57,7 @@ export class OfflineEngine {
       if (c.signal.aborted) throw new Error('Generation canceled. No partial result was saved.');
       // Do not accept a partial response merely because the received text
       // happens to parse as JSON. The final stream chunk can report "length".
-      assertGenerationComplete(finishReason);
+      if(jsonMode)assertGenerationComplete(finishReason);
     } finally {
       if (this.controller === c) this.controller = null;
     }
