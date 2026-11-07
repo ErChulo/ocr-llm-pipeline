@@ -121,6 +121,26 @@ try {
   assert.match(await page.locator('.preview').innerText(),/Page 2:/);
   console.log('REAL BROWSER: document batch rolls back on duplicate and commits all on success.');
 
+  // A two-column text layer can contain all text yet still be unsafe to
+  // interpret in parser order. The app must surface an original-page review.
+  const twoColumnPdf=createSyntheticPdf([[
+    {text:'Normal retirement 65',x:72,y:720},
+    {text:'Early retirement 55',x:430,y:720}
+  ]]);
+  await filePicker.setInputFiles({
+    name:'two-column-synthetic.pdf',mimeType:'application/pdf',buffer:twoColumnPdf
+  });
+  const pdfLayoutPanel=page.locator('.source-completeness');
+  await pdfLayoutPanel.getByText(/may contain columns, tabular spacing or rotated text/i)
+    .waitFor({timeout:30000});
+  assert.equal(await pdfLayoutPanel.locator('input[type="checkbox"]').count(),1);
+  await page.getByRole('button',{name:'View original page 1'}).click();
+  await page.getByRole('dialog',{name:'Original PDF page'}).waitFor({timeout:10000});
+  await page.getByRole('button',{name:'Close PDF view'}).click();
+  await page.locator('.card select').first().selectOption({label:'synthetic.pdf'});
+  console.log('REAL BROWSER: multi-column PDF text geometry requires original-source review.');
+
+
 
 
   // Image OCR uses English traineddata, WASM and Worker embedded in the HTML.

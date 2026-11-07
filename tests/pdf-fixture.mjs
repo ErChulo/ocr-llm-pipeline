@@ -12,7 +12,15 @@ export function createSyntheticPdf(pages) {
     '<< /Type /Pages /Kids [' + pages.map((_, i) => (3 + 2*i) + ' 0 R').join(' ') + '] /Count ' + numPages + ' >>'
   ];
   for (let i = 0; i < numPages; i++) {
-    const contents = pages[i].map((value, n) => 'BT /F1 14 Tf 72 ' + (720 - n * 24) + ' Td (' + escapeText(value) + ') Tj ET\n').join('');
+    const contents = pages[i].map((entry,n)=>{
+      const position=typeof entry==='string'
+        ? {text:entry,x:72,y:720-n*24}:entry;
+      if(typeof position.text!=='string'||![position.x,position.y].every(Number.isFinite)){
+        throw new Error('Invalid fictional PDF text fixture position.');
+      }
+      return 'BT /F1 14 Tf '+position.x+' '+position.y+' Td ('+
+        escapeText(position.text)+') Tj ET\n';
+    }).join('');
     objects.push('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ' + fontId + ' 0 R >> >> /Contents ' + (4+i*2) + ' 0 R >>');
     objects.push('<< /Length ' + Buffer.byteLength(contents, 'utf8') + ' >>\nstream\n' + contents + 'endstream');
   }
