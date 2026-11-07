@@ -176,7 +176,7 @@ try {
   );
   assert.match(await page.locator('.preview').innerText(), /RETIREMENT AGE 65/i);
   const scannedReview=page.locator('.source-completeness');
-  await scannedReview.getByText(/PDF page 1 with the original before export/i).waitFor({timeout:10000});
+  await scannedReview.getByText(/PDF page 1 before export/i).waitFor({timeout:10000});
   assert.equal(await scannedReview.locator('input[type="checkbox"]').count(),1);
   await page.getByRole('button',{name:'View original page 1'}).click();
   await page.getByRole('dialog',{name:'Original PDF page'}).waitFor({timeout:10000});
