@@ -2,6 +2,8 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Harden DOCX/XLSX XML parsing against deeply nested document structures with iterative 128-depth/500,000-node traversal limits and regression fixtures. Passing tests are defense-in-depth, not a comprehensive security audit.
+
 - Add a separate eight-case real-GGUF accuracy workflow that checks official Qwen model SHA-256, tests the standalone offline Chromium app and records measured fictional-case quality. The historical five-case baseline remains separately reproducible; no unmeasured eight-case score is claimed.
 
 - Add an opt-in eight-case GGUF accuracy benchmark under Settings, running entirely on the local workstation with fictional source text. Measure strict-field precision, recall, F1, case completeness, generation failures and elapsed time; save synthetic-only JSON results.

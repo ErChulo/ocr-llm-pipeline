@@ -36,6 +36,7 @@
 - [ ] Factual verification beyond literal text matches; full cross-document conflict resolution, no silent assumptions.
 - [ ] Comprehensive PII handling, redaction/export security, threat modeling and independent agency review.
 - [ ] Full accessibility/keyboard/printable guide acceptance; verify PDF print output and ASD-STE100-inspired language.
+- [x] Bounded iterative XML traversal for DOCX/XLSX; reject deeply nested or excessive XML nodes. Synthetic hostile files covered by regression tests.
 - [x] Direct dependencies exact-pinned; transitive `package-lock.json` committed; CI uses `npm ci` to reject drift.
 - [ ] Independent supply-chain audit of dependencies and worker assets before production; lockfile updates are manual, not silent.
 - [ ] Optional Impeccable design review on development machine, not in workplace runtime.
