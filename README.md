@@ -26,6 +26,7 @@
 |---|---|
 | Deterministic source tests and single-file build | [Build workflow](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/build.yml) |
 | Offline Chromium `file://` runtime | [Browser smoke workflow](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/browser-smoke.yml) |
+| Full eight-case real-GGUF evaluation | [Independent accuracy workflow](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/eight-case-gguf-benchmark.yml) (fictional source, model hash checked, browser offline) |
 | Practical instruction-following GGUF model benchmark | [Full end-to-end synthetic test passed](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42248309834) (4/4, JSON export, no network) |
 | Current production readiness and blockers | [Roadmap](docs/ROADMAP.md) |
 
