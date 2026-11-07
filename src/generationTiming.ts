@@ -10,7 +10,8 @@ export type GenerationTiming={
 export class GenerationMeter{
   private first:number|null=null;
   private chars=0;
-  constructor(private readonly begunAt:number){}
+  private readonly begunAt:number;
+  constructor(begunAt:number){this.begunAt=begunAt;}
   noteText(text:string,now:number):void{
     if(!text)return;
     if(this.first===null)this.first=now;
