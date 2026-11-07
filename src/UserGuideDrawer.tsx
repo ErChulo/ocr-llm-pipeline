@@ -82,7 +82,7 @@ export default function UserGuideDrawer() {
             <button type="button" ref={closeRef} aria-label="Close guide" onClick={() => setOpen(false)}>Close</button>
           </div>
         </div>
-        <div className="guide-content" id="guide-sheet">
+        <div className="guide-content" id="guide-sheet" role="region" aria-label="Guide instructions" tabIndex={0}>
           <div className="guide-cover">
             <p className="guide-overline">OCR + LLM PIPELINE STUDIO</p>
             <h1>Start here</h1>
