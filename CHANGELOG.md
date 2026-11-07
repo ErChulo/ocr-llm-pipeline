@@ -2,6 +2,8 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Detect non-link PDF annotations/form fields that may contain important unextracted terms. Require review of the original PDF in a viewer supporting annotation/form display; ordinary hyperlinks are ignored. Never treat PDF.js native text as evidence for omitted annotation values.
+
 - Record measured actual Qwen2.5-0.5B eight-case offline benchmark: 75% strict micro field precision/recall/F1, four of eight fully exact, 392.8 seconds, no browser network calls. Document observed date reformatting, normal-form extraction error, and conditional phrasing mismatch. This is below unattended production acceptance.
 
 - Harden DOCX/XLSX XML parsing against deeply nested document structures with iterative 128-depth/500,000-node traversal limits and regression fixtures. Passing tests are defense-in-depth, not a comprehensive security audit.
