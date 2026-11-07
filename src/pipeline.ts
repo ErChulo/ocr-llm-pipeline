@@ -63,21 +63,44 @@ export function stripJsoncComments(input: string): string {
 function obj(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
 }
+const MAX_IMPORT_BYTES=20*1024*1024;
+const MAX_IMPORTED_DOCUMENTS=200;
+const MAX_SOURCE_TEXT_CHARS=2_000_000;
+const MAX_BATCH_TEXT_CHARS=4_000_000;
+
 export function importText(filename: string, text: string): ImportResult {
+  if(new TextEncoder().encode(text).byteLength>MAX_IMPORT_BYTES)
+    throw new Error('Text or OCR export exceeds the 20 MB import limit.');
   const ext = filename.split('.').pop()?.toLowerCase();
   if (ext === 'jsonc' || ext === 'json') {
     const data = obj(JSON.parse(ext === 'jsonc' ? stripJsoncComments(text) : text) as unknown);
     if (!data || !Array.isArray(data.documents)) throw new Error('Expected Bulk OCR Studio JSONC/JSON with a documents array.');
+    if(!data.documents.length || data.documents.length>MAX_IMPORTED_DOCUMENTS)
+      throw new Error('Bulk OCR export must contain 1 to 200 documents.');
+    let aggregateChars=0;
+    const seenIds=new Set<string>();
     const documents = data.documents.map((entry: unknown, i: number): SourceDocument => {
       const item = obj(entry);
-      if (!item || typeof item.name !== 'string' || typeof item.extractedText !== 'string') {
-        throw new Error('Document ' + (i + 1) + ' must have name and extractedText.');
+      if (!item || typeof item.name !== 'string' || typeof item.extractedText !== 'string' ||
+          !item.name.trim() || item.name.length>500) {
+        throw new Error('Document ' + (i + 1) + ' requires a nonempty name (at most 500 characters) and extractedText.');
       }
+      if(!item.extractedText.trim())throw new Error('Document '+(i+1)+' has no readable extracted text.');
+      if(item.extractedText.length>MAX_SOURCE_TEXT_CHARS)
+        throw new Error('Document '+(i+1)+' exceeds the 2 million character text limit.');
+      aggregateChars+=item.extractedText.length;
+      if(aggregateChars>MAX_BATCH_TEXT_CHARS)
+        throw new Error('Bulk OCR export exceeds the 4 million character aggregate limit.');
+      const id=typeof item.id==='string' && item.id.trim()?item.id:filename+':'+i;
+      if(seenIds.has(id))throw new Error('Bulk OCR export contains duplicate document IDs: '+id);
+      seenIds.add(id);
       return {
-        id: typeof item.id === 'string' ? item.id : filename + ':' + i,
+        id,
         name: item.name, text: item.extractedText,
         mimeType: typeof item.mimeType === 'string' ? item.mimeType : 'text/plain',
-        sizeBytes: typeof item.sizeBytes === 'number' ? item.sizeBytes : item.extractedText.length,
+        sizeBytes: typeof item.sizeBytes === 'number' && Number.isSafeInteger(item.sizeBytes) &&
+          item.sizeBytes>=0 && item.sizeBytes<=MAX_IMPORT_BYTES ?
+          item.sizeBytes : new TextEncoder().encode(item.extractedText).byteLength,
         provenance: { source: 'bulk-ocr-jsonc', precision: 'document', fileName: item.name }
       };
     });
@@ -94,11 +117,14 @@ export function importText(filename: string, text: string): ImportResult {
     const parsed=parseCsv(filename,text);
     return {documents:[parsed],notes:parsed.warnings??[]};
   }
+  if(!text.trim())throw new Error('Text file contains no readable content.');
+  if(text.length>MAX_SOURCE_TEXT_CHARS)
+    throw new Error('Text file exceeds the 2 million character text limit.');
   return { documents: [{
       id: filename, name: filename, text, mimeType: 'text/plain',
       sizeBytes: new TextEncoder().encode(text).byteLength,
       provenance: { source: 'local-text', precision: 'document', fileName: filename }
-    }], notes: ['Local text imported; native PDF and image OCR are planned.'] };
+    }], notes: ['Local text imported with document-level source locations.'] };
 }
 export async function importFile(file: File): Promise<ImportResult> {
   if (file.size > 20 * 1024 * 1024) throw new Error('Local import limited to 20 MB per file.');
