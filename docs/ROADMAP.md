@@ -27,7 +27,7 @@
 - [ ] Exact glyph/quoted-substring highlights and robust mixed raster/text page OCR remain open.
 - [x] Human-editable OCR transcription with original-file fingerprint and page provenance preserved; correction invalidates prior extraction review.
 - [ ] OCR confidence visualization, larger multilingual corpus, handwriting, varied scans, multipage layouts and columns.
-- [ ] Thorough DOCX/XLSX layout and fidelity checks: headers/footers, tracked changes, dates/styles, formulas, merged cells, comments, embedded graphics. **Partial source implementation:** XLSX date-style alerts, hidden content, merged ranges, chartsheets, comments, external data/link omissions, and malicious sheet relationship rejection have targeted regression tests. Real-workbook fidelity verification remains open.
+- [ ] Thorough DOCX/XLSX layout and fidelity checks: headers/footers, tracked changes, dates/styles, formulas, merged cells, comments, embedded graphics. **Partial source implementation:** DOCX tracked-revision visibility, direct hidden text, content controls and altChunk review safeguards; XLSX date-style alerts, hidden content, merged ranges, chartsheets, comments, external data/link omissions, and malicious sheet relationship rejection have targeted regression tests. Real-file visual fidelity verification remains open.
 - [ ] Factual verification beyond literal text matches; full cross-document conflict resolution, no silent assumptions.
 - [ ] Comprehensive PII handling, redaction/export security, threat modeling and independent agency review.
 - [ ] Full accessibility/keyboard/printable guide acceptance; verify PDF print output and ASD-STE100-inspired language.
