@@ -57,3 +57,10 @@ test('PDF.js text coordinates attach parser-derived text-item envelopes, not inv
   assert.ok(Number.isFinite(age.box.x)&&age.box.width>0&&age.box.height>0);
   assert.ok(age.start>=page.start&&age.end<=page.end);
 });
+
+test('text-bearing PDF with image content requires source-completeness acknowledgement',async()=>{
+ const {createScannedPdf}=await import('./pdf-fixture.mjs');
+ const jpeg=Buffer.from('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAACAAIDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdSExJSktMTU5PUFFSU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD6pooooA//2Q==','base64');
+ const parsed=await parsePdf('synthetic.pdf',createScannedPdf(jpeg,360,160,'PLAN HEADER'));
+ assert.ok(parsed.reviewIssues?.some(x=>x.id==='pdf:mixed:1'&&x.page===1));
+});

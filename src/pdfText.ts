@@ -6,7 +6,7 @@
  */
 import { getDocument, OPS } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import 'pdfjs-dist/legacy/build/pdf.worker.mjs';
-import type { SourceDocument, SourceRecord, SourceTextSpan } from './pipeline.ts';
+import type { SourceDocument, SourceRecord, SourceTextSpan, SourceReviewIssue } from './pipeline.ts';
 
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
 const MAX_PAGES = 300;
@@ -101,6 +101,7 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
     let chars = 0;
     let ocrPages=0;
     const warnings:string[]=[];
+    const reviewIssues:SourceReviewIssue[]=[];
     for (let pageNo = 1; pageNo <= document.numPages; pageNo++) {
       const page = await document.getPage(pageNo);
       const textContent = await page.getTextContent();
@@ -135,11 +136,17 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
         scanned=true;
         ocrPages++;
         if(!text)throw new Error('OCR found no readable text on PDF page '+pageNo+'. Import was stopped.');
-        if(confidence<75)warnings.push('OCR confidence on page '+pageNo+' is '+Math.round(confidence)+'%. Verify the page against its original image.');
+        if(confidence<75){
+          warnings.push('OCR confidence on page '+pageNo+' is '+Math.round(confidence)+'%. Verify the page against its original image.');
+          reviewIssues.push({id:'pdf:ocr:'+pageNo,category:'low_ocr_confidence',
+            page:pageNo,message:'OCR confidence is '+Math.round(confidence)+'% on page '+pageNo+'. Compare all material fields with the original scan.'});
+        }
       }
       if(!scanned && containsImages){
         warnings.push('Page '+pageNo+' contains images as well as selectable text. '
           +'Those images were not OCR checked; verify the complete page visually.');
+        reviewIssues.push({id:'pdf:mixed:'+pageNo,category:'mixed_pdf_page',
+          page:pageNo,message:'Page '+pageNo+' combines selectable text with image content. The image was not OCR checked; inspect the original page for omitted information.'});
       }
       const line = 'Page ' + pageNo + ':\n' + text + '\n\n';
       const start = chars;
@@ -168,6 +175,7 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
       mimeType: 'application/pdf', sizeBytes: bytes.byteLength,
       provenance: { source: ocrPages ? 'pdf-ocr' : 'pdf-native', precision: 'page', fileName },
       records,
+      reviewIssues,
       warnings: [
         ...warnings,
         'PDF page numbers come from the document parser, not from the language model.',

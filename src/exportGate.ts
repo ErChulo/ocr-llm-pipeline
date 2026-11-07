@@ -19,6 +19,7 @@ export type ExportGateInputs = {
   conflictsUnresolved: number;
   privacyRequired: boolean;
   privacyReviewed: boolean;
+  sourceIssuesUnreviewed?: number;
 };
 export type ExportGate = {allowed:boolean;reasons:string[]};
 
@@ -41,6 +42,9 @@ export function evaluateExportGate(input:ExportGateInputs):ExportGate{
   if(input.conflictsUnresolved>0)reasons.push('One or more extracted values are still disputed.');
   if(!evidenceReviewComplete(input.evidence,input.selectedEvidence,input.confirmedEvidence)){
     reasons.push('Every nonempty field must have confirmed source evidence.');
+  }
+  if((input.sourceIssuesUnreviewed??0)>0){
+    reasons.push('Source completeness issues must be reviewed in Documents before export.');
   }
   if(input.privacyRequired&&!input.privacyReviewed){
     reasons.push('Possible private data still needs review.');

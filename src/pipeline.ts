@@ -13,11 +13,18 @@ export type SourceRecord = {
   location: Record<string, string | number>;
   textSpans?: SourceTextSpan[];
 };
+export type SourceReviewIssue = {
+  id:string;
+  category:'mixed_pdf_page'|'low_ocr_confidence'|'office_unreviewed_content';
+  message:string;
+  page?:number;
+};
 export type SourceDocument = {
   id: string; name: string; text: string; mimeType: string; sizeBytes: number;
   provenance: { source: 'local-text' | 'bulk-ocr-jsonc' | 'docx-native' | 'xlsx-native' | 'pdf-native' | 'csv-native' | 'pdf-ocr' | 'image-ocr'; precision: 'document' | 'paragraph' | 'cell' | 'page'; fileName: string };
   records?: SourceRecord[];
   warnings?: string[];
+  reviewIssues?: SourceReviewIssue[];
   sourceSha256?: string;
   processedTextSha256?: string;
   correctionCount?: number;

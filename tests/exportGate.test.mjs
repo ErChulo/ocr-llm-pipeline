@@ -44,3 +44,8 @@ test('identical original file hash but different OCR transcription hash blocks e
  const reviewed={...audit,sourceSha256:'a'.repeat(64),processedTextSha256:'2'.repeat(64)};
  assert.equal(evaluateExportGate({...safe,document,audit:reviewed}).allowed,false);
 });
+
+test('source-completeness warnings block export until each item is acknowledged',()=>{
+ assert.equal(evaluateExportGate({...safe,sourceIssuesUnreviewed:2}).allowed,false);
+ assert.equal(evaluateExportGate({...safe,sourceIssuesUnreviewed:0}).allowed,true);
+});

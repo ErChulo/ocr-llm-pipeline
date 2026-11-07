@@ -76,10 +76,13 @@ export default function App() {
   const [evidenceChoices, setEvidenceChoices] = useState<Record<string,number>>({});
   const [evidenceConfirmed, setEvidenceConfirmed] = useState<Record<string,boolean>>({});
   const [privacyReviewed, setPrivacyReviewed] = useState(false);
+  const [sourceIssuesReviewed, setSourceIssuesReviewed] = useState<Record<string,boolean>>({});
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [message, setMessage] = useState('');
   const [chatStream, setChatStream] = useState('');
   const active = docs[documentIndex] ?? null;
+  const pendingSourceIssues=(active?.reviewIssues??[])
+    .filter(issue=>sourceIssuesReviewed[issue.id]!==true);
   const correctablePages = useMemo(()=>active?ocrRecords(active):[],[active]);
   const chosenOcrPage = correctablePages[ocrPageChoice] ?? correctablePages[0] ?? null;
   const privacy = useMemo(() => active ? screenLocalPrivacy(active.text) :
@@ -96,7 +99,8 @@ export default function App() {
     evidence: evidenceChecks, selectedEvidence:evidenceChoices,
     confirmedEvidence:evidenceConfirmed,
     conflictsUnresolved: audit?.conflicts.filter(c=>!Object.hasOwn(conflictChoices,c.path)).length ?? 0,
-    privacyRequired:privacy.requiresReview, privacyReviewed
+    privacyRequired:privacy.requiresReview, privacyReviewed,
+    sourceIssuesUnreviewed:pendingSourceIssues.length
   });
 
   useEffect(() => () => { void engine.current.unload(); void terminateOcr(); }, []);
@@ -179,6 +183,7 @@ export default function App() {
       setDocs(current => [...current, ...added]);
       setDocumentIndex(docs.length);
       setOcrPageChoice(0); setOcrEditing(false); setOcrDraft(''); setPdfView(null);
+      setSourceIssuesReviewed({});
       clearExtraction();
       setNotes(imports.flatMap(x => x.notes));
       setStatus('Imported ' + added.length + ' local document(s). No server was used.');
@@ -201,6 +206,7 @@ export default function App() {
       const corrected=correctOcrText(active,chosenOcrPage.index,ocrDraft);
       corrected.processedTextSha256=await sha256Bytes(new TextEncoder().encode(corrected.text));
       setDocs(current=>current.map((doc,i)=>i===documentIndex?corrected:doc));
+      setSourceIssuesReviewed({});
       setOcrEditing(false); setOcrDraft('');
       clearExtraction();
       setNotes(corrected.warnings??[]);
@@ -383,13 +389,39 @@ export default function App() {
               <label>Document
                 <select value={documentIndex} onChange={e => {
                   setDocumentIndex(Number(e.currentTarget.value));
-                  setOcrEditing(false);setOcrPageChoice(0);setOcrDraft('');setPdfView(null);clearExtraction();
+                  setOcrEditing(false);setOcrPageChoice(0);setOcrDraft('');setPdfView(null);
+                  setSourceIssuesReviewed({});clearExtraction();
                 }}>{docs.map((doc, i) => <option key={i} value={i}>{doc.name}</option>)}</select>
               </label>
               <p className="help">Source: {active.provenance.source} / {active.provenance.precision} level</p>
               {active.pdfBytes && <div className="actions"><button className="secondary" type="button"
                 onClick={()=>setPdfView({page:1,boxes:[]})}>View original PDF</button></div>}
               <pre className="preview">{active.text.slice(0, 25000)}</pre>
+              {(active.reviewIssues?.length??0)>0 && <section className="source-completeness">
+                <h3>Source completeness review</h3>
+                <p className="help">These risks can hide important provisions. Check the original file and acknowledge each issue before JSON export.</p>
+                {active.reviewIssues!.map(issue=><div key={issue.id} className="source-issue">
+                  <p>{issue.message}</p>
+                  {active.pdfBytes && issue.page && <button type="button" className="secondary"
+                    onClick={()=>setPdfView({page:issue.page!,boxes:[]})}>
+                    View original page {issue.page}
+                  </button>}
+                  <label className="evidence-confirm">
+                    <input type="checkbox" checked={!!sourceIssuesReviewed[issue.id]}
+                      onChange={event=>{
+                        const checked=event.currentTarget.checked;
+                        setSourceIssuesReviewed(old=>({...old,[issue.id]:checked}));
+                      }}/>
+                    I inspected this issue against the original source.
+                  </label>
+                </div>)}
+                <p className={pendingSourceIssues.length?'warning':'success'}>
+                  {pendingSourceIssues.length
+                    ? pendingSourceIssues.length+' source issue(s) still require review before export.'
+                    : 'Source issue acknowledgements complete. Accuracy is not independently verified.'}
+                </p>
+              </section>}
+
               {correctablePages.length > 0 && <section className="ocr-correction">
                 <h3>Review OCR text</h3>
                 <p className="help">OCR can misread numbers and dates. Compare the text with your original image or PDF.</p>
@@ -479,6 +511,11 @@ export default function App() {
                   conflictDecisions: conflictChoices,
                   fieldEvidence: exportReviewedEvidence(evidenceChecks,evidenceChoices,evidenceConfirmed),
                   privacyScreen: {categories:privacy.categories,reviewed:!privacy.requiresReview || privacyReviewed},
+                  sourceCompletenessReview: {
+                    acknowledgedIssues:(active?.reviewIssues??[]).filter(issue=>sourceIssuesReviewed[issue.id]===true)
+                      .map(issue=>({id:issue.id,category:issue.category,page:issue.page??null})),
+                    statement:'reviewed_original_documents_completeness_not_guaranteed'
+                  },
                   evidenceStatus: 'literal_match_human_reviewed_facts_not_independently_verified',
                   extraction,
                   validationErrors: []

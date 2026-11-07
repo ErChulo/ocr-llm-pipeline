@@ -23,7 +23,8 @@
 - [ ] Broader adversarial accuracy, precision/recall, cross-document applicability, context overflow, latency and RAM on 0.5B/1.5B/3B. The 3B end-to-end extraction test has repeatedly timed out.
 - [ ] Manual offline verification on the authorized managed PBGC Windows Chrome/Edge workstation.
 - [x] Implement original PDF page viewer and approximate PDF.js text-item evidence overlays; browser verification tracked separately.
-- [ ] Exact glyph/quoted-substring highlights and robust mixed raster/text page OCR remain open. Mixed-content PDF pages currently trigger a warning.
+- [x] Mixed PDF raster/text pages now trigger a **required original-source acknowledgement** before JSON export.
+- [ ] Exact glyph/quoted-substring highlights and robust mixed raster/text page OCR remain open.
 - [x] Human-editable OCR transcription with original-file fingerprint and page provenance preserved; correction invalidates prior extraction review.
 - [ ] OCR confidence visualization, larger multilingual corpus, handwriting, varied scans, multipage layouts and columns.
 - [ ] Thorough DOCX/XLSX layout and fidelity checks: headers/footers, tracked changes, dates/styles, formulas, merged cells, comments, embedded graphics.

@@ -96,3 +96,7 @@ nav button.active{color:var(--ink);background:var(--raised);border-color:var(--b
 .conflict-excerpts{display:grid;gap:8px;margin:12px 0}
 .conflict-excerpt{border-left:3px solid var(--border);padding:5px 12px;overflow-wrap:anywhere}
 .conflict-excerpt strong{font-size:13px}
+
+.source-completeness{margin:16px 0;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--raised)}
+.source-completeness h3{font-size:15px;margin:0}
+.source-issue{padding:10px 0;border-bottom:1px solid var(--border)}

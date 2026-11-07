@@ -1,6 +1,6 @@
 import { unzipSync, strFromU8 } from 'fflate';
 import { DOMParser, type Node as XmlNode, type Element as XmlElement } from '@xmldom/xmldom';
-import type { SourceDocument, SourceRecord } from './pipeline.ts';
+import type { SourceDocument, SourceRecord, SourceReviewIssue } from './pipeline.ts';
 
 const MAX_ARCHIVE = 20 * 1024 * 1024;
 const MAX_UNCOMPRESSED = 40 * 1024 * 1024;
@@ -194,7 +194,23 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
       descendants(doc,'pict').length) warnings.push('Images and drawing text are not OCR processed.');
   if (descendants(doc,'altChunk').length) throw new Error('DOCX contains embedded alternate content that this parser cannot inspect.');
   if (descendants(doc,'ins').length||descendants(doc,'del').length) warnings.push('Track changes exist. Review accepted and deleted text in Word.');
-  return appendRecords(fileName,'docx',entries,warnings);
+  const reviewIssues:SourceReviewIssue[]=[];
+  if(omitted.some(n=>/^word\/(?:comments|commentsExtended)/i.test(n))){
+    reviewIssues.push({id:'docx:comments',category:'office_unreviewed_content',
+      message:'Word comments were omitted; inspect the original document for important qualifications.'});
+  }
+  if(descendants(doc,'ins').length||descendants(doc,'del').length){
+    reviewIssues.push({id:'docx:track-changes',category:'office_unreviewed_content',
+      message:'The DOCX contains tracked changes. Inspect accepted and deleted clauses in Word.'});
+  }
+  if(omitted.some(n=>/^word\/media\//i.test(n))||
+    descendants(doc,'drawing').length||descendants(doc,'pict').length){
+    reviewIssues.push({id:'docx:drawings',category:'office_unreviewed_content',
+      message:'DOCX drawings or images may contain plan text that this parser did not read.'});
+  }
+  const parsed=appendRecords(fileName,'docx',entries,warnings);
+  parsed.reviewIssues=reviewIssues;
+  return parsed;
 }
 function workbookTarget(name: string) {
   const clean=name.replace(/^\/+/,'');
@@ -247,5 +263,13 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
   if(formulas) warnings.push(formulas+' formula cells found. Cached values were read, not recalculated.');
   if(omitted.some(n=>/^xl\/media\//.test(n)))warnings.push('Workbook images and charts are not extracted.');
   warnings.push('Excel date styles are not interpreted; numeric date serials need review.');
-  return appendRecords(fileName,'xlsx',entries,warnings);
+  const reviewIssues:SourceReviewIssue[]=[];
+  if(formulas>0)reviewIssues.push({id:'xlsx:formulas',category:'office_unreviewed_content',
+    message:formulas+' formula cells were imported from cached results only. Check the original workbook calculations.'});
+  if(omitted.some(n=>/^xl\/media\//.test(n)))reviewIssues.push({
+    id:'xlsx:media',category:'office_unreviewed_content',
+    message:'Some images or charts were omitted. Inspect the original workbook.'});
+  const parsed=appendRecords(fileName,'xlsx',entries,warnings);
+  parsed.reviewIssues=reviewIssues;
+  return parsed;
 }
