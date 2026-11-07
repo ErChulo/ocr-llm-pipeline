@@ -1,0 +1,56 @@
+name: Experimental fictional pension corpus benchmark
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/fictional-corpus-benchmark.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: pension-corpus-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  local-gguf-corpus:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install locked application and build
+        run: |
+          npm ci --no-audit --no-fund
+          npm run test
+          npm run build
+      - name: Install test Chromium (runner only)
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Download checksum-verified official 0.5B GGUF (runner only)
+        timeout-minutes: 8
+        run: |
+          mkdir -p tmp
+          curl -fL --retry 3 --retry-all-errors \
+            'https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf' \
+            -o tmp/qwen2.5-0.5b-instruct-q4_k_m.gguf
+          printf '%s  %s\n' \
+            '74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db' \
+            'tmp/qwen2.5-0.5b-instruct-q4_k_m.gguf' | sha256sum -c -
+      - name: Measure 5 fictional pension scenarios end to end
+        timeout-minutes: 22
+        run: node --experimental-strip-types tests/real-corpus-benchmark.mjs
+      - name: Upload synthetic-only quality metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fictional-pension-corpus-metrics
+          path: |
+            tmp/real-corpus-report.json
+            tmp/real-corpus-final.png
+          if-no-files-found: ignore
