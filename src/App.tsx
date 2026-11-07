@@ -205,6 +205,37 @@ export default function App() {
     finally { setBusy(false); }
   }
 
+  async function onSupplementMixedPdf(){
+    const original=active;
+    if(!original?.pdfBytes||busy||
+       !original.reviewIssues?.some(issue=>issue.category==='mixed_pdf_page'))return;
+    if(original.correctionCount){
+      setError('Re-import the original PDF before supplemental OCR. Existing manual OCR corrections cannot be silently discarded.');
+      return;
+    }
+    setError('');setBusy(true);
+    setStatus('Running local supplemental OCR on mixed PDF pages. All results remain unverified...');
+    try{
+      const [{parsePdf},{recognizeCanvas}]=await Promise.all([
+        import('./pdfText'),import('./ocr')
+      ]);
+      const revised=await parsePdf(original.name,Uint8Array.from(original.pdfBytes),
+        recognizeCanvas,{ocrMixedPages:true});
+      revised.pdfBytes=original.pdfBytes;
+      revised.sourceSha256=original.sourceSha256;
+      revised.processedTextSha256=await sha256Bytes(new TextEncoder().encode(revised.text));
+      setDocs(current=>current.map((doc,i)=>i===documentIndex?revised:doc));
+      setSourceIssuesReviewed({});
+      clearExtraction();
+      setOcrPageChoice(0);setOcrEditing(false);setOcrDraft('');setPdfView(null);
+      setNotes(revised.warnings??[]);
+      setStatus('Supplemental OCR completed. Review the original PDF and verify all new OCR text before exporting.');
+    }catch(e){
+      setError(errorMessage(e));
+      setStatus('Supplemental OCR failed. The original import remains unchanged.');
+    }finally{setBusy(false);}
+  }
+
   function beginOcrCorrection(){
     if(!active||!chosenOcrPage||busy)return;
     try {
@@ -409,8 +440,17 @@ export default function App() {
                 }}>{docs.map((doc, i) => <option key={i} value={i}>{doc.name}</option>)}</select>
               </label>
               <p className="help">Source: {active.provenance.source} / {active.provenance.precision} level</p>
-              {active.pdfBytes && <div className="actions"><button className="secondary" type="button"
-                onClick={()=>setPdfView({page:1,boxes:[]})}>View original PDF</button></div>}
+              {active.pdfBytes && <div className="actions">
+                <button className="secondary" type="button"
+                  onClick={()=>setPdfView({page:1,boxes:[]})}>View original PDF</button>
+                {(active.reviewIssues??[]).some(issue=>issue.category==='mixed_pdf_page') &&
+                  <button className="secondary" type="button"
+                    disabled={busy||!!active.correctionCount||
+                      (active.records??[]).some(record=>record.location.kind==='pdf-page-ocr-mixed')}
+                    onClick={()=>void onSupplementMixedPdf()}>
+                    OCR mixed PDF pages
+                  </button>}
+              </div>}
               {active.imageBytes && <>
                 <div className="actions">
                   <button type="button" className="secondary" aria-expanded={!!imageViewUrl}
