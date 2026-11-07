@@ -21,6 +21,9 @@
 - Keep original image bytes in browser memory and add a local image preview for direct comparison. Object URLs are revoked after closing or changing sources; image bytes are excluded from JSON export.
 - Add deterministic review classification tests and offline browser checks for image display, scanned-PDF review and correction invalidation.
 
+- Restart the full-document extraction with smaller sections on recognized model context-overflow errors (maximum two retries). Discard previous candidates; never mix attempts or silently truncate source text. Cancelled operations, invalid JSON, and unrelated errors remain fail-closed.
+- Add synthetic tests for complete coverage after retry, bounded attempts, and cancellation behavior. Real GGUF context limits still require independent validation.
+
 ## 0.3.0-beta.1 — November 6, 2026
 
 - Single-file `file://` Chromium test covers local model generation, text PDF, scanned-PDF/image OCR and DOCX/XLSX/CSV source import.
