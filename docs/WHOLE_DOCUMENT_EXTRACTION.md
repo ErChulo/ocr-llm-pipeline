@@ -2,7 +2,7 @@
 
 ## Current behavior
 
-The React **Extract JSON** route now divides an imported text document into consecutive, nonoverlapping sections and prompts the selected local GGUF model for each section. The algorithm checks **complete text coverage** before it reports a result. It does not skip text silently.
+The React **Extract JSON** route now divides an imported text document into consecutive, nonoverlapping sections and prompts the selected local GGUF model for each section. The algorithm checks **complete text coverage** before it reports a result. Section boundaries additionally avoid splitting surrogate pairs, common joined/combining Unicode sequences, and contiguous dates/numbers. If an oversized numeric value cannot fit intact in a section, extraction stops rather than misleading the model. It does not skip text silently.
 
 The aggregate stores:
 - document name and ID;
