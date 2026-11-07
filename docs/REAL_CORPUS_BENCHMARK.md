@@ -68,3 +68,14 @@ The download occurs **only on GitHub Actions**, not on any workplace computer. T
 The application may restore the **exact original date spelling** for date-named fields when a local GGUF generates a calendar-equivalent ISO or differently punctuated date. This is restricted to unique, full literal dates within the **same model section**, never the entire document or an external reference. Gregorian validity must be unambiguous, and all conflicting source presentations prevent automatic restoration. The output retains a `sourceDateRestoredFrom` audit record of the GGUF value; reviewers still need to verify actual plan applicability and confirm a source location before export.
 
 Model-output accuracy and pipeline-output fidelity are different. A source-anchored date repair may improve strict benchmark scores without improving the underlying language model; results should be labeled **pipeline-level** extraction after restoration, not raw GGUF quality.
+
+### Verified source-date restoration results — November 7, 2026
+
+The full `file://` browser evaluation with checksum-verified GGUF weights and blocked external requests finished successfully for both models, using the original unmodified eight fictional source/expected-value pairs:
+
+| Offline pipeline | Previous strict F1 / exact cases | With source-date recovery | Full run time |
+|---|---|---|---|
+| Qwen2.5-0.5B-Instruct Q4_K_M | 87.5%, 6/8 | **93.75%, 7/8** | 316.5 seconds |
+| Qwen2.5-1.5B-Instruct Q4_K_M | 87.5%, 6/8 | **100%, 8/8** | 400.6 seconds |
+
+Sources: [actual 0.5B workflow](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42422220985), [actual 1.5B workflow](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42422221025). The restored dates required unique exact source strings and human review remains mandatory. The improved scores measure the **combined pipeline's output**; they do **not** show that the GGUF itself became more accurate. Eight fictional cases cannot certify reliability on actual actuarial documents.
