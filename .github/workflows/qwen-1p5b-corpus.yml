@@ -1,0 +1,61 @@
+name: Experimental Qwen 1.5B eight-case offline benchmark
+
+concurrency:
+  group: qwen-1p5b-corpus-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/qwen-1p5b-corpus.yml"
+      - "tests/real-corpus-benchmark.mjs"
+      - "src/fictionalPensionCorpus.ts"
+
+permissions:
+  contents: read
+
+jobs:
+  real-qwen-1p5b:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build standalone HTML with locked dependencies
+        run: |
+          npm ci --no-audit --no-fund
+          npm run test
+          npm run build
+      - name: Install Chromium for CI (never workstation runtime)
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Download checksum-verified official Qwen 1.5B model
+        timeout-minutes: 10
+        run: |
+          mkdir -p tmp
+          curl -fL --retry 3 --retry-all-errors \
+            'https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf' \
+            -o tmp/qwen2.5-1.5b-instruct-q4_k_m.gguf
+          printf '%s  %s\n' \
+            '6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e' \
+            'tmp/qwen2.5-1.5b-instruct-q4_k_m.gguf' | sha256sum -c -
+      - name: Measure all eight fictional cases using actual offline 1.5B GGUF
+        timeout-minutes: 33
+        env:
+          BENCHMARK_CASES: all
+          MODEL_LABEL: Official Qwen2.5-1.5B-Instruct Q4_K_M
+          MODEL_FILE: tmp/qwen2.5-1.5b-instruct-q4_k_m.gguf
+        run: node tests/real-corpus-benchmark.mjs
+      - name: Upload synthetic-only per-case results even on benchmark failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qwen-1p5b-eight-case-offline-report
+          path: |
+            tmp/real-corpus-report.json
+            tmp/real-corpus-final.png
+          if-no-files-found: ignore
