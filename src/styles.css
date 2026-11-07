@@ -92,3 +92,7 @@ nav button.active{color:var(--ink);background:var(--raised);border-color:var(--b
 .ocr-edit{min-height:180px;resize:vertical}
 
 .evidence-passage{min-height:84px;resize:vertical}
+
+.conflict-excerpts{display:grid;gap:8px;margin:12px 0}
+.conflict-excerpt{border-left:3px solid var(--border);padding:5px 12px;overflow-wrap:anywhere}
+.conflict-excerpt strong{font-size:13px}

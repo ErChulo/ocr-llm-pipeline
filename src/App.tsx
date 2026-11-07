@@ -15,6 +15,7 @@ import { benchmarkPrompt, scoreBenchmark } from './modelBenchmark';
 import { evaluateExportGate } from './exportGate';
 import { parseModelJson } from './pipeline';
 import { ocrRecords, currentOcrText, correctOcrText } from './ocrCorrections';
+import { candidatePreviews } from './conflictContext';
 import PdfPageViewer from './PdfPageViewer';
 import {sha256Bytes} from './fingerprint';
 import './pdfViewer.css';
@@ -453,6 +454,15 @@ export default function App() {
                     {JSON.stringify(candidate.value).slice(0, 150)} (section {candidate.spans.map(x => x.chunk).join(', ')})
                   </option>)}
                 </select>
+                <div className="conflict-excerpts">
+                  {conflict.candidates.map((candidate,i)=><div className="conflict-excerpt" key={i}>
+                    <strong>Option {i+1}: {JSON.stringify(candidate.value)}</strong>
+                    {active && candidatePreviews(active,candidate).map((item,j)=>
+                      <p key={j} className="help">Section {item.chunk}: “{item.excerpt}”
+                        {!item.valueLocated && ' — value not found literally in this section'}
+                      </p>)}
+                  </div>)}
+                </div>
               </label>)}
             </div>}
             <div className="heading"><h2>Candidate JSON</h2>
