@@ -37,3 +37,7 @@ The full pipeline browser benchmark now runs automatically on changes to extract
 - The code and test fixtures contain no real pension participant records.
 
 This confirms that the **small synthetic end-to-end path** worked. It does *not* validate complex plans, a larger GGUF, OCR correction accuracy, adversarial documents, PBGC hardware, or regulatory interpretation.
+
+## Phase diagnostics (November 2026)
+
+The integration test records checkpoints for loading, known-answer scoring, extraction, citation review and export. If extraction fails, it captures bounded UI messages, any parser or schema errors, and optional Chromium JS heap metrics. These diagnostics use **fictional** documents only; the browser remains offline. A large-model timeout is not automatically classified as a memory failure or a hallucination: the report distinguishes an application-level error from a timeout and records the last completed phase. JavaScript heap metrics do not measure all WebAssembly allocations.
