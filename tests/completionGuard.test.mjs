@@ -18,5 +18,5 @@ test('normal termination and absent optional status remain compatible',()=>{
 test('offline model adapter checks final streaming completion reason',()=>{
   const source=readFileSync(new URL('../src/engine.ts',import.meta.url),'utf8');
   assert.match(source,/choice\?\.finish_reason/);
-  assert.match(source,/assertGenerationComplete\(finishReason\)/);
+  assert.match(source,/if\(jsonMode\)assertGenerationComplete\(finishReason\)/);
 });
