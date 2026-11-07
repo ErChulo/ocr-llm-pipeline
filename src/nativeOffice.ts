@@ -213,9 +213,18 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
   return parsed;
 }
 function workbookTarget(name: string) {
-  const clean=name.replace(/^\/+/,'');
-  const resolved=new URL(clean,'https://local.invalid/xl/').pathname.slice(1);
-  if (!resolved.startsWith('xl/')) throw new Error('Excel workbook references an invalid sheet path.');
+  // OOXML relationships may be relative to xl/workbook.xml or absolute
+  // package paths (/xl/worksheets/sheet1.xml). Never resolve remote URLs.
+  if(!name || /[\\?#%]/.test(name) ||
+      /^[a-z][a-z0-9+.-]*:/i.test(name) || name.startsWith('//')){
+    throw new Error('Excel workbook references an invalid or external sheet path.');
+  }
+  const parts=(name.startsWith('/')?name.slice(1):'xl/'+name).split('/');
+  if(parts.some(part=>part==='..'))throw new Error('Excel worksheet path traversal is not allowed.');
+  const resolved=parts.filter(part=>part && part!=='.').join('/');
+  if(!/^xl\/worksheets\/[^/]+\.xml$/.test(resolved)){
+    throw new Error('Excel workbook references a non-worksheet path.');
+  }
   return resolved;
 }
 const BUILTIN_DATE_FORMATS=new Set([14,15,16,17,18,19,20,21,22,45,46,47]);
@@ -252,22 +261,46 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
   const {files,omitted}=officeArchive(data,keep);
   const workbook=xmlDoc(getPart(files,'xl/workbook.xml'));
   const rel=xmlDoc(getPart(files,'xl/_rels/workbook.xml.rels'));
-  const relationships=new Map(descendants(rel,'Relationship').map(x=>[x.getAttribute('Id')||'',x.getAttribute('Target')||'']));
+  const relationships=new Map(descendants(rel,'Relationship').map(x=>[x.getAttribute('Id')||'',{
+    target:x.getAttribute('Target')||'',mode:x.getAttribute('TargetMode')||'',
+    type:x.getAttribute('Type')||''
+  }]));
   const ss=files['xl/sharedStrings.xml'] ? descendants(xmlDoc(strFromU8(files['xl/sharedStrings.xml'])),'si')
     .map(item=>descendants(item,'t').map(x=>x.textContent||'').join('')) : [];
   const entries:Entry[]=[];
   const warnings:string[]=[];
   const dateStyles=excelDateStyles(files);
+  const hiddenSheets:string[]=[];
+  const hiddenRows:string[]=[];
+  const hiddenColumns:string[]=[];
+  const mergedCells:string[]=[];
+  let chartSheets=0;
   let dateCells=0;
   const dateExamples:string[]=[];
   let formulas=0;
   for(const sheet of descendants(workbook,'sheet')) {
     const sheetName=sheet.getAttribute('name')||'Unnamed';
     const rid=sheet.getAttribute('r:id')||sheet.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id')||'';
-    const target=relationships.get(rid);
-    if(!target)throw new Error('No worksheet relationship for '+sheetName+'.');
-    const part=workbookTarget(target);
+    const relationship=relationships.get(rid);
+    if(!relationship?.target)throw new Error('No worksheet relationship for '+sheetName+'.');
+    if(relationship.mode.toLowerCase()==='external'){
+      throw new Error('External worksheet relationships are not accepted: '+sheetName+'.');
+    }
+    if(relationship.type && !relationship.type.endsWith('/worksheet')){
+      if(relationship.type.endsWith('/chartsheet')){ chartSheets++; continue; }
+      throw new Error('Unexpected sheet relationship type for '+sheetName+'.');
+    }
+    if(['hidden','veryHidden'].includes(sheet.getAttribute('state')||''))hiddenSheets.push(sheetName);
+    const part=workbookTarget(relationship.target);
     const xml=xmlDoc(getPart(files,part));
+    const hiddenRowCount=descendants(xml,'row').filter(x=>
+      /^(?:1|true)$/i.test(x.getAttribute('hidden')||'') && descendants(x,'c').length>0).length;
+    if(hiddenRowCount)hiddenRows.push(sheetName+' ('+hiddenRowCount+' rows)');
+    const hiddenColumnCount=descendants(xml,'col').filter(x=>
+      /^(?:1|true)$/i.test(x.getAttribute('hidden')||'')).length;
+    if(hiddenColumnCount)hiddenColumns.push(sheetName+' ('+hiddenColumnCount+' column ranges)');
+    const mergeCount=descendants(xml,'mergeCell').length;
+    if(mergeCount)mergedCells.push(sheetName+' ('+mergeCount+' merged ranges)');
     for(const c of descendants(xml,'c')) {
       const cell=c.getAttribute('r')||'';
       if(!/^[A-Z]{1,3}[1-9]\d{0,6}$/.test(cell))throw new Error('Invalid cell reference: '+cell);
@@ -308,8 +341,20 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
     /^xl\/(?:media|charts|drawings|chartsheets|diagrams)\//i.test(n));
   const omittedAnnotations=omitted.filter(n=>
     /^xl\/(?:comments\d*\.xml|threadedComments\/|persons\/|embeddings\/)/i.test(n));
-  if(omittedVisuals.length)warnings.push('Workbook charts, drawings, or images were not extracted; inspect the original workbook.');
+  const externalParts=omitted.filter(n=>
+    /^xl\/(?:externalLinks\/|connections\.xml$|queryTables\/|pivotCache\/|pivotTables\/)/i.test(n));
+  if(omittedVisuals.length||chartSheets)warnings.push('Workbook charts, drawings, or images were not extracted; inspect the original workbook.');
   if(omittedAnnotations.length)warnings.push('Workbook comments or embedded objects were not extracted; inspect the original workbook.');
+  if(hiddenSheets.length||hiddenRows.length||hiddenColumns.length){
+    warnings.push('Excel has hidden content: '+[
+      ...hiddenSheets.map(x=>'hidden sheet '+x),
+      ...hiddenRows.map(x=>'hidden rows in '+x),
+      ...hiddenColumns.map(x=>'hidden columns in '+x)
+    ].slice(0,8).join('; ')+'. Inspect the original workbook.');
+  }
+  if(mergedCells.length)warnings.push('Workbook contains merged cells: '+
+    mergedCells.slice(0,5).join('; ')+'. Cell references identify anchors, not every displayed merged position.');
+  if(externalParts.length)warnings.push('Workbook may use external links, queries, or pivot caches. Imported cell values were not refreshed.');
   if(dateCells){
     warnings.push(dateCells+' Excel numeric cells are date/time styled, including '+
       dateExamples.join(', ')+'. Their raw serials were retained; compare original displayed dates.');
@@ -322,9 +367,18 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
       dateExamples.join(', ')+'. Verify the original spreadsheet date displays before export.'});
   if(formulas>0)reviewIssues.push({id:'xlsx:formulas',category:'office_unreviewed_content',
     message:formulas+' formula cells were imported from cached results only. Check the original workbook calculations.'});
-  if(omittedVisuals.length)reviewIssues.push({
+  if(omittedVisuals.length||chartSheets)reviewIssues.push({
     id:'xlsx:media',category:'office_unreviewed_content',
     message:'Workbook charts, drawings, chartsheets, diagrams, or images were omitted. Inspect the original workbook before export.'});
+  if(hiddenSheets.length||hiddenRows.length||hiddenColumns.length)reviewIssues.push({
+    id:'xlsx:hidden-content',category:'office_unreviewed_content',
+    message:'The workbook includes hidden sheets, nonempty hidden rows, or hidden columns. Compare the original workbook, including hidden content, before export.'});
+  if(mergedCells.length)reviewIssues.push({
+    id:'xlsx:merged-cells',category:'office_unreviewed_content',
+    message:'The workbook includes merged cell ranges. Confirm that extracted anchor values and surrounding labels are interpreted correctly.'});
+  if(externalParts.length)reviewIssues.push({
+    id:'xlsx:external-data',category:'office_unreviewed_content',
+    message:'External data links, query tables, or pivot caches were omitted. Cached cell values may be outdated; inspect the original workbook before export.'});
   if(omittedAnnotations.length)reviewIssues.push({
     id:'xlsx:annotations',category:'office_unreviewed_content',
     message:'Workbook comments or embedded objects were omitted. Inspect the original workbook before export.'});
