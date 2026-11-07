@@ -498,8 +498,13 @@ export default function App() {
               <p className="help">A text match is not proof of a fact. Compare each value with the original file and confirm its source.</p>
               {evidenceChecks.map(check => <div className="evidence-field" key={check.path}>
                 <strong>{check.path} — {JSON.stringify(check.value)}</strong>
+                {check.sourceScope==='reviewer_edited' && <p className="help">This value does not match a model candidate. Review it as a manual correction.</p>}
                 {check.status !== 'match'
-                  ? <p className="warning" role="alert">No exact source text supports this value. Correct the JSON and validate again. Export is blocked.</p>
+                  ? <p className="warning" role="alert">
+                      {check.sourceScope==='model_sections'
+                        ? 'The source section where the model proposed this value does not contain a matching passage. Correct and revalidate the JSON. Export is blocked.'
+                        : 'No exact source text supports this value. Correct the JSON and validate again. Export is blocked.'}
+                    </p>
                   : <>
                     <label>Source location
                       <select aria-label={'Source for ' + check.path}

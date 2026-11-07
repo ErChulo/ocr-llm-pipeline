@@ -133,3 +133,16 @@ test('array element matches inherit the model candidate source span',()=>{
  assert.ok(c[1].matches[0].start<a.length);
  assert.equal(c[1].sourceScope,'model_sections');
 });
+
+test('exported citations disclose whether their candidate came from a model section',()=>{
+ const source='Normal age 65.';
+ const d={...doc,text:source,records:undefined};
+ const audit={documentId:d.id,documentName:d.name,sourceText:source,length:source.length,
+  chunks:[{chunk:1,start:0,end:source.length}],
+  candidates:{'/age':[{value:65,spans:[{chunk:1,start:0,end:source.length}]}]},
+  conflicts:[]};
+ const checks=auditLiteralEvidence(d,{age:65},audit);
+ const result=exportReviewedEvidence(checks,{'/age':0},{'/age':true});
+ assert.equal(result['/age'].sourceScope,'model_sections');
+ assert.equal(result['/age'].location.kind,'document');
+});

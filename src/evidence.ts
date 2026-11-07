@@ -13,6 +13,7 @@ export type EvidenceMatch = {
   label: string;
   location: Record<string, string | number>;
   textItemBoxes?: Array<{ x:number; y:number; width:number; height:number; precision:'pdf-text-item-envelope' }>;
+  sourceScope?: 'model_sections' | 'reviewer_edited';
 };
 export type EvidenceCheck = {
   path: string;
@@ -153,8 +154,11 @@ export function auditLiteralEvidence(doc: SourceDocument, extraction: unknown,
     }
     const scoped=candidateSectionSpans(audit,path,value);
     const matches=findMatches(doc,value,scoped);
-    return {path,value,matches,status:matches.length?'match':'missing',
-      ...(audit?{sourceScope:scoped?'model_sections':'reviewer_edited'}:{})};
+    const sourceScope=audit?(scoped?'model_sections':'reviewer_edited'):undefined;
+    return {path,value,
+      matches:sourceScope?matches.map(match=>({...match,sourceScope})):matches,
+      status:matches.length?'match':'missing',
+      ...(sourceScope?{sourceScope}:{})};
   });
 }
 export function evidenceReviewComplete(
