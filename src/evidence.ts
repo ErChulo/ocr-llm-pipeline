@@ -84,7 +84,7 @@ function boundaryOkay(source: string,start: number,end: number,value: unknown): 
     // Hyphens and slashes between words can also change a pension form code.
     const word=/[\p{L}\p{N}\p{M}_]/u;
     const characters=Array.from(token);
-    const first=characters[0],last=characters.at(-1);
+    const first=characters[0]??'',last=characters.at(-1)??'';
     const before=source[start-1]||'',after=source[end]||'';
     const prev=source[start-2]||'',next=source[end+1]||'';
     if(word.test(first) && word.test(before))return false;
