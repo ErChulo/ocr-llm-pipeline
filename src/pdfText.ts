@@ -8,6 +8,7 @@ import { getDocument, OPS } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 import type { SourceDocument, SourceRecord, SourceTextSpan, SourceReviewIssue } from './pipeline.ts';
 import { ocrReviewIssue } from './ocrReview.ts';
+import { detectPdfLayoutRisks } from './pdfLayout.ts';
 
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
 const MAX_PAGES = 300;
@@ -120,6 +121,14 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
       ]);
       const containsImages=opList.fnArray.some(op=>rasterOperations.has(op));
       const items = textContent.items.filter((item): item is typeof item & TextItem => 'str' in item);
+      const layoutRisks=detectPdfLayoutRisks(items,page.getViewport({scale:1}).width);
+      if(layoutRisks.length){
+        warnings.push('PDF page '+pageNo+' has potentially ambiguous text geometry: '+
+          layoutRisks.join(', ')+'. Check column and table reading order against the original.');
+        reviewIssues.push({id:'pdf:layout:'+pageNo,category:'pdf_layout_review',
+          page:pageNo,message:'Page '+pageNo+' may contain columns, tabular spacing or rotated text. '+
+            'Verify the reading order and all material figures in the original PDF before export.'});
+      }
       const extracted=pdfPageTextWithSpans(items);
       let text=extracted.text;
       let scanned=false;
