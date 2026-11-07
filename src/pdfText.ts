@@ -13,6 +13,7 @@ const MAX_PDF_BYTES = 20 * 1024 * 1024;
 const MAX_PAGES = 300;
 const MAX_SOURCE_CHARS = 2_000_000;
 const MIN_PAGE_TEXT_LENGTH = 1;
+const MAX_OCR_CANVAS_PIXELS = 4_900_000;
 
 import type { OcrResult } from './ocr.ts';
 type OcrCallback = (canvas:HTMLCanvasElement)=>Promise<OcrResult>;
@@ -75,7 +76,8 @@ function pdfPageTextWithSpans(items: TextItem[]): { text:string; spans:TextSpan[
  * Extract every page. A page with no text blocks export because it may contain
  * an image with plan provisions not represented in the text layer.
  */
-export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCallback): Promise<SourceDocument> {
+export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCallback,
+  options:{ocrMixedPages?:boolean}={}): Promise<SourceDocument> {
   if (bytes.byteLength < 8 || bytes.byteLength > MAX_PDF_BYTES) {
     throw new Error('PDF must be nonempty and no larger than 20 MB.');
   }
@@ -101,6 +103,7 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
     const records: SourceRecord[] = [];
     let chars = 0;
     let ocrPages=0;
+    let supplementalOcrPages=0;
     const warnings:string[]=[];
     const reviewIssues:SourceReviewIssue[]=[];
     for (let pageNo = 1; pageNo <= document.numPages; pageNo++) {
@@ -121,17 +124,32 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
       let text=extracted.text;
       let scanned=false;
       let confidence=0;
-      if (text.length < MIN_PAGE_TEXT_LENGTH) {
-        if(!ocr)throw new Error('Page ' + pageNo + ' has no extractable text. OCR is required; no partial extraction was saved.');
+      let supplementalText='';
+      let supplementalConfidence=0;
+      const runLocalPageOcr=async():Promise<OcrResult>=>{
+        if(!ocr)throw new Error('OCR is required to process PDF page '+pageNo+'. No partial extraction was saved.');
         const original=page.getViewport({scale:1});
-        const scale=Math.min(2.2,2400/Math.max(original.width,original.height));
+        if(!Number.isFinite(original.width)||!Number.isFinite(original.height)||
+           original.width<=0||original.height<=0){
+          throw new Error('Invalid PDF page geometry for OCR at page '+pageNo+'.');
+        }
+        // Limit both dimensions and total canvas pixels before Tesseract.
+        const scale=Math.min(2.2,2400/Math.max(original.width,original.height),
+          Math.sqrt(MAX_OCR_CANVAS_PIXELS/(original.width*original.height)));
         const viewport=page.getViewport({scale});
         const canvas=globalThis.document.createElement('canvas');
         canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
+        if(canvas.width<1||canvas.height<1||canvas.width*canvas.height>5_000_000){
+          throw new Error('PDF OCR canvas exceeds the local image safety limit.');
+        }
         const context=canvas.getContext('2d',{willReadFrequently:true});
         if(!context)throw new Error('Canvas rendering is unavailable for OCR.');
         await page.render({canvas,canvasContext:context,viewport}).promise;
-        const result=await ocr(canvas);
+        return ocr(canvas);
+      };
+      if(text.length<MIN_PAGE_TEXT_LENGTH){
+        if(!ocr)throw new Error('Page '+pageNo+' has no extractable text. OCR is required; no partial extraction was saved.');
+        const result=await runLocalPageOcr();
         text=result.text.trim();
         confidence=result.confidence;
         scanned=true;
@@ -140,15 +158,30 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
         if(confidence<75){
           warnings.push('OCR confidence on page '+pageNo+' is '+Math.round(confidence)+'%. Verify the page against its original image.');
         }
-        // Even high-confidence OCR can misread dates, numbers, or formulas.
-        // Always require original-page acknowledgement before JSON export.
         reviewIssues.push(ocrReviewIssue('pdf',confidence,pageNo));
       }
       if(!scanned && containsImages){
-        warnings.push('Page '+pageNo+' contains images as well as selectable text. '
-          +'Those images were not OCR checked; verify the complete page visually.');
-        reviewIssues.push({id:'pdf:mixed:'+pageNo,category:'mixed_pdf_page',
-          page:pageNo,message:'Page '+pageNo+' combines selectable text with image content. The image was not OCR checked; inspect the original page for omitted information.'});
+        if(options.ocrMixedPages){
+          // Deliberate full-page OCR cross-check: it can repeat native text.
+          // Record the unverified transcription SEPARATELY rather than
+          // attributing OCR words to PDF.js-native text-item boxes.
+          const result=await runLocalPageOcr();
+          supplementalText=result.text.trim();
+          supplementalConfidence=result.confidence;
+          if(supplementalText)supplementalOcrPages++;
+          warnings.push('Mixed page '+pageNo+' received supplemental full-page OCR. '
+            +'It may repeat selectable text, and OCR did not isolate the image region.');
+          reviewIssues.push({id:'pdf:mixed:'+pageNo,category:'mixed_pdf_page',
+            page:pageNo,message:'Page '+pageNo+' combines selectable text with image content. '
+              +'Supplemental full-page OCR was run separately and may repeat native text. '
+              +'Compare both transcriptions with the original page before export.'});
+        }else{
+          warnings.push('Page '+pageNo+' contains images as well as selectable text. '
+            +'Those images were not OCR checked; verify the complete page visually.');
+          reviewIssues.push({id:'pdf:mixed:'+pageNo,category:'mixed_pdf_page',
+            page:pageNo,message:'Page '+pageNo+' combines selectable text with image content. '
+              +'The image was not OCR checked; inspect the original page for omitted information.'});
+        }
       }
       const line = 'Page ' + pageNo + ':\n' + text + '\n\n';
       const start = chars;
@@ -169,13 +202,28 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
           }))
         })
       });
+      if(supplementalText){
+        const supplementLabel='Page '+pageNo+' supplementary OCR';
+        const supplementLine=supplementLabel+':\n'+supplementalText+'\n\n';
+        const supplementStart=chars;
+        chars+=supplementLine.length;
+        if(chars>MAX_SOURCE_CHARS)throw new Error(
+          'Extracted PDF and supplemental OCR text exceed the 2-million-character safety limit.'
+        );
+        lines.push(supplementLine);
+        records.push({
+          start:supplementStart,end:chars,label:supplementLabel,
+          location:{kind:'pdf-page-ocr-mixed',page:pageNo,
+            confidence:Math.round(supplementalConfidence)}
+        });
+      }
       page.cleanup();
     }
     return {
       id: fileName, name: fileName,
       text: lines.join(''),
       mimeType: 'application/pdf', sizeBytes: bytes.byteLength,
-      provenance: { source: ocrPages ? 'pdf-ocr' : 'pdf-native', precision: 'page', fileName },
+      provenance: { source: ocrPages||supplementalOcrPages ? 'pdf-ocr' : 'pdf-native', precision: 'page', fileName },
       records,
       reviewIssues,
       warnings: [
@@ -183,7 +231,7 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
         'PDF page numbers come from the document parser, not from the language model.',
         'PDF text-item boxes are approximate item envelopes, not exact word highlights. Verify against the PDF.',
         'Text reading order and tables may differ from the page layout. Verify important values against the PDF.',
-        'Pages with no text are OCR processed. Images within pages that already contain text might still be missed.'
+        'Pages with no text are OCR processed. Images within pages that already contain text might still be missed unless supplemental OCR is explicitly requested. Supplemental full-page OCR may repeat native text.'
       ]
     };
   } catch (error) {

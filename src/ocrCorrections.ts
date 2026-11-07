@@ -11,7 +11,8 @@ export type CorrectableRecord = {index:number;label:string;kind:string};
 
 function isCorrectable(kind:unknown):kind is string{
   return typeof kind==='string'&&
-    ['pdf-page-ocr','pdf-page-ocr-reviewed','image','image-ocr-reviewed'].includes(kind);
+    ['pdf-page-ocr','pdf-page-ocr-reviewed','pdf-page-ocr-mixed',
+      'pdf-page-ocr-mixed-reviewed','image','image-ocr-reviewed'].includes(kind);
 }
 export function ocrRecords(doc:SourceDocument):CorrectableRecord[]{
   return (doc.records||[]).flatMap((record,index)=>{
@@ -58,9 +59,12 @@ export function correctOcrText(doc:SourceDocument,index:number,edited:string):So
       : doc.text.slice(record.start,record.end);
     output+=replacement;
     const shift=before-record.start;
+    const oldKind=record.location.kind;
     const location=i===index
-      ? {...record.location,kind:record.location.kind==='image'||record.location.kind==='image-ocr-reviewed'
-        ? 'image-ocr-reviewed' : 'pdf-page-ocr-reviewed'}
+      ? {...record.location,kind:oldKind==='image'||oldKind==='image-ocr-reviewed'
+        ? 'image-ocr-reviewed'
+        : oldKind==='pdf-page-ocr-mixed'||oldKind==='pdf-page-ocr-mixed-reviewed'
+          ? 'pdf-page-ocr-mixed-reviewed' : 'pdf-page-ocr-reviewed'}
       : {...record.location};
     updated.push({
       ...record,start:before,end:output.length,location,
