@@ -19,6 +19,8 @@
 - [x] GGUF preflight validates non-empty parts, split continuity and the browser 2 GiB per-part limit. The model test now displays actual first-text latency and end-to-end character throughput; 3B speed feasibility remains unproven on `file://` and cannot be inferred from these metrics alone.
 - [x] Real instruction-tuned Qwen2.5-0.5B GGUF: four of four known-answer fields and end-to-end TXT → JSON → source review → export passed under `file://` with zero network requests ([verified CI run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42248309834)).
 
+- [x] Candidate-level date presentation repair only when there is exactly one corroborating unambiguous source literal within that model section. Preserve original model output and prompt for human evidence review; no application of actuarial rules or arbitrary date interpretation.
+
 ## Remaining production gates — not yet accepted
 
 - [x] Real eight-case official Qwen2.5-1.5B-Instruct Q4_K_M: **87.5% strict micro F1, 6/8 exact**, 286.1 s, no network requests; both incorrect fields were reworded dates ([CI run 42420311141](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42420311141)). This does not meet unattended release acceptance.
