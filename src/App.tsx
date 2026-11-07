@@ -7,6 +7,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent
 import { compileLocalSchema, validateLocalJson } from './schemaValidation';
 import { OfflineEngine, type ChatMessage, type Settings } from './engine';
 import { importFile, type SourceDocument } from './pipeline';
+import { importDocumentBatch } from './importBatch';
 import { terminateOcr } from './ocr';
 import { extractWholeDocument, resolveCandidateValues, type ExtractionAudit } from './chunkExtraction';
 import { auditLiteralEvidence, evidenceReviewComplete, exportReviewedEvidence } from './evidence';
@@ -188,15 +189,17 @@ export default function App() {
     if (!files.length) return;
     setError(''); setBusy(true); setStatus('Reading local documents. OCR may take additional time...');
     try {
-      const imports = await Promise.all(files.map(f => importFile(f)));
-      const added = imports.flatMap(x => x.documents);
+      const batch = await importDocumentBatch(files,docs,importFile,(done,total)=>{
+        setStatus('Reading local files '+done+' of '+total+'. No documents are committed until all succeed.');
+      });
+      const added = batch.documents;
       setDocs(current => [...current, ...added]);
       setDocumentIndex(docs.length);
       setOcrPageChoice(0); setOcrEditing(false); setOcrDraft(''); setPdfView(null);
       setImageViewUrl('');
       setSourceIssuesReviewed({});
       clearExtraction();
-      setNotes(imports.flatMap(x => x.notes));
+      setNotes(batch.notes);
       setStatus('Imported ' + added.length + ' local document(s). No server was used.');
     } catch (e) { setError(errorMessage(e)); setStatus('Document import stopped.'); }
     finally { setBusy(false); }
