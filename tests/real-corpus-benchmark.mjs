@@ -74,7 +74,7 @@ try{
         const running=Array.from(document.querySelectorAll('button'))
           .some(n=>n.textContent?.trim()==='Extracting...');
         if(running)return false;
-        return input?.value?.trim() || error ? 'complete':'waiting';
+        return (input?.value?.trim() || error) ? 'complete' : false;
       },null,{timeout:200000});
       const raw=await page.getByRole('textbox',{name:'Candidate JSON for review'}).inputValue();
       const alerts=await page.locator('[role="alert"]').allTextContents();
