@@ -396,7 +396,6 @@ export default function App() {
               <p className="help">Source: {active.provenance.source} / {active.provenance.precision} level</p>
               {active.pdfBytes && <div className="actions"><button className="secondary" type="button"
                 onClick={()=>setPdfView({page:1,boxes:[]})}>View original PDF</button></div>}
-              <pre className="preview">{active.text.slice(0, 25000)}</pre>
               {(active.reviewIssues?.length??0)>0 && <section className="source-completeness">
                 <h3>Source completeness review</h3>
                 <p className="help">These risks can hide important provisions. Check the original file and acknowledge each issue before JSON export.</p>
@@ -421,6 +420,8 @@ export default function App() {
                     : 'Source issue acknowledgements complete. Accuracy is not independently verified.'}
                 </p>
               </section>}
+              <pre className="preview">{active.text.slice(0, 25000)}</pre>
+
 
               {correctablePages.length > 0 && <section className="ocr-correction">
                 <h3>Review OCR text</h3>
@@ -457,6 +458,12 @@ export default function App() {
           </section>}
           {route === "extract" && <section className="card">
             <h2>Extract structured JSON</h2>
+            {pendingSourceIssues.length>0 && <div className="source-completeness">
+              <p className="warning">{pendingSourceIssues.length} source completeness issue(s) need review before JSON export.</p>
+              <button type="button" className="secondary" onClick={()=>navigate('documents')}>
+                Review source issues in Documents
+              </button>
+            </div>
             <p className="help">{active ? 'Source: ' + active.name : 'Select a document first.'} All text sections must finish before export.</p>
             <label>Target JSON Schema
               <textarea className="schema" aria-label="Target JSON Schema" value={schema} spellCheck={false}
