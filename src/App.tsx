@@ -6,6 +6,7 @@ import lightLogo from './assets/logo.svg';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { compileLocalSchema, validateLocalJson } from './schemaValidation';
 import { OfflineEngine, type ChatMessage, type Settings } from './engine';
+import { factualExtractionSettings } from './extractionSettings';
 import type { GgufProfile } from './ggufPreflight';
 import { formatGenerationTiming } from './generationTiming';
 import { importFile, type SourceDocument } from './pipeline';
@@ -371,6 +372,7 @@ export default function App() {
 
   async function onExtract() {
     if (busy || !active || !engine.current.loaded) return;
+    const factualSettings=factualExtractionSettings(settings);
     clearExtraction(); setError(''); setBusy(true);
     setStatus('Checking source sections...');
     try {
@@ -383,7 +385,7 @@ export default function App() {
           let produced = '';
           setRawExtraction('');
           await engine.current.generate(
-            [{ role: 'user', content: prompt }], SYSTEM, settings,
+            [{ role: 'user', content: prompt }], SYSTEM, factualSettings,
             token => { produced += token; setRawExtraction(produced); }, true
           );
           return produced;
@@ -773,6 +775,7 @@ export default function App() {
             </select>
           </label>
           <p className="help">Model settings apply on this device. A loaded model must be unloaded before its context size can change.</p>
+          <p className="help">Structured JSON extraction uses greedy sampling (temperature 0, top-p 1) to reduce random variation. Chat retains conversational sampling. Determinism does not verify pension facts.</p>
           <h2>Model quality check</h2>
           <p className="help">Try a synthetic plan with known answers. No personal records are used.</p>
           <button type="button" className="secondary" disabled={busy||!modelName}
