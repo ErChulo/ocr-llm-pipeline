@@ -210,3 +210,49 @@ test('Pension age ranges need explicit interpretation instead of matching bare n
  assert.equal(check[0].matches.length,1);
  assert.equal(check[0].matches[0].start,text.lastIndexOf('65'));
 });
+
+
+test('pension form codes cannot borrow evidence from longer codes',()=>{
+  const text='Available forms: SLA99, JS500, ALT_SLA and PREJS50X.';
+  const d={...doc,text,records:undefined};
+  for(const form of ['SLA','JS50']){
+    const checks=auditLiteralEvidence(d,{form});
+    assert.equal(checks[0].status,'missing',form+' is not a whole source code');
+  }
+  const source='Available forms: SLA, JS50.';
+  const exact=auditLiteralEvidence({...d,text:source},{forms:['SLA','JS50']});
+  assert.ok(exact.every(check=>check.status==='match'));
+  assert.equal(exact[0].matches.length,1);
+  assert.equal(exact[1].matches.length,1);
+});
+
+test('hyphenated and slash-joined codes do not prove standalone form codes',()=>{
+  const d={...doc,text:'PRE-SLA SLA-5C SLA/JS50 and JS50-75.',records:undefined};
+  for(const value of ['SLA','JS50']){
+    assert.equal(auditLiteralEvidence(d,{code:value})[0].status,'missing');
+  }
+  const exact=auditLiteralEvidence({...d,text:'Forms: (SLA), JS50.'},{code:'SLA'});
+  assert.equal(exact[0].status,'match');
+});
+
+test('text evidence respects complete words, punctuation and Unicode letters',()=>{
+  const text='Participants receive services; A65Plan does not include the word service. Renégociation, préÉtage.';
+  const d={...doc,text,records:undefined};
+  assert.equal(auditLiteralEvidence(d,{value:'service'})[0].status,'match');
+  assert.equal(auditLiteralEvidence(d,{value:'Étage'})[0].status,'missing');
+  const onlyLong={...d,text:'Participants receive services and code A65Plan.'};
+  for(const value of ['service','A65']){
+    assert.equal(auditLiteralEvidence(onlyLong,{value})[0].status,'missing');
+  }
+});
+
+test('reviewer supplied passage must appear as complete text boundaries',()=>{
+  const d={...doc,text:'The source mentions pretended_service with no independent provision.',records:undefined};
+  const unsupported=auditLiteralEvidence(d,{applies:true},undefined,
+    {'/applies':'tended_service with no independent'});
+  assert.equal(unsupported[0].status,'missing');
+  const quoted=auditLiteralEvidence(d,{applies:true},undefined,
+    {'/applies':'The source mentions pretended_service'});
+  assert.equal(quoted[0].status,'match');
+  assert.equal(quoted[0].evidenceMethod,'reviewer_quoted_passage');
+});
