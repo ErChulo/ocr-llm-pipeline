@@ -2,6 +2,8 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Measured the source-date restoration pipeline under real offline Chromium with verified GGUFs: 0.5B strict F1 **93.75%** (7/8 exact) and 1.5B **100%** (8/8 exact), zero browser network requests, on the eight fictional cases. Results describe the pipeline after source-based corrections, not raw model quality or production actuarial acceptance.
+
 - Add narrow, auditable source-date presentation restoration: a model ISO or punctuated date may be replaced by the unique exact unambiguous date literal from the same source section, with the original model value retained and original-document review still mandatory. Conflicting wording, ambiguous formats, mismatched dates and cross-section dates never rewrite facts.
 - Add negative tests for unrelated date sources, malformed calendars, conflicting source representations and non-date fields; benchmark on real Qwen before any score claim.
 
