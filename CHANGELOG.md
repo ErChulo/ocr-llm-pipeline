@@ -2,6 +2,7 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Instruct JSON extraction to copy short, verbatim field values, preserve source date/percentage notation, and avoid whole-sentence answers for eligibility conditions; increase conservative prompt-context overhead. Strict benchmark evaluation is required before claiming any accuracy gain.
 - Use deterministic sampling for structured factual JSON extraction, independent of chat defaults: temperature 0, top-p 1. This reduces random sampling variance but does not guarantee correct answers or identical results on different systems.
 - Add invariant and UI-wiring tests; benchmark existing eight-case fictional Qwen extraction without modifying expected ground truths.
 
