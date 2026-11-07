@@ -2,6 +2,7 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Real bounded 3B benchmark passed: 7.4 s loading, 73.2 s until first text, 1.3 characters/s, 3/4 synthetic facts, no browser network ([CI 42421447866](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42421447866)). Long full-document extraction remains unverified and a release blocker for any advertised 3B support.
 - Add a separately scoped real Qwen2.5-3B load/generation benchmark under `file://` with official SHA-256 and zero outbound requests. The new `MODEL_TEST_SCOPE=quality_only` path isolates loading/small inference from long full-document extraction; an explicit bounded test timeout prevents indefinite runs. Full 3B extraction acceptance remains open.
 
 - Measured the real offline 0.5B Qwen eight-case corpus after verbatim prompt refinement: 87.5% strict micro F1, six of eight exact, zero external browser requests. Two remaining errors concern date-string normalization and missing a qualifying condition ([CI 42420035489](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42420035489)); no claim of production accuracy.
