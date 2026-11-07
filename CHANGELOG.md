@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — XLSX import fidelity safeguards (source committed)
+## Unreleased — Office ingestion safeguards
 
 - Detect hidden worksheets and nonempty hidden rows, hidden column ranges, and merged cell ranges. Require original-workbook review before JSON export.
 - Flag external links, connections, query and pivot caches whose data are not refreshed by the offline importer.
@@ -9,6 +9,10 @@
 - Bound imported Bulk OCR JSON/JSONC to 200 documents, 2 million characters per document and 4 million per batch; reject blank sources and duplicate IDs. Validate supplied byte counts and require bounded local TXT/MD imports.
 - Add importer boundary tests; automated acceptance status is tracked by the build workflow.
 
+
+- Interpret DOCX text in final-revision view: exclude deleted and moved-from runs; include inserted and moved-to text; detect directly hidden runs. Require review of any tracked revisions or hidden text.
+- Traverse top-level DOCX content controls and custom XML wrappers in reading order; reject embedded alternate content in every included Word part, including footnotes.
+- Add synthetic tests for all behaviors. Passing source tests does not certify Word layout or tracked-revision interpretation in actual production files.
 
 ## 0.3.0-beta.1 — November 6, 2026
 
