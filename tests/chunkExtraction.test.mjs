@@ -171,3 +171,49 @@ test('cancellation and ordinary model errors are not retried',async()=>{
     assert.equal(calls,1);
   }
 });
+
+
+test('section boundaries never split surrogate-pair and joined emoji sequences',()=>{
+  const emoji='👩‍💻';
+  const text='x'.repeat(198)+emoji+' source text '+ 'x'.repeat(350);
+  const chunks=splitWholeText(text,200);
+  assert.equal(chunks.map(c=>c.text).join(''),text);
+  assert.ok(chunks.some(c=>c.text.includes(emoji)));
+  for(const item of chunks){
+    assert.ok(item.text.length<=200,'section size is an upper bound');
+    assert.ok(!/[\uD800-\uDBFF]$/.test(item.text),'no dangling high surrogate');
+    assert.ok(!/^[\uDC00-\uDFFF]/.test(item.text),'no dangling low surrogate');
+    assert.ok(!item.text.endsWith('\u200D'),'no dangling emoji ZWJ');
+    assert.ok(!item.text.startsWith('\u200D'),'no leading emoji ZWJ');
+  }
+});
+
+test('section boundaries keep combining marks with the preceding character',()=>{
+  const text='A'.repeat(199)+'e\u0301'+'B'.repeat(350);
+  const chunks=splitWholeText(text,200);
+  assert.equal(chunks.map(c=>c.text).join(''),text);
+  assert.ok(chunks.some(c=>c.text.includes('e\u0301')));
+  assert.ok(chunks.every(c=>!c.text.startsWith('\u0301')));
+});
+
+test('section boundaries do not split dates, decimals or digit grouping',()=>{
+  for(const number of ['2026-11-07','65.5','1,650','-65','$10,000']){
+    const text='A'.repeat(198)+number+' subject to plan terms '+ 'B'.repeat(230);
+    const chunks=splitWholeText(text,200);
+    assert.equal(chunks.map(c=>c.text).join(''),text);
+    assert.ok(chunks.some(c=>c.text.includes(number)),number+' remains within one section');
+    assert.ok(chunks.every(c=>c.text.length<=200));
+  }
+});
+
+test('oversized continuous numbers fail closed rather than invent safe boundaries',()=>{
+  const text='5'.repeat(501);
+  assert.throws(()=>splitWholeText(text,200),/numeric source value exceeds/);
+});
+
+test('delimiter search never extends a section beyond its model context budget',()=>{
+  const text='A'.repeat(200)+' '+'B'.repeat(210);
+  const chunks=splitWholeText(text,200);
+  assert.equal(chunks.map(c=>c.text).join(''),text);
+  assert.ok(chunks.every(c=>c.text.length<=200));
+});
