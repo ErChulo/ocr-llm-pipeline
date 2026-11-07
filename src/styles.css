@@ -97,6 +97,10 @@ nav button.active{color:var(--ink);background:var(--raised);border-color:var(--b
 .conflict-excerpt{border-left:3px solid var(--border);padding:5px 12px;overflow-wrap:anywhere}
 .conflict-excerpt strong{font-size:13px}
 
+.original-image-preview{margin:10px 0 18px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--raised);max-width:100%}
+.original-image-preview img{display:block;width:auto;max-width:100%;max-height:65vh;object-fit:contain;margin:auto}
+.original-image-preview figcaption{margin-top:9px;color:var(--muted);font-size:13px;line-height:1.5}
+
 .source-completeness{margin:16px 0;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--raised)}
 .source-completeness h3{font-size:15px;margin:0}
 .source-issue{padding:10px 0;border-bottom:1px solid var(--border)}
