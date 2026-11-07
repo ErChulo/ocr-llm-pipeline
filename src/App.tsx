@@ -460,7 +460,7 @@ export default function App() {
             <h2>Extract structured JSON</h2>
             {pendingSourceIssues.length>0 && <div className="source-completeness">
               <p className="warning">{pendingSourceIssues.length} source completeness issue(s) need review before JSON export.</p>
-              <button type="button" className="secondary" onClick={()=>navigate('documents')}>
+              <button type="button" className="secondary" onClick={()=>navigateTo('documents')}>
                 Review source issues in Documents
               </button>
             </div>
