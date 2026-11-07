@@ -25,7 +25,8 @@
 - [ ] Manual offline verification on the authorized managed PBGC Windows Chrome/Edge workstation.
 - [x] Implement original PDF page viewer and approximate PDF.js text-item evidence overlays; browser verification tracked separately.
 - [x] Mixed PDF raster/text pages now trigger a **required original-source acknowledgement** before JSON export.
-- [ ] Exact glyph/quoted-substring highlights and robust mixed raster/text page OCR remain open.
+- [x] Optional whole-page supplemental OCR on mixed raster/text pages, retaining native PDF.js text separately and requiring original-page review; separate evidence and correction records are tested in browser.
+- [ ] Precise image-region isolation, OCR deduplication, cross-column reading-order recovery and exact glyph/quoted-substring highlights remain open.
 - [x] Human-editable OCR transcription with original-file fingerprint and page provenance preserved; correction invalidates prior extraction review.
 - [x] All scanned PDF pages and images now require original-source review, regardless of confidence; image originals can be viewed locally. Corrections reset prior acknowledgement.
 - [ ] OCR confidence visualization, larger multilingual corpus, handwriting, varied scans, multipage layouts and columns.
