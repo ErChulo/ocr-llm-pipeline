@@ -4,7 +4,7 @@
  * registers a main-thread handler for file://, with no CDN or fetch.
  * Scanned pages use the optional offline OCR callback; failed OCR blocks import.
  */
-import { getDocument, OPS } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { getDocument, OPS, AnnotationType } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 import type { SourceDocument, SourceRecord, SourceTextSpan, SourceReviewIssue } from './pipeline.ts';
 import { ocrReviewIssue } from './ocrReview.ts';
@@ -110,6 +110,21 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
     for (let pageNo = 1; pageNo <= document.numPages; pageNo++) {
       const page = await document.getPage(pageNo);
       const textContent = await page.getTextContent();
+      // Interactive form fields, comments and other non-link annotations may
+      // contain facts that are NOT part of the page's native text layer.
+      // Do not infer their contents or silently treat the text layer as complete.
+      const annotations=await page.getAnnotations({intent:'display'});
+      const unverifiedAnnotations=annotations.filter(a=>
+        a.annotationType!==AnnotationType.LINK);
+      if(unverifiedAnnotations.length){
+        warnings.push('PDF page '+pageNo+' contains '+unverifiedAnnotations.length+
+          ' non-link annotation or form field(s). Their contents were not extracted as native page text.');
+        reviewIssues.push({id:'pdf:annotations:'+pageNo,
+          category:'pdf_annotation_review',page:pageNo,
+          message:'Page '+pageNo+' contains interactive fields, notes or other annotations. '+
+            'Their contents may be absent from extracted text and the in-app preview. '+
+            'Open the original in an approved PDF viewer showing annotations and form values before export.'});
+      }
       // A searchable heading does not imply the whole page is searchable.
       // Identify raster draw operations to disclose potentially missing text.
       const opList = await page.getOperatorList();
