@@ -148,6 +148,7 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
         return ocr(canvas);
       };
       if(text.length<MIN_PAGE_TEXT_LENGTH){
+        if(!ocr)throw new Error('Page '+pageNo+' has no extractable text. OCR is required; no partial extraction was saved.');
         const result=await runLocalPageOcr();
         text=result.text.trim();
         confidence=result.confidence;
@@ -230,7 +231,7 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
         'PDF page numbers come from the document parser, not from the language model.',
         'PDF text-item boxes are approximate item envelopes, not exact word highlights. Verify against the PDF.',
         'Text reading order and tables may differ from the page layout. Verify important values against the PDF.',
-        'Pages with no text are OCR processed. Mixed text/image pages are OCR checked only on explicit request. Supplemental full-page OCR may repeat native text.'
+        'Pages with no text are OCR processed. Images within pages that already contain text might still be missed unless supplemental OCR is explicitly requested. Supplemental full-page OCR may repeat native text.'
       ]
     };
   } catch (error) {
