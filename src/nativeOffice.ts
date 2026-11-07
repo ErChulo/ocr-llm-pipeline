@@ -302,7 +302,14 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
     }
   }
   if(formulas) warnings.push(formulas+' formula cells found. Cached values were read, not recalculated.');
-  if(omitted.some(n=>/^xl\/media\//.test(n)))warnings.push('Workbook images and charts are not extracted.');
+  // These Office parts can contain information not represented by cells.
+  // Never present a partial worksheet extraction as evidence-complete.
+  const omittedVisuals=omitted.filter(n=>
+    /^xl\/(?:media|charts|drawings|chartsheets|diagrams)\//i.test(n));
+  const omittedAnnotations=omitted.filter(n=>
+    /^xl\/(?:comments\d*\.xml|threadedComments\/|persons\/|embeddings\/)/i.test(n));
+  if(omittedVisuals.length)warnings.push('Workbook charts, drawings, or images were not extracted; inspect the original workbook.');
+  if(omittedAnnotations.length)warnings.push('Workbook comments or embedded objects were not extracted; inspect the original workbook.');
   if(dateCells){
     warnings.push(dateCells+' Excel numeric cells are date/time styled, including '+
       dateExamples.join(', ')+'. Their raw serials were retained; compare original displayed dates.');
@@ -315,9 +322,12 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
       dateExamples.join(', ')+'. Verify the original spreadsheet date displays before export.'});
   if(formulas>0)reviewIssues.push({id:'xlsx:formulas',category:'office_unreviewed_content',
     message:formulas+' formula cells were imported from cached results only. Check the original workbook calculations.'});
-  if(omitted.some(n=>/^xl\/media\//.test(n)))reviewIssues.push({
+  if(omittedVisuals.length)reviewIssues.push({
     id:'xlsx:media',category:'office_unreviewed_content',
-    message:'Some images or charts were omitted. Inspect the original workbook.'});
+    message:'Workbook charts, drawings, chartsheets, diagrams, or images were omitted. Inspect the original workbook before export.'});
+  if(omittedAnnotations.length)reviewIssues.push({
+    id:'xlsx:annotations',category:'office_unreviewed_content',
+    message:'Workbook comments or embedded objects were omitted. Inspect the original workbook before export.'});
   const parsed=appendRecords(fileName,'xlsx',entries,warnings);
   parsed.reviewIssues=reviewIssues;
   return parsed;
