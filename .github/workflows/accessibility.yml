@@ -1,0 +1,42 @@
+name: Offline accessibility acceptance audit
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/browser-accessibility.mjs'
+      - '.github/workflows/accessibility.yml'
+      - 'src/UserGuideDrawer.css'
+      - 'src/styles.css'
+
+permissions:
+  contents: read
+
+jobs:
+  file-url-accessibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compile and verify the actual standalone application
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Install pinned Chromium and accessibility audit tools (CI only)
+        run: |
+          npm install --no-save playwright@1.55.0 @axe-core/playwright@4.14.0
+          npx playwright install --with-deps chromium
+      - name: Audit offline file URL routes and dialog
+        timeout-minutes: 6
+        run: node tests/browser-accessibility.mjs
+      - name: Upload fictional-only accessibility report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: offline-accessibility-audit
+          path: tmp/accessibility-audit.json
+          if-no-files-found: ignore
