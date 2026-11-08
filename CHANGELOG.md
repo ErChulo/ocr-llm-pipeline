@@ -2,6 +2,8 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Recognize aligned compact PDF table rows that wide-gap detection missed; preserve exact text and page/citation provenance, require original-page review and add adversarial geometry tests. Record a separate entirely fictional raster-table OCR diagnostic in offline Playwright (unverified transcript; not an accuracy certification). Rebase older PR #51 on current PDF annotation and export gates.
+
 - Flag omitted PDF annotations and form widgets for mandatory original-file inspection, excluding their values from native page text citations. Synthetic FreeText/AcroForm/link fixtures and offline Playwright checks cover this source completeness hazard; rebase a previously passing but outdated PR on current source safety gates.
 
 - Final JSON export independently checks each current source-completeness warning ID against reviewer acknowledgements. Reject stale zero counts, malformed/duplicated warning identities, and unregistered embedded AI instruction risks; expand adversarial export-gate tests.
