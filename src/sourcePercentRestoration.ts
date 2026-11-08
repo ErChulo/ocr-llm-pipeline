@@ -26,6 +26,10 @@ export function restoreSourcePercent(modelValue:unknown,sourceText:string):Resto
   for(const found of sourceText.matchAll(percentLiteral)){
     if(found.index===undefined)continue;
     const raw=found[0],start=found.index,end=start+raw.length;
+    // Reject percent substrings of malformed OCR decimals and joined
+    // numerical/identifier codes such as 1.2.50%, 5-2.50%, A/2.50%.
+    const before=sourceText[start-1]??'',prior=sourceText[start-2]??'';
+    if(/[.,/+−–-]/.test(before)&&/[\p{L}\p{N}_]/u.test(prior))continue;
     if(canonicalPercent(raw)!==normalized)continue;
     unique.set(raw,{start,end});
     if(unique.size>1)return null;
