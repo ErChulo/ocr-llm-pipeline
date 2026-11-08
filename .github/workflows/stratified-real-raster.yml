@@ -1,0 +1,40 @@
+name: Stratified fictional actual-raster OCR verification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/stratified-real-raster.yml'
+      - 'tests/stratified-raster-benchmark.mjs'
+      - 'tests/fixtures/spatialCellMetrics.mjs'
+      - 'src/ocrWords.ts'
+      - 'src/ocrSpatial.ts'
+
+permissions:
+  contents: read
+
+jobs:
+  twelve-page-raster:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install pinned CI browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Measure actual Tesseract word boxes across twelve fictional PDF pages
+        timeout-minutes: 12
+        run: node --experimental-strip-types tests/stratified-raster-benchmark.mjs
+      - name: Archive per-condition measurement and abstention report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stratified-fictional-actual-ocr-raster
+          path: tmp/stratified-raster-report.json
+          if-no-files-found: ignore
