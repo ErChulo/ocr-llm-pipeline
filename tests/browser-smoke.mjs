@@ -476,6 +476,23 @@ try {
     {page:9,rotation:0,rows:[['52','0.7124'],['70','1.1179']]}
   ];
   const pageResults=scoreFictionalScannedPages(bodyByPage,expectedPages);
+  // Stable, entirely fictional diagnostic corpus: a green browser run must
+  // not conceal a regression below the verified 34/36 and 16/18 main baseline.
+  const literalTotal=pageResults.reduce((sum,item)=>sum+item.literalsRecognized,0);
+  const pairTotal=pageResults.reduce((sum,item)=>sum+item.rowPairsRecognized,0);
+  // Read-only diagnostic; this corpus is generated in this test from fixed
+  // fictional strings. Do not add such document-text logging to the app.
+  for(const item of pageResults.filter(entry=>entry.missingLiterals.length)){
+    const excerpt=bodyByPage[item.page].split(/\r?\n/).slice(0,16)
+      .map(line=>line.slice(0,120)).join(' | ');
+    console.log('FICTIONAL FIXTURE OCR DEBUG '+JSON.stringify({
+      page:item.page,rotation:item.rotation,missing:item.missingLiterals,excerpt
+    }));
+  }
+  assert.ok(literalTotal>=34,
+    'Fictional OCR numerical regression: '+literalTotal+'/36; verified main baseline is 34/36');
+  assert.ok(pairTotal>=16,
+    'Fictional OCR pair regression: '+pairTotal+'/18; verified main baseline is 16/18');
   assert.ok(pageResults.every(result=>result.wrongPageLiterals.length===0),
     'a unique fictional numeric fact must not be attributed to another PDF page');
   assert.equal(await multiReview.locator('input[type="checkbox"]').count(),9,
