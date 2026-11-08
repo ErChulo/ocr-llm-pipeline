@@ -10,6 +10,7 @@ import { resolve,basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { mkdirSync,writeFileSync,readFileSync,statSync,existsSync } from 'node:fs';
 import {physicalHoldoutCases} from './fixtures/physicalHoldoutCases.mjs';
+import {selectPhysicalHoldoutCases} from './fixtures/holdoutSelection.mjs';
 import {assessHoldoutProvenance} from './fixtures/physicalHoldoutProvenance.mjs';
 import { scoreCorpus } from '../src/syntheticQuality.ts';
 import assert from 'node:assert/strict';
@@ -20,14 +21,22 @@ const caseTimeoutMs=Number(process.env.CASE_TIMEOUT_MS||200000);
 assert.ok(Number.isSafeInteger(caseTimeoutMs)&&caseTimeoutMs>=10000&&caseTimeoutMs<=600000,
   'CASE_TIMEOUT_MS must be between 10,000 and 600,000 milliseconds.');
 assert.ok(existsSync(model),'Select a checksum-verified local GGUF test file.');
-const benchmarkMode='physical-eight-case-holdout-v1';
-const samples=physicalHoldoutCases;
-assert.equal(samples.length,8,'The independent physical holdout must retain all eight cases.');
+assert.equal(physicalHoldoutCases.length,8,'The independent physical holdout must retain all eight cases.');
+// An explicitly provided but empty selector is invalid; do not turn it into
+// the full eight-case denominator by using an || default.
+const selection=process.env.BENCHMARK_CASES===undefined?'all':process.env.BENCHMARK_CASES;
+const samples=selectPhysicalHoldoutCases(physicalHoldoutCases,selection);
+const benchmarkMode=selection==='all'
+  ? 'physical-eight-case-holdout-v1'
+  : 'physical-bounded-adversarial-holdout-v1';
 const report={
   fixtureVersion:'physical-holdout-v1',
   model:process.env.MODEL_LABEL||'Qwen2.5-0.5B-Instruct Q4_K_M',
   modelBytes:statSync(model).size,
-  benchmarkMode,fixtureCount:samples.length,source:'fictional-only',origin:'file://',
+  benchmarkMode,fixtureCount:samples.length,holdoutUniverseCount:physicalHoldoutCases.length,
+  selection:selection==='all'?'all-eight':'explicit-bounded-subset',
+  selectedCaseIds:samples.map(sample=>sample.id),
+  source:'fictional-only',origin:'file://',
   cases:[],externalRequests:[],status:'starting',startedAt:new Date().toISOString()
 };
 const persist=()=>writeFileSync('tmp/real-corpus-report.json',JSON.stringify(report,null,2));
