@@ -145,6 +145,9 @@ function textOf(node: XmlNode): string {
     if(depth>MAX_XML_DEPTH)throw new Error('Office XML exceeds supported nesting depth.');
     if(++visits>MAX_XML_VISITS)throw new Error('Office XML contains too many nodes to inspect safely.');
     if(n.nodeType===1){
+      // Unsupported foreign XML wrappers may enclose apparent Word runs.
+      // Do not promote their text to an ordinary Word source paragraph.
+      if(n.namespaceURI!==WORD_NS)continue;
       if(n.localName==='del'||n.localName==='moveFrom'||n.localName==='delText'||
          hiddenRun(n))continue;
       // Embedded Word drawings, text boxes and OLE objects have different
@@ -293,7 +296,7 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
       name==='word/footnotes.xml'||name==='word/endnotes.xml')
     .map(([,bytes])=>xmlDoc(decoder.decode(bytes)));
   const hasForeignText=inspectedParts.some(part=>
-    ['t','p','tbl','tc'].some(name=>descendants(part,name).some(node=>
+    ['t','r','p','tbl','tc'].some(name=>descendants(part,name).some(node=>
       node.namespaceURI!==WORD_NS &&
       !['drawing','pict','object','txbxContent'].some(kind=>hasAncestor(node,kind)))));
   if(hasForeignText)warnings.push(
@@ -460,7 +463,7 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
       const cell=c.getAttribute('r')||'';
       if(!/^[A-Z]{1,3}[1-9]\d{0,6}$/.test(cell))throw new Error('Invalid cell reference: '+cell);
       const address=/^([A-Z]+)([0-9]+)$/.exec(cell)!;
-      const declaredRow=rowNode.getAttribute('r');
+      const declaredRow=(rowNode as XmlElement).getAttribute('r');
       if(declaredRow!==null && (!/^[1-9]\d*$/.test(declaredRow)||
           Number(declaredRow)!==Number(address[2]))){
         throw new Error('Excel cell and declared row coordinates disagree: '+sheetName+'!'+cell);
