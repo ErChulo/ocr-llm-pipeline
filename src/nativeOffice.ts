@@ -32,9 +32,12 @@ function officeArchive(data: Uint8Array, chosen: (name: string) => boolean) {
   }
   const omitted: string[] = [];
   let used = 0, entries = 0;
+  const seenArchiveNames=new Set<string>();
   const files = unzipSync(data, {
     filter: entry => {
       if (++entries > 5000) throw new Error('The Office archive contains too many entries.');
+      if(seenArchiveNames.has(entry.name))throw new Error('Office ZIP has duplicate part names; original-file review is required.');
+      seenArchiveNames.add(entry.name);
       if (!chosen(entry.name)) { omitted.push(entry.name); return false; }
       if (entry.originalSize > MAX_XML_PART || entry.originalSize < 0 ||
         used + entry.originalSize > MAX_UNCOMPRESSED) {
@@ -366,10 +369,17 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
   const {files,omitted}=officeArchive(data,keep);
   const workbook=xmlDoc(getPart(files,'xl/workbook.xml'));
   const rel=xmlDoc(getPart(files,'xl/_rels/workbook.xml.rels'));
-  const relationships=new Map(descendants(rel,'Relationship').map(x=>[x.getAttribute('Id')||'',{
-    target:x.getAttribute('Target')||'',mode:x.getAttribute('TargetMode')||'',
-    type:x.getAttribute('Type')||''
-  }]));
+  const relationships=new Map<string,{target:string;mode:string;type:string}>();
+  for(const element of descendants(rel,'Relationship')){
+    const id=element.getAttribute('Id')||'';
+    if(!id||relationships.has(id)){
+      throw new Error('Excel workbook contains empty or duplicate worksheet relationship IDs.');
+    }
+    relationships.set(id,{
+      target:element.getAttribute('Target')||'',mode:element.getAttribute('TargetMode')||'',
+      type:element.getAttribute('Type')||''
+    });
+  }
   const sharedStringsXml=files['xl/sharedStrings.xml']
     ? xmlDoc(strFromU8(files['xl/sharedStrings.xml'])) : null;
   const ss=sharedStringsXml ? descendants(sharedStringsXml,'si')
@@ -386,8 +396,18 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
   let dateCells=0;
   const dateExamples:string[]=[];
   let formulas=0;
+  const seenSheetNames=new Set<string>();
+  const seenSheetIds=new Set<string>();
+  const seenWorksheetParts=new Set<string>();
   for(const sheet of descendants(workbook,'sheet')) {
     const sheetName=sheet.getAttribute('name')||'Unnamed';
+    const nameKey=sheetName.normalize('NFC').toLowerCase();
+    const sheetId=sheet.getAttribute('sheetId')||'';
+    if(seenSheetNames.has(nameKey)||!sheetId||seenSheetIds.has(sheetId)){
+      throw new Error('Excel workbook has duplicated worksheet identity or missing sheet ID.');
+    }
+    seenSheetNames.add(nameKey);
+    seenSheetIds.add(sheetId);
     const rid=sheet.getAttribute('r:id')||sheet.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id')||'';
     const relationship=relationships.get(rid);
     if(!relationship?.target)throw new Error('No worksheet relationship for '+sheetName+'.');
@@ -400,6 +420,10 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
     }
     if(['hidden','veryHidden'].includes(sheet.getAttribute('state')||''))hiddenSheets.push(sheetName);
     const part=workbookTarget(relationship.target);
+    if(seenWorksheetParts.has(part)){
+      throw new Error('Excel worksheets share the same underlying XML source; cell citations are ambiguous.');
+    }
+    seenWorksheetParts.add(part);
     const xml=xmlDoc(getPart(files,part));
     const hiddenRowCount=descendants(xml,'row').filter(x=>
       /^(?:1|true)$/i.test(x.getAttribute('hidden')||'') && descendants(x,'c').length>0).length;
@@ -409,9 +433,19 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
     if(hiddenColumnCount)hiddenColumns.push(sheetName+' ('+hiddenColumnCount+' column ranges)');
     const mergeCount=descendants(xml,'mergeCell').length;
     if(mergeCount)mergedCells.push(sheetName+' ('+mergeCount+' merged ranges)');
+    const seenCellAddresses=new Set<string>();
     for(const c of descendants(xml,'c')) {
       const cell=c.getAttribute('r')||'';
       if(!/^[A-Z]{1,3}[1-9]\d{0,6}$/.test(cell))throw new Error('Invalid cell reference: '+cell);
+      const address=/^([A-Z]+)([0-9]+)$/.exec(cell)!;
+      const col=[...address[1]].reduce((value,ch)=>value*26+ch.charCodeAt(0)-64,0);
+      if(col>16384||Number(address[2])>1048576){
+        throw new Error('Excel cell reference is outside worksheet limits: '+sheetName+'!'+cell);
+      }
+      if(seenCellAddresses.has(cell)){
+        throw new Error('Duplicate Excel cell coordinate: '+sheetName+'!'+cell+'. Source provenance is ambiguous.');
+      }
+      seenCellAddresses.add(cell);
       const type=c.getAttribute('t')||'';
       const f=children(c,'f')[0];
       const v=children(c,'v')[0]?.textContent||'';

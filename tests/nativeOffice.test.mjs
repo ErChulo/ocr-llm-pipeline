@@ -372,3 +372,107 @@ test('XLSX phonetic guides are excluded from shared and inline cell values',asyn
  assert.equal(auditLiteralEvidence(parsed,{age:99})[0].status,'missing');
  assert.equal(auditLiteralEvidence(parsed,{age:65})[0].status,'match');
 });
+
+
+test('XLSX conflicting or repeated coordinates are rejected before any citation exists',()=>{
+ const ns='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+ const sheet='<worksheet xmlns="'+ns+'"><sheetData><row r="1">'+
+   '<c r="A1"><v>65</v></c><c r="A1"><v>99</v></c>'+
+   '</row></sheetData></worksheet>';
+ assert.throws(()=>parseXlsx('duplicate-coordinate.xlsx',xlsx({sheet})),
+   /Duplicate Excel cell coordinate: Plan Data!A1/);
+ const emptyDuplicate='<worksheet xmlns="'+ns+'"><sheetData><row r="1">'+
+   '<c r="A1"/><c r="A1"><v>65</v></c>'+
+   '</row></sheetData></worksheet>';
+ assert.throws(()=>parseXlsx('empty-collision.xlsx',xlsx({sheet:emptyDuplicate})),
+   /Duplicate Excel cell coordinate/);
+});
+
+test('XLSX rejects cells outside the actual worksheet coordinate grid',()=>{
+ const ns='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+ const makeSheet=cell=>'<worksheet xmlns="'+ns+'"><sheetData><row r="1">'+
+  '<c r="'+cell+'"><v>65</v></c></row></sheetData></worksheet>';
+ for(const cell of ['XFE1','ZZZ1','A1048577']){
+   assert.throws(()=>parseXlsx('outside.xlsx',xlsx({sheet:makeSheet(cell)})),
+     /outside worksheet limits/,cell);
+ }
+ for(const cell of ['A0','A-1','a1','AAAA1']){
+   assert.throws(()=>parseXlsx('invalid.xlsx',xlsx({sheet:makeSheet(cell)})),
+     /Invalid cell reference/,cell);
+ }
+ const last=parseXlsx('maximum.xlsx',xlsx({sheet:makeSheet('XFD1048576')}));
+ assert.equal(last.records[0].location.cell,'XFD1048576');
+});
+
+test('duplicate Excel worksheet names and sheet IDs have ambiguous provenance',()=>{
+ const ns='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+ const relns='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+ const first='<sheet name="Plan" sheetId="1" r:id="rId1"/>';
+ const sheet='<worksheet xmlns="'+ns+'"><sheetData><row r="1"><c r="A1"><v>65</v></c></row></sheetData></worksheet>';
+ const make=(second)=>zipped({
+  'xl/workbook.xml':'<workbook xmlns="'+ns+'" xmlns:r="'+relns+'"><sheets>'+
+    first+second+'</sheets></workbook>',
+  'xl/_rels/workbook.xml.rels':'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+    '<Relationship Id="rId1" Target="worksheets/sheet1.xml"/>'+
+    '<Relationship Id="rId2" Target="worksheets/sheet2.xml"/>'+
+    '</Relationships>',
+  'xl/worksheets/sheet1.xml':sheet,'xl/worksheets/sheet2.xml':sheet
+ });
+ for(const second of [
+  '<sheet name="plan" sheetId="2" r:id="rId2"/>',
+  '<sheet name="Plan" sheetId="2" r:id="rId2"/>',
+  '<sheet name="Another" sheetId="1" r:id="rId2"/>',
+  '<sheet name="Another" r:id="rId2"/>'
+ ]){
+  assert.throws(()=>parseXlsx('duplicate-sheets.xlsx',make(second)),
+    /duplicated worksheet identity|missing sheet ID/);
+ }
+});
+
+test('XLSX refuses repeated relationship IDs and aliases to one underlying worksheet XML',()=>{
+ const ns='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+ const relns='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+ const workbook='<workbook xmlns="'+ns+'" xmlns:r="'+relns+'"><sheets>'+
+   '<sheet name="Original" sheetId="1" r:id="rId1"/>'+
+   '<sheet name="Amended" sheetId="2" r:id="rId2"/>'+
+   '</sheets></workbook>';
+ const sheet='<worksheet xmlns="'+ns+'"><sheetData><row r="1">'+
+   '<c r="A1"><v>65</v></c></row></sheetData></worksheet>';
+ const make=(rels)=>zipped({
+  'xl/workbook.xml':workbook,
+  'xl/_rels/workbook.xml.rels':'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+rels+'</Relationships>',
+  'xl/worksheets/sheet1.xml':sheet
+ });
+ const duplicate='<Relationship Id="rId1" Target="worksheets/sheet1.xml"/>'+
+   '<Relationship Id="rId1" Target="worksheets/sheet2.xml"/>';
+ assert.throws(()=>parseXlsx('duplicate-rel.xlsx',make(duplicate)),
+   /duplicate worksheet relationship IDs/);
+ const alias='<Relationship Id="rId1" Target="worksheets/sheet1.xml"/>'+
+   '<Relationship Id="rId2" Target="worksheets/sheet1.xml"/>';
+ assert.throws(()=>parseXlsx('alias.xlsx',make(alias)),
+   /share the same underlying XML source/);
+});
+
+test('Office ZIP duplicate entry filenames are refused, not silently overwritten',()=>{
+ const first='word/header1.xml',second='word/header2.xml';
+ const content='<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'+
+  '<w:body><w:p><w:r><w:t>Age 65</w:t></w:r></w:p></w:body></w:document>';
+ const data=zipped({
+  '[Content_Types].xml':'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>',
+  'word/document.xml':content,
+  [first]:'<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:t>Age 65</w:t></w:r></w:p></w:hdr>',
+  [second]:'<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:r><w:t>Age 99</w:t></w:r></w:p></w:hdr>'
+ });
+ const bytes=Uint8Array.from(data);
+ const needle=new TextEncoder().encode(second),replacement=new TextEncoder().encode(first);
+ let replacements=0;
+ for(let i=0;i<=bytes.length-needle.length;i++){
+  let matches=true;
+  for(let k=0;k<needle.length;k++)if(bytes[i+k]!==needle[k]){matches=false;break;}
+  if(!matches)continue;
+  bytes.set(replacement,i);replacements++;i+=needle.length-1;
+ }
+ assert.equal(replacements,2,'local and central-directory names must both be altered');
+ assert.throws(()=>parseDocx('duplicate-part.docx',bytes),
+   /duplicate part names/);
+});

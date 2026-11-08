@@ -2,6 +2,8 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Reject duplicate ZIP part names and ambiguous XLSX identities (duplicate sheet names/IDs, worksheet relationships/parts, repeated cell references). Reject column/row addresses outside Excel's official 16,384 by 1,048,576 worksheet grid. These are provenance-integrity checks; they do not validate actuarial correctness.
+
 - Prevent DOCX drawing/textbox/OLE text and foreign-namespace text runs from being silently presented as ordinary paragraph evidence. Detect unprocessed graphics across document, header/footer and notes; require original-file acknowledgement.
 - Exclude Excel phonetic annotations from visible shared-string and inline-string values and require original-workbook review. Synthetic OOXML tests cover ambiguous visual and cell-source content.
 
