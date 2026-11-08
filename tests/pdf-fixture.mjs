@@ -104,3 +104,64 @@ export function createAnnotatedPdf(subtype='FreeText'){
   pdf+='trailer\n<< /Root 1 0 R /Size '+(objects.length+1)+' >>\nstartxref\n'+startxref+'\n%%EOF\n';
   return Buffer.from(pdf,'utf8');
 }
+
+/**
+ * Multipage raster/PDF fixture for provenance and OCR acceptance testing.
+ * Each page has its own JPEG XObject. Optional /Rotate and a native heading
+ * support rotated and mixed-content cases without inventing a text layer for
+ * the scanned image. All text and pixels are fictional test material.
+ */
+export function createMultiPageScannedPdf(pages) {
+  if(!Array.isArray(pages)||pages.length<1||pages.length>300)
+    throw new Error('A fictional scan requires 1–300 pages.');
+  const entries=[
+    Buffer.from('<< /Type /Catalog /Pages 2 0 R >>'),
+    Buffer.from('<< /Type /Pages /Kids ['+
+      pages.map((_,i)=>(3+3*i)+' 0 R').join(' ')+'] /Count '+pages.length+' >>')
+  ];
+  const fontId=3+3*pages.length;
+  for(const page of pages){
+    const {jpeg,width,height,rotation=0,heading=''}=page??{};
+    if(!Buffer.isBuffer(jpeg)||jpeg.length<100||
+       !Number.isInteger(width)||!Number.isInteger(height)||
+       width<1||height<1||width>3600||height>3600||
+       width*height>5_000_000||
+       ![0,90,180,270].includes(rotation)||typeof heading!=='string')
+      throw new Error('Invalid fictional scanned PDF page.');
+    const pageId=3+entries.length-2;
+    const contentId=pageId+1, imageId=pageId+2;
+    const nativeText=heading
+      ? 'BT /F1 18 Tf 20 '+(height-30)+' Td ('+escapeText(heading)+') Tj ET\n'
+      : '';
+    const commands=nativeText+'q\n'+width+' 0 0 '+height+' 0 0 cm\n/Im0 Do\nQ\n';
+    entries.push(
+      Buffer.from('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+width+' '+height+
+        ']'+(rotation?' /Rotate '+rotation:'')+
+        ' /Resources << /XObject << /Im0 '+imageId+
+        ' 0 R >> /Font << /F1 '+fontId+
+        ' 0 R >> >> /Contents '+contentId+' 0 R >>'),
+      Buffer.from('<< /Length '+Buffer.byteLength(commands)+' >>\nstream\n'+commands+'endstream'),
+      Buffer.concat([
+        Buffer.from('<< /Type /XObject /Subtype /Image /Width '+width+' /Height '+height+
+          ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+
+          jpeg.length+' >>\nstream\n'),
+        jpeg,Buffer.from('\nendstream')
+      ])
+    );
+  }
+  entries.push(Buffer.from('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'));
+  const output=[Buffer.from('%PDF-1.4\n')],offsets=[0];
+  let length=output[0].length;
+  for(let i=0;i<entries.length;i++){
+    offsets.push(length);
+    const head=Buffer.from((i+1)+' 0 obj\n'),tail=Buffer.from('\nendobj\n');
+    output.push(head,entries[i],tail);
+    length+=head.length+entries[i].length+tail.length;
+  }
+  const xref=['xref','0 '+(entries.length+1),'0000000000 65535 f ',
+    ...offsets.slice(1).map(n=>String(n).padStart(10,'0')+' 00000 n '),
+    'trailer','<< /Root 1 0 R /Size '+(entries.length+1)+' >>',
+    'startxref',String(length),'%%EOF',''].join('\n');
+  output.push(Buffer.from(xref));
+  return Buffer.concat(output);
+}
