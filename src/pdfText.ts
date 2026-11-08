@@ -156,7 +156,7 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
           throw new Error('Invalid PDF page geometry for OCR at page '+pageNo+'.');
         }
         // Limit both dimensions and total canvas pixels before Tesseract.
-        const scale=Math.min(2.2,2400/Math.max(original.width,original.height),
+        const scale=Math.min(2.4,2400/Math.max(original.width,original.height),
           Math.sqrt(MAX_OCR_CANVAS_PIXELS/(original.width*original.height)));
         const viewport=page.getViewport({scale});
         const canvas=globalThis.document.createElement('canvas');
