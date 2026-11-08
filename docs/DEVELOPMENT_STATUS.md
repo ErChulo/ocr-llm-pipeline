@@ -44,3 +44,7 @@
 5. Independent privacy, source-security, supply-chain, accessibility and actuarial-interpretation reviews. Model-valid JSON and reviewer acknowledgements do not prove factual correctness.
 
 No PBGC participant or case data is permitted in tests or the repository. ErChulo/bulk-ocr-studio must remain unchanged.
+
+
+### Pending verification — PR #101, November 8, 2026
+- A narrow proposed `ocrSpatial.ts` change treats intervening leading-decimal numerals as unsafe third-column evidence and abstains, preserving measured OCR boxes, page provenance, source transcript and candidate audit. Eight new synthetic unit variants cover signed, currency, parenthesized, percentage and exponent forms. **Pending all required CI and release-gate verification; no independent real-raster metric has been claimed.**
