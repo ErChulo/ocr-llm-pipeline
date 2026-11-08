@@ -1,0 +1,9 @@
+# Actual OCR word-box spatial benchmark (fictional beta gate)
+
+`tests/real-spatial-raster-benchmark.mjs` generates three entirely fictional 1100×550 raster schedules (one rotated), places their JPEG bytes in a real three-page image-only PDF, and invokes actual locally installed Tesseract.js with pinned English model data directly on **those JPEG bytes**. Manual reference cell rectangles and literal pair assignments are defined **before** OCR; reference values are not inferred from a transcript or the production matcher.
+
+The separate matcher inspects actual Tesseract nested measured word boxes and either returns pixel regions from those boxes or abstains. Diagnostics report true/false positives, false negatives, precision, recall, false-match rate and whole-table abstention, with one source PDF page per fixture and pixel-frame dimensions. A returned wrong association fails CI. Real OCR omissions are reported as false negatives; abstention is reported separately, not scored as success.
+
+Important limitations: this is one bounded three-page image-only generated corpus, not a representative range of real scanned documents. It tests the original JPEG XObjects in the PDF; it does **not** claim pixel equivalence with separate PDF.js raster resizing, page rotation metadata handling, source legal applicability, real-program field accuracy, or a production-grade confidence calibration. Every PDF image-region reference comes from actually measured Tesseract word envelopes; no OCR pixel boxes are invented from character positions. The human-reference rectangles are deliberately separate fixture annotations, not source citations produced by the application. The official nine-page offline browser PDF fixture and full Playwright remain separate acceptance checks.
+
+An independent, broader held-out scanned-PDF collection and managed-workstation testing remain required. The application stays beta.
