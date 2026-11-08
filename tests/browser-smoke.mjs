@@ -5,7 +5,7 @@
 import { chromium } from 'playwright';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { statSync, mkdirSync } from 'node:fs';
+import { statSync, mkdirSync, writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { createSyntheticPdf, createScannedPdf } from './pdf-fixture.mjs';
 import { zipSync, strToU8 } from 'fflate';
@@ -224,6 +224,55 @@ try {
   await page.getByRole('button',{name:'Close PDF view'}).click();
   await scannedReview.locator('input[type="checkbox"]').check();
   console.log('REAL BROWSER: scanned PDF OCR requires original-page review regardless of confidence.');
+
+  // Measured fictional scanned table. This is diagnostic OCR accuracy, not
+  // automatic pension interpretation or model/GGUF extraction accuracy.
+  // Use a raster JPEG inside a real PDF: no selectable text layer or PII.
+  const scannedTableJpeg=await page.evaluate(()=>{
+    const canvas=document.createElement('canvas');
+    canvas.width=1100;canvas.height=550;
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,1100,550);
+    ctx.fillStyle='#111';
+    ctx.font='bold 44px Arial';
+    ctx.fillText('FICTIONAL BENEFIT SCHEDULE',46,78);
+    ctx.font='bold 32px Arial';
+    ctx.fillText('AGE',72,170);
+    ctx.fillText('MONTHLY FACTOR',445,170);
+    ctx.font='34px Arial';
+    ctx.fillText('55',72,247);ctx.fillText('0.8750',445,247);
+    ctx.fillText('65',72,324);ctx.fillText('1.0000',445,324);
+    ctx.fillText('SERVICE 10 YEARS',72,433);
+    return canvas.toDataURL('image/jpeg',0.96).split(',')[1];
+  });
+  const scannedTablePdf=createScannedPdf(Buffer.from(scannedTableJpeg,'base64'),1100,550);
+  await page.locator('input[type="file"][accept*=".pdf"]').setInputFiles({
+    name:'fictional-scanned-table.pdf',mimeType:'application/pdf',buffer:scannedTablePdf
+  });
+  await page.locator('.card select').first().locator('option')
+    .filter({hasText:'fictional-scanned-table.pdf'}).waitFor({timeout:150000});
+  await page.locator('.card select').first().selectOption({label:'fictional-scanned-table.pdf'});
+  await page.locator('.source-completeness').getByText(/PDF page 1 before export/i)
+    .waitFor({timeout:150000});
+  const scannedTableText=await page.locator('.preview').innerText();
+  assert.match(scannedTableText,/^Page 1:/);
+  const expectedTable=['55','65','0.8750','1.0000','10'];
+  const tableHits=Object.fromEntries(expectedTable.map(token=>[
+    token,new RegExp('(^|[^0-9.])'+token.replace('.','\\.')+'($|[^0-9.])').test(scannedTableText)
+  ]));
+  const exactTableFields=Object.values(tableHits).filter(Boolean).length;
+  writeFileSync('tmp/fictional-scanned-pdf-ocr.json',JSON.stringify({
+    fixture:'fictional-scanned-table.pdf',kind:'physical-raster-pdf',
+    evidenceStatus:'unverified_ocr_transcription',expectedTable,
+    literalMatches:tableHits,exactFieldCount:exactTableFields,
+    denominator:expectedTable.length,networkRequests:external.length,
+    citationPrecision:'pdf-page-ocr (no fabricated cell or glyph boxes)'
+  },null,2)+'\n');
+  assert.equal(external.length,0,'scanned PDF OCR must stay offline');
+  assert.equal(await page.locator('.source-completeness input[type="checkbox"]').count(),1);
+  console.log('REAL BROWSER: fictional scanned-table OCR literal exact fields '+
+    exactTableFields+'/'+expectedTable.length+'; diagnostic only, requires source review.');
+
 
   // Mixed-content PDFs can hide provisions in images despite a valid text
   // layer. Require the user's explicit original-page review before export.
