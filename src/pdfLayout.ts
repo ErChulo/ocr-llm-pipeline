@@ -69,7 +69,7 @@ function hasAlignedTabularCells(items:readonly LayoutTextItem[],pageWidth:number
     if(!item.str.trim()||!t||t.length<6||
        !t.slice(0,6).every(Number.isFinite)||
        typeof item.width!=='number'||!Number.isFinite(item.width)||item.width<=0)continue;
-    const [a,b,c,d,x,y]=t;
+    const [,b,c,d,x,y]=t;
     const h=Math.hypot(c,d);
     if(h<=0||Math.abs(b)>h*0.12||Math.abs(c)>h*0.12||
        x<0||x>pageWidth*1.1)continue;
