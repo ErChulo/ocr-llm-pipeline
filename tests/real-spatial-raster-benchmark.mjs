@@ -44,7 +44,7 @@ try{
    c.fillStyle='#fff';c.fillRect(0,0,canvas.width,canvas.height);
    if(rotated){c.translate(550,0);c.rotate(Math.PI/2);}
    c.fillStyle='#111';
-   c.font='bold 44px Arial';c.fillText('FICTIONAL FACTOR SCHEDULE',46,78);
+   c.font='bold 44px Arial';c.fillText('FICTIONAL BENEFIT SCHEDULE',46,78);
    c.font='bold 32px Arial';c.fillText('AGE',72,170);c.fillText('MONTHLY FACTOR',445,170);
    c.font='34px Arial';
    c.fillText('55',72,247);c.fillText('0.8750',445,247);
@@ -110,7 +110,7 @@ try{
 const ratio=(n,d)=>d?n/d:null;
 const report={
  cohort:'three-page-fictional-real-raster-tesseract-cell-groundtruth',
- source:'JPEG XObjects embedded in generated three-page PDF; Tesseract reads those original JPEG bytes',
+ sourceImage:'JPEG XObjects embedded in generated three-page PDF; Tesseract reads those original JPEG bytes',
  originalFileBytes:pdf.length,source:'entirely-fictional-generated',
  models:'actual offline Tesseract.js v7 and local pinned eng traineddata',
  provenance:'original JPEG pixel rectangles plus authored PDF page number; no PDF.js rerender equivalence claimed',
