@@ -1,0 +1,5 @@
+# Observed local real-model memory (benchmark only)
+
+The offline physical-document GGUF benchmark samples Linux `/proc` resident-set memory for the living Chromium process tree and the Node test runner every 300 milliseconds. It records per-case and full-run sampled peaks, number of samples, and per-case inference elapsed time alongside model loading duration in `tmp/real-corpus-report.json`. It prints an observed combined peak in MiB. Measurements are local to the CI runner, never sent to an API, and the sampler is **test code only**, excluded from the shipped standalone `file://` HTML.
+
+**Limitations:** The metric is summed process RSS, which can double-count shared pages. It can miss transient peaks between samples, cannot isolate actual WASM allocation, and is not the physical Windows workstation RAM that release acceptance requires. An unavailable Linux probe is reported as a benchmark failure, not silently replaced with zero. Production Gate 5 and Gate 8 remain open pending representative target-device peak memory, p50/p95 latency and a separate independent assessment.
