@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/full-playwright-acceptance.yml'
       - 'tests/browser-smoke.mjs'
+      - 'tests/fixtures/spatialCellMetrics.mjs'
+      - 'tests/spatialCellMetrics.test.mjs'
       - 'tests/real-corpus-benchmark.mjs'
       - 'tests/browser-accessibility.mjs'
       - 'src/ocrSpatial.ts'
