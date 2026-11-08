@@ -7,7 +7,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { statSync, mkdirSync, writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
-import { createSyntheticPdf, createScannedPdf, createAnnotatedPdf } from './pdf-fixture.mjs';
+import { createSyntheticPdf, createScannedPdf, createMultiPageScannedPdf, createAnnotatedPdf } from './pdf-fixture.mjs';
 import { zipSync, strToU8 } from 'fflate';
 
 mkdirSync('tmp', { recursive: true });
@@ -359,6 +359,119 @@ try {
   },null,2)+'\n');
 
 
+
+  // Multi-page, image-only holdout: each page has distinct fictional facts.
+  // Capture literal accuracy, wrong-page citations and row association
+  // separately. Only page-level PDF provenance is available for raster OCR.
+  const multiScanJpegs=await page.evaluate(()=>{
+    const plans=[
+      {title:'FICTIONAL PLAN ALPHA',rows:[['55','0.8750'],['65','1.0000']]},
+      {title:'FICTIONAL PLAN BETA',rows:[['60','0.8125'],['62','0.9375']]},
+      {title:'FICTIONAL PLAN GAMMA',rows:[['58','0.9063'],['64','0.9813']]}
+    ];
+    return plans.map((plan,i)=>{
+      const canvas=document.createElement('canvas');
+      canvas.width=1000;canvas.height=540;
+      const ctx=canvas.getContext('2d');
+      ctx.fillStyle=i===1?'#e8e8e8':'#fff';
+      ctx.fillRect(0,0,1000,540);
+      if(i===2){
+        ctx.translate(500,270);
+        ctx.rotate(1.25*Math.PI/180);
+        ctx.translate(-500,-270);
+      }
+      ctx.fillStyle=i===1?'#686868':'#111';
+      ctx.font='bold 41px Arial';
+      ctx.fillText(plan.title,52,78);
+      ctx.font='bold 34px Arial';
+      ctx.fillText('AGE',80,164);
+      ctx.fillText('MONTHLY FACTOR',440,164);
+      if(i===1){
+        ctx.strokeStyle='#b9b9b9';ctx.lineWidth=2;
+        for(const y of [188,287,384]){
+          ctx.beginPath();ctx.moveTo(52,y);ctx.lineTo(835,y);ctx.stroke();
+        }
+        ctx.beginPath();ctx.moveTo(385,184);ctx.lineTo(385,388);ctx.stroke();
+      }
+      ctx.font='36px Arial';
+      for(let r=0;r<plan.rows.length;r++){
+        const y=248+r*97;
+        ctx.fillText(plan.rows[r][0],80,y);
+        ctx.fillText(plan.rows[r][1],440,y);
+      }
+      ctx.font='25px Arial';
+      ctx.fillText('SYNTHETIC TEST ONLY',52,474);
+      return canvas.toDataURL('image/jpeg',i===1?0.58:0.88).split(',')[1];
+    });
+  });
+  const multiScanPdf=createMultiPageScannedPdf(multiScanJpegs.map(jpeg64=>({
+    jpeg:Buffer.from(jpeg64,'base64'),width:1000,height:540
+  })));
+  const multiScanName='fictional-three-page-scanned-schedules.pdf';
+  await filePicker.setInputFiles({
+    name:multiScanName,mimeType:'application/pdf',buffer:multiScanPdf
+  });
+  await page.locator('.card select').first().locator('option')
+    .filter({hasText:multiScanName}).waitFor({state:'attached',timeout:180000});
+  await page.locator('.card select').first().selectOption({label:multiScanName});
+  const multiReview=page.locator('.source-completeness');
+  await multiReview.getByText(/PDF page 3 before export/i).waitFor({timeout:180000});
+  const multipageText=await page.locator('.preview').innerText();
+  const pageMatches=[...multipageText.matchAll(/(?:^|\n)Page (\d+):\n([\s\S]*?)(?=\nPage \d+:\n|$)/g)];
+  assert.deepEqual(pageMatches.map(match=>Number(match[1])),[1,2,3],
+    'OCR text must keep all three parser-derived page labels in order');
+  const bodyByPage=Object.fromEntries(pageMatches.map(match=>[Number(match[1]),match[2]]));
+  const expectedPages=[
+    {page:1,rows:[['55','0.8750'],['65','1.0000']]},
+    {page:2,rows:[['60','0.8125'],['62','0.9375']]},
+    {page:3,rows:[['58','0.9063'],['64','0.9813']]}
+  ];
+  const hasLiteral=(body,token)=>new RegExp('(^|[^0-9.])'+
+    token.replaceAll('.','\\.')+'($|[^0-9.])').test(body);
+  const pageResults=expectedPages.map(entry=>{
+    const body=bodyByPage[entry.page];
+    const literals=entry.rows.flat();
+    const literalHits=Object.fromEntries(literals.map(value=>[value,hasLiteral(body,value)]));
+    // A candidate pair counts only when OCR keeps a row on one line.
+    // Cross-column matches elsewhere are NOT counted as correct table cells.
+    const rowPairHits=entry.rows.map(([age,factor])=>
+      new RegExp('(?:^|\\n)\\s*'+age+'\\s+'+factor.replace('.','\\.')+
+        '(?:\\s|$)').test(body));
+    const wrongPageLiterals=expectedPages.filter(other=>other.page!==entry.page)
+      .flatMap(other=>other.rows.flat())
+      .filter(value=>hasLiteral(body,value));
+    return {
+      page:entry.page,
+      literalsRecognized:Object.values(literalHits).filter(Boolean).length,
+      literalDenominator:literals.length,literalHits,
+      rowPairsRecognized:rowPairHits.filter(Boolean).length,
+      rowPairDenominator:entry.rows.length,rowPairHits,
+      wrongPageLiterals,characters:body.length
+    };
+  });
+  assert.ok(pageResults.every(result=>result.wrongPageLiterals.length===0),
+    'a unique fictional numeric fact must not be attributed to another PDF page');
+  assert.equal(await multiReview.locator('input[type="checkbox"]').count(),3,
+    'all three OCR pages independently require original-page review');
+  await page.getByRole('button',{name:'View original page 3'}).click();
+  await page.getByText(/Original PDF — page 3 of 3/).waitFor({timeout:20000});
+  await page.getByRole('button',{name:'Close PDF view'}).click();
+  assert.equal(external.length,0,'multipage OCR must not make network requests');
+  writeFileSync('tmp/fictional-multipage-scanned-pdf-ocr.json',JSON.stringify({
+    cohort:'independent three-page fictional scanned PDF',
+    source:'image-only JPEG XObjects in one real multi-page PDF',
+    evidenceStatus:'unverified_ocr_transcription',
+    citationPrecision:'parser-derived pdf-page-ocr; no cell or glyph boxes',
+    pageResults,wrongPageCitationErrors:pageResults.reduce(
+      (sum,item)=>sum+item.wrongPageLiterals.length,0),
+    networkRequests:external.length,
+    limitations:'A row-pair regex is only a diagnostic; visually verify original cell association and reading order.'
+  },null,2)+'\n');
+  console.log('REAL BROWSER: fictional multi-page OCR measured '+
+    pageResults.map(item=>item.literalsRecognized+'/'+item.literalDenominator+
+      ' literals, '+item.rowPairsRecognized+'/'+item.rowPairDenominator+
+      ' exact adjacent row pairs on page '+item.page).join('; ')+
+    '; three mandatory source reviews; zero wrong-page matches.');
 
   // Mixed-content PDFs can hide provisions in images despite a valid text
   // layer. Require the user's explicit original-page review before export.
