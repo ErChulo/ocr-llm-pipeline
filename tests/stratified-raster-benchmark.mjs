@@ -232,13 +232,15 @@ try{
   if(correctedImages[i]){
    orientationMetrics.attemptedPages++;
    orientationMetrics.expectedLiterals+=fixture.rows.flat().length;
+   const correctedWidth=fixture.rotation===180?source.width:source.height;
+   const correctedHeight=fixture.rotation===180?source.height:source.width;
    const corrected=await worker.recognize(correctedImages[i],{},
     {text:true,blocks:true});
    const correctedText=corrected.data.text||'';
    const observedWords=measuredTesseractWords(corrected.data.blocks,
-    source.height,source.width);
+    correctedWidth,correctedHeight);
    const correctedAssessment=assessSpatialOcrRows({
-    page,imageWidth:source.height,imageHeight:source.width,
+    page,imageWidth:correctedWidth,imageHeight:correctedHeight,
     text:correctedText,words:observedWords
    });
    if(correctedAssessment.status==='abstain')orientationMetrics.abstainedPages++;
@@ -278,7 +280,7 @@ try{
    orientationProbe={
     status:correctedAssessment.status,reason:correctedAssessment.reason,
     sourcePixelFrame:{width:source.width,height:source.height},
-    correctedPixelFrame:{width:source.height,height:source.width},
+    correctedPixelFrame:{width:correctedWidth,height:correctedHeight},
     authoredQuarterTurn:fixture.rotation,
     coordinateProvenance:'inverse of observed quarter-turn on actually measured OCR boxes',
     confidence:corrected.data.confidence??null,
