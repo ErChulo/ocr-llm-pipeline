@@ -13,6 +13,7 @@ import {physicalHoldoutCases} from './fixtures/physicalHoldoutCases.mjs';
 import {selectPhysicalHoldoutCases} from './fixtures/holdoutSelection.mjs';
 import {assessHoldoutProvenance} from './fixtures/physicalHoldoutProvenance.mjs';
 import { scoreCorpus } from '../src/syntheticQuality.ts';
+import {startLocalPeakRssSampler,findChromiumDescendantPid} from './fixtures/linuxMemorySampler.mjs';
 import assert from 'node:assert/strict';
 
 mkdirSync('tmp',{recursive:true});
@@ -41,6 +42,7 @@ const report={
 };
 const persist=()=>writeFileSync('tmp/real-corpus-report.json',JSON.stringify(report,null,2));
 const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-gpu']});
+const memorySampler=startLocalPeakRssSampler(findChromiumDescendantPid());
 const page=await browser.newPage({viewport:{width:1280,height:900}});
 const started=Date.now();
 let qualityFailure=false;
@@ -64,6 +66,7 @@ try{
       status:'pending',elapsedMs:0,schemaValid:false,attributionAbstained:false,actual:{},errors:[]};
     report.cases.push(item);
     const phaseStarted=Date.now();
+    memorySampler.beginCase();
     try{
       await page.getByRole('button',{name:'Documents',exact:true}).click();
       await page.locator('input[type="file"][accept*=".txt"]').setInputFiles(sample.upload);
@@ -107,6 +110,7 @@ try{
       break;
     }finally{
       item.elapsedMs=Date.now()-phaseStarted;
+      item.observedRss=memorySampler.endCase();
       console.log('[fictional corpus]',item.id,item.status,item.elapsedMs,'ms');
       persist();
     }
@@ -148,16 +152,27 @@ try{
   report.status=qualityFailure?'runtime_error':
     report.cases.some(item=>item.status!=='measured')?'incomplete':'measured_not_certified';
   report.externalRequestCount=report.externalRequests.length;
+  report.observedMemory=memorySampler.snapshot();
+  if(process.platform==='linux'&&
+    (!report.observedMemory.available||report.observedMemory.samples<1)){
+    qualityFailure=true;
+    report.status='runtime_error';
+    report.memoryInstrumentationFailure='Chromium Linux process-tree RSS unavailable.';
+  }
   assert.equal(report.externalRequestCount,0,'Browser must make zero external requests.');
   console.log('REAL MODEL CORPUS RESULTS:',JSON.stringify({
     cases:report.cases.length,exactCases:report.exactCases,
     micro:report.micro,status:report.status,elapsedMs:report.elapsedMs,
     adversarialRawWrongValueCount:report.adversarialRawWrongValueCount,
     adversarialWrongValueAbstentions:report.adversarialWrongValueAbstentions,
+    peakObservedCombinedRssMiB:report.observedMemory.peakObservedCombinedRssBytes===null?null:
+      Number((report.observedMemory.peakObservedCombinedRssBytes/1048576).toFixed(1)),
+    observedMemorySamples:report.observedMemory.samples,
     locationAnchoredFields:report.cases.reduce((n,c)=>n+(c.literalProvenance?.exactAndLocatedCount||0),0)
   }));
   await page.screenshot({path:'tmp/real-corpus-final.png',fullPage:true}).catch(()=>{});
 }finally{
+  report.observedMemory=memorySampler.stop();
   persist();
   await browser.close();
 }
