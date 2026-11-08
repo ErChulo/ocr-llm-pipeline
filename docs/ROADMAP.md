@@ -1,5 +1,7 @@
 # Roadmap — beta validation
 
+- [x] **Spatial OCR ambiguity hardening (PR #78):** fail closed when measured numeric cells intervene between candidate AGE and FACTOR words; preserve all original measured boxes and page labels. Added focused fictional tests and full Playwright CI triggers for spatial-source changes. [Verified full Playwright](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42512646195). **Still open:** independent cell-level ground truth, complex multi-column/rotated layouts, calibration and false-positive abstention rates.
+
 **Version:** 0.3.0-beta.1. CI verification is not security certification or workplace approval.
 
 ## Implemented and source-tested
