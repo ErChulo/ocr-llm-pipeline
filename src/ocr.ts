@@ -2,12 +2,13 @@
  * Self-contained offline English OCR. No network, local English traineddata.
  * All object URLs are created from code/data embedded in the HTML bundle.
  */
-import { createWorker, OEM } from 'tesseract.js';
+import { createWorker, OEM, PSM } from 'tesseract.js';
+import { chooseOcrCandidate } from './ocrCandidate.ts';
 import tesseractWorker from 'virtual:ocr-worker';
 import tesseractCore from 'virtual:ocr-core';
 import englishDataUri from 'virtual:ocr-eng';
 
-export type OcrResult = { text:string; confidence:number; width:number; height:number };
+export type OcrResult = { text:string; confidence:number; width:number; height:number; strategy?:'default'|'sparse' };
 
 let pendingWorker:Promise<Awaited<ReturnType<typeof createWorker>>>|null=null;
 let activeUrls:string[]=[];
@@ -82,9 +83,31 @@ export async function recognizeCanvas(canvas:HTMLCanvasElement):Promise<OcrResul
   sizeOk(canvas.width,canvas.height);
   const worker=await getWorker();
   const {data}=await worker.recognize(canvas,{}, {text:true,blocks:true});
-  const text=(data.text||'').trim();
-  const confidence=Number.isFinite(data.confidence)?Math.max(0,Math.min(100,data.confidence)):0;
-  return {text,confidence,width:canvas.width,height:canvas.height};
+  const baseline={
+    text:(data.text||'').trim(),
+    confidence:Number.isFinite(data.confidence)?Math.max(0,Math.min(100,data.confidence)):0
+  };
+  // A second, independent segmentation may recover omitted table entries.
+  // Never generate missing numbers or merge snippets between passes.
+  let alternative:typeof baseline|null=null;
+  try{
+    await worker.setParameters({tessedit_pageseg_mode:PSM.SPARSE_TEXT});
+    const {data:other}=await worker.recognize(canvas,{}, {text:true,blocks:false});
+    alternative={
+      text:(other.text||'').trim(),
+      confidence:Number.isFinite(other.confidence)?Math.max(0,Math.min(100,other.confidence)):0
+    };
+  }catch(error){
+    console.warn('Secondary local OCR segmentation failed; primary OCR retained.',error);
+  }finally{
+    // Workers are shared across PDF pages and image imports.
+    await worker.setParameters({tessedit_pageseg_mode:PSM.AUTO});
+  }
+  const choice=alternative?chooseOcrCandidate(baseline,alternative):{
+    selected:'default' as const,reason:'unchanged' as const
+  };
+  const selected=choice.selected==='sparse'&&alternative?alternative:baseline;
+  return {...selected,width:canvas.width,height:canvas.height,strategy:choice.selected};
 }
 export async function recognizeImage(file:File):Promise<OcrResult>{
   if(file.size===0||file.size>20*1024*1024)throw new Error('Image must be between 1 byte and 20 MB.');
