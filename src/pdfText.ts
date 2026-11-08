@@ -9,6 +9,7 @@ import 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 import type { SourceDocument, SourceRecord, SourceTextSpan, SourceReviewIssue } from './pipeline.ts';
 import { ocrReviewIssue } from './ocrReview.ts';
 import { countAmbiguousOcrNumericTokens } from './ocrNumericReview.ts';
+import { hasMalformedNumericTableRow, preferFallbackForMalformedRows } from './ocrResolutionChoice.ts';
 import { detectPdfLayoutRisks } from './pdfLayout.ts';
 
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
@@ -155,19 +156,40 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
            original.width<=0||original.height<=0){
           throw new Error('Invalid PDF page geometry for OCR at page '+pageNo+'.');
         }
-        // Limit both dimensions and total canvas pixels before Tesseract.
-        const scale=Math.min(2.8,2800/Math.max(original.width,original.height),
-          Math.sqrt(MAX_OCR_CANVAS_PIXELS/(original.width*original.height)));
-        const viewport=page.getViewport({scale});
-        const canvas=globalThis.document.createElement('canvas');
-        canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
-        if(canvas.width<1||canvas.height<1||canvas.width*canvas.height>5_000_000){
-          throw new Error('PDF OCR canvas exceeds the local image safety limit.');
+        // Render variants are obtained from the SAME PDF.js page. Neither
+        // pass may infer page numbers or glyph/cell source coordinates.
+        const renderAndRecognize=async(cap:number,maxSide:number):Promise<OcrResult>=>{
+          const scale=Math.min(cap,maxSide/Math.max(original.width,original.height),
+            Math.sqrt(MAX_OCR_CANVAS_PIXELS/(original.width*original.height)));
+          const viewport=page.getViewport({scale});
+          const canvas=globalThis.document.createElement('canvas');
+          canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
+          if(canvas.width<1||canvas.height<1||canvas.width*canvas.height>5_000_000){
+            throw new Error('PDF OCR canvas exceeds the local image safety limit.');
+          }
+          const context=canvas.getContext('2d',{willReadFrequently:true});
+          if(!context)throw new Error('Canvas rendering is unavailable for OCR.');
+          await page.render({canvas,canvasContext:context,viewport}).promise;
+          return ocr(canvas);
+        };
+        const primary=await renderAndRecognize(2.8,2800);
+        // Malformed multi-decimal numeric rows may come from rasterization.
+        // A bounded second OCR pass is used ONLY when it independently reads
+        // a valid alternative while preserving all already observed pairs.
+        if(!hasMalformedNumericTableRow(primary.text))return primary;
+        try{
+          const lower=await renderAndRecognize(2.4,2400);
+          if(preferFallbackForMalformedRows(primary,lower)){
+            warnings.push('PDF page '+pageNo+
+              ' selected a second local OCR transcription after a malformed numeric row. '+
+              'This is unverified OCR, not a corrected or authenticated value. Compare the original page.');
+            return lower;
+          }
+        }catch{
+          warnings.push('PDF page '+pageNo+
+            ' alternate OCR pass failed. The original unverified transcription was retained.');
         }
-        const context=canvas.getContext('2d',{willReadFrequently:true});
-        if(!context)throw new Error('Canvas rendering is unavailable for OCR.');
-        await page.render({canvas,canvasContext:context,viewport}).promise;
-        return ocr(canvas);
+        return primary;
       };
       if(text.length<MIN_PAGE_TEXT_LENGTH){
         if(!ocr)throw new Error('Page '+pageNo+' has no extractable text. OCR is required; no partial extraction was saved.');
