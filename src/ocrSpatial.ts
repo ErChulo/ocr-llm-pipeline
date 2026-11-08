@@ -130,7 +130,7 @@ export function assessSpatialOcrRows(
   // accounting, fractional, scientific, or localized-sign notation.
   // This is deliberately conservative: a false abstention is safer than
   // asserting a cell pairing that the observed geometry cannot prove.
-  const anyNumeric=/^\(?[+\-−–]?\s*(?:[$€£]\s*)?\d[\d,./]*(?:[eE][+\-]?\d+)?\s*%?\)?$/;
+  const anyNumeric=/^\(?[+\-−–]?\s*(?:[$€£]\s*)?(?:\d[\d,./]*|\.\d+)(?:[eE][+\-]?\d+)?\s*%?\)?$/;
   const intervening=provisional.some(({age,factor})=>words.some(word=>
     word!==age && word!==factor && anyNumeric.test(word.text) &&
     // Any measured numeric box intersecting the age-to-factor corridor,

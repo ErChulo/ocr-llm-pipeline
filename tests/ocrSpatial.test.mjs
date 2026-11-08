@@ -124,3 +124,14 @@ test('measured skewed headers never bypass intervening numeric-column abstention
  assert.equal(v.status,'abstain');
  assert.equal(v.reason,'intervening-numeric-column');
 });
+
+test('leading-decimal intervening cells fail closed rather than yielding false age/factor provenance',()=>{
+ for(const token of ['.75','-.75','+.75','$.75','(.75)','−.75','.75%','.75e2']){
+  const blocker=word(token,290,239,62);
+  const v=assessSpatialOcrRows({...args,words:[...original,blocker],
+    text:args.text+'\\n'+token});
+  assert.equal(v.status,'abstain',token);
+  assert.equal(v.reason,'intervening-numeric-column',token);
+  assert.deepEqual(v.pairs,[],token);
+ }
+});

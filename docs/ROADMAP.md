@@ -119,3 +119,8 @@ Individual inputs are bounded to 20 MB; PDF page limit is 300, extracted PDF tex
 - [x] Block external JSON Schema references, dynamic anchors, unsupported dialects and regex rules; enforce bounded schema complexity.
 - [x] Add user-triggered offline schema preflight; browser tests exercise valid and malicious schemas under `file://`.
 - [ ] Revisit safe schema pattern handling with a regex engine that cannot cause exponential backtracking and formal security review.
+
+
+### Follow-up: leading-decimal intervening-column safety (PR #101)
+- Guard against measured numeric third-column values beginning with a decimal point; regression checks must abstain on the entire ambiguous age/factor table. No new coordinates or implied cell source locations are generated.
+- Still outstanding: independently blinded raster-cell recall/precision, authoritative source applicability, actual three-model adversarial correctness, and authorized offline workplace testing. No production promotion.
