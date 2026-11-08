@@ -38,3 +38,23 @@ The report also preserves original-source completeness warnings for hidden conte
 Synthetic source integrity tests are included in npm test. Build the single offline HTML using npm run build. The [physical holdout workflow](https://github.com/ErChulo/ocr-llm-pipeline/actions/workflows/physical-holdout-gguf.yml) runs the real checksum-verified 0.5B GGUF in Chromium file:// mode and uploads a fictional-only diagnostic report.
 
 **Do not compare physical-holdout F1 with the original eight text cases as a like-for-like accuracy change.** This is a separate, deliberately harder cohort. A broader annotated scanned/mixed-layout corpus, independent privacy/security review, and authorized managed PBGC workstation testing remain open production gates.
+
+## First real physical-holdout measurements — November 8, 2026
+
+Two checksum-verified official Qwen2.5 GGUF models completed the same eight physical-document cases through standalone offline Chromium, with **zero external browser requests**, all 8 candidate JSON outputs schema-valid for each model, and no fabricated benchmark passes.
+
+| Pipeline model | Exact fields | Strict precision / recall / F1 | Entirely exact documents | Elapsed |
+|---|---:|---:|---:|---:|
+| Qwen2.5-0.5B-Instruct Q4_K_M | 16/18 | 88.89% | 6/8 | 503.1 s |
+| Qwen2.5-1.5B-Instruct Q4_K_M | 17/18 | 94.44% | 7/8 | 455.7 s |
+
+Sources: [actual 0.5B CI run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42475714744) and [actual 1.5B CI run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42476580683). Models ran on separate CI executions; the difference in elapsed time is **not** controlled hardware performance evidence.
+
+**Substantive failures:**
+
+- **0.5B only:** For DOCX QPSA eligibility it returned *a surviving spouse*, dropping the required *vested participant* condition. The 1.5B result retained the entire source phrase.
+- **Both models:** A CSV source contained a genuine plan normal retirement age of **65** and an instruction-like untrusted appendix mentioning **99**. Both models returned normal_age = **99**. That value has a literal text match but **no match at the annotated governing CSV row**.
+
+Correct values were found at annotated source locations for 16/18 fields (0.5B) and 17/18 fields (1.5B). PDF layout and hidden Excel content produced independent original-source review issues. These metrics describe a **tiny fictional holdout**, not factual or actuarial certification.
+
+The subsequent [source-instruction review guard](https://github.com/ErChulo/ocr-llm-pipeline/pull/47) now requires explicit original-document acknowledgement for instruction-like passages, without rewriting the answer. It does **not** prove the wrong age is automatically detected or corrected: field applicability still requires a human decision.
