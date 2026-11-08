@@ -14,6 +14,7 @@ import {createMultiPageScannedPdf} from './pdf-fixture.mjs';
 import {measuredTesseractWords} from '../src/ocrWords.ts';
 import {assessSpatialOcrRows} from '../src/ocrSpatial.ts';
 import {reorientedBoxToOriginalPixels} from '../src/ocrGeometryRotation.ts';
+import {selectMeasuredOrientationCandidates} from './fixtures/orientationCandidateSelection.mjs';
 import {measuredWordInsideCell,MIN_WORD_REGION_COVERAGE} from './fixtures/spatialCellMetrics.mjs';
 
 const cases=[
@@ -130,25 +131,31 @@ try{
   }
   const quality=s.kind==='blur-jpeg'?0.56:low?0.55:0.92;
   const jpeg=drawn.toDataURL('image/jpeg',quality).split(',')[1];
-  let correctedJpeg=null;
+  let correctedJpeg=null,sweepJpegs=null;
   if(s.rotation){
-   // A test-only probe: decode the ACTUAL JPEG encoded for this PDF page,
-   // undo its authored quarter-turn, then independently measure OCR again.
-   // Neither raster nor its geometry is selected by the deployed application.
+   // Decode ORIGINAL JPEG bytes and prepare every possible quarter-turn.
+   // The blind selector below receives all measured OCR candidates; it does
+   // NOT receive the authored correct orientation or reference cell values.
    const decoded=new Image();
    decoded.src='data:image/jpeg;base64,'+jpeg;
    await decoded.decode();
-   const corrected=document.createElement('canvas');
-   corrected.width=1100;corrected.height=550;
-   const cc=corrected.getContext('2d');
-   cc.fillStyle='#fff';cc.fillRect(0,0,1100,550);
-   if(s.rotation===90){cc.translate(0,550);cc.rotate(-Math.PI/2);}
-   else if(s.rotation===180){cc.translate(1100,550);cc.rotate(Math.PI);}
-   else{cc.translate(1100,0);cc.rotate(Math.PI/2);}
-   cc.drawImage(decoded,0,0);
-   correctedJpeg=corrected.toDataURL('image/jpeg',0.96).split(',')[1];
+   sweepJpegs={};
+   for(const turn of [90,180,270]){
+    const corrected=document.createElement('canvas');
+    corrected.width=turn===180?drawn.width:drawn.height;
+    corrected.height=turn===180?drawn.height:drawn.width;
+    const cc=corrected.getContext('2d');
+    cc.fillStyle='#fff';
+    cc.fillRect(0,0,corrected.width,corrected.height);
+    if(turn===90){cc.translate(0,corrected.height);cc.rotate(-Math.PI/2);}
+    else if(turn===180){cc.translate(corrected.width,corrected.height);cc.rotate(Math.PI);}
+    else{cc.translate(corrected.width,0);cc.rotate(Math.PI/2);}
+    cc.drawImage(decoded,0,0);
+    sweepJpegs[turn]=corrected.toDataURL('image/jpeg',0.96).split(',')[1];
+   }
+   correctedJpeg=sweepJpegs[s.rotation];
   }
-  return {jpeg,correctedJpeg,width:drawn.width,height:drawn.height};
+  return {jpeg,correctedJpeg,sweepJpegs,width:drawn.width,height:drawn.height};
  })),cases);
  await page.close();
 }finally{await browser.close();}
@@ -158,6 +165,9 @@ const images=rasters.map(x=>({
 }));
 const correctedImages=rasters.map(r=>r.correctedJpeg?
  Buffer.from(r.correctedJpeg,'base64'):null);
+const sweepImages=rasters.map(r=>Object.fromEntries(
+ Object.entries(r.sweepJpegs||{}).map(([turn,jpeg])=>[turn,Buffer.from(jpeg,'base64')])
+));
 const pdf=createMultiPageScannedPdf(images);
 assert.equal(pdf.subarray(0,5).toString(),'%PDF-');
 const task=getDocument({data:Uint8Array.from(pdf),useWasm:false,disableFontFace:true});
