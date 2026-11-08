@@ -390,7 +390,7 @@ test('XLSX conflicting or repeated coordinates are rejected before any citation 
 
 test('XLSX rejects cells outside the actual worksheet coordinate grid',()=>{
  const ns='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
- const makeSheet=cell=>'<worksheet xmlns="'+ns+'"><sheetData><row r="'+(cell==='XFD1048576'?'1048576':'1')+'">'+
+ const makeSheet=cell=>'<worksheet xmlns="'+ns+'"><sheetData><row r="'+(cell.match(/[0-9]+$/)?.[0]||'1')+'">'+
   '<c r="'+cell+'"><v>65</v></c></row></sheetData></worksheet>';
  for(const cell of ['XFE1','ZZZ1','A1048577']){
    assert.throws(()=>parseXlsx('outside.xlsx',xlsx({sheet:makeSheet(cell)})),
