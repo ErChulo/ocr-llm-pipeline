@@ -548,6 +548,15 @@ export default function App() {
                 </p>
               </section>}
               <pre className="preview">{active.text.slice(0, 25000)}</pre>
+              {(active.records??[]).some(record=>record.ocrSpatial) && <details className="ocr-spatial-diagnostics">
+                <summary>Experimental measured OCR table geometry — not verified</summary>
+                <p className="help">These are only proposed row associations from Tesseract word rectangles on the parser-derived PDF page. They are not verified cells, source citations, or approved extracted facts. Inspect the original PDF before relying on any value.</p>
+                <pre aria-label="Measured OCR spatial diagnostics">{JSON.stringify(
+                  (active.records??[]).filter(record=>record.ocrSpatial).map(record=>({
+                    page:record.location.page,assessment:record.ocrSpatial
+                  })),null,2
+                )}</pre>
+              </details>
 
 
               {correctablePages.length > 0 && <section className="ocr-correction">
