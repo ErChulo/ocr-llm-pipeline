@@ -40,3 +40,18 @@ test('reject invalid positions, bad confidence, or untrusted complexity',()=>{
   assert.equal(assessSpatialOcrRows({...args,text:'x'.repeat(250001)}).status,'abstain');
   assert.equal(assessSpatialOcrRows({...args,words:[...original,...new Array(1000).fill(original[0])]}).status,'abstain');
 });
+
+test('abstain when an observed numeric service column separates age and factor',()=>{
+  const service=word('20',290,239,40);
+  const other=word('17',290,336,40);
+  const v=assessSpatialOcrRows({...args,words:[...original,service,other],
+    text:'AGE SERVICE MONTHLY FACTOR\\n58 20 0.9063\\n64 17 0.9813'});
+  assert.equal(v.status,'abstain');
+  assert.equal(v.reason,'intervening-numeric-column');
+  assert.deepEqual(v.pairs,[]);
+});
+test('non-numeric wording between measured columns does not fabricate a cell',()=>{
+  const v=assessSpatialOcrRows({...args,words:[...original,word('NOTE',290,239,55)]});
+  assert.equal(v.status,'candidates');
+  assert.equal(v.pairs.length,2);
+});
