@@ -96,3 +96,23 @@ test('fillable PDF widget values are not fabricated as native text-layer evidenc
  assert.equal(issue.page,1);
  assert.match(issue.message,/form field values/);
 });
+
+test('compact three-row PDF table gets mandatory visual review without fabricated cell coordinates',async()=>{
+ const pdf=createSyntheticPdf([[
+  {text:'Age',x:72,y:720},{text:'Benefit',x:145,y:720},
+  {text:'55',x:72,y:690},{text:'0.8750',x:145,y:690},
+  {text:'65',x:72,y:660},{text:'1.0000',x:145,y:660}
+ ]]);
+ const parsed=await parsePdf('fictional-compact-table.pdf',new Uint8Array(pdf));
+ assert.equal(parsed.records.length,1);
+ assert.equal(parsed.records[0].location.kind,'pdf-page');
+ assert.ok(parsed.reviewIssues?.some(x=>x.id==='pdf:layout:1'&&x.page===1));
+ assert.ok(parsed.warnings.some(x=>x.includes('aligned_tabular_cells')));
+ assert.match(parsed.text,/0\.8750/);
+ assert.match(parsed.text,/1\.0000/);
+ const spans=parsed.records[0].textSpans;
+ assert.ok(spans.every(s=>s.precision==='pdf-text-item-envelope'));
+ assert.ok(spans.some(s=>parsed.text.slice(s.start,s.end)==='0.8750'));
+ assert.ok(spans.every(s=>s.start>=0&&s.end<=parsed.text.length));
+});
+
