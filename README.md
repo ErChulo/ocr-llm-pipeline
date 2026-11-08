@@ -9,6 +9,7 @@
 
 ## What is implemented
 
+- **Source-instruction warning:** imported texts that appear to direct the AI model (for example, to ignore its instructions or return a chosen value) require explicit original-source review before export. The scanner works offline, preserves verbatim source evidence and does not guarantee injection resistance.
 - **Adversarial extraction guards:** refuse duplicate JSON object keys and restore only uniquely corroborated exact percentage wording from the originating source section; preserve the model output in the audit and require human source review.
 - **Source-exact date wording:** when a model-formatted date uniquely matches an unambiguous date literal inside the same source section, the extraction candidate uses the original wording and retains the model's initial value in the review audit. Conflicts or ambiguous formats stay unchanged; export still requires independent reviewer confirmation.
 - **Reproducible extraction settings:** factual JSON extraction uses greedy sampling (temperature 0, top-p 1), while chat retains separate conversational defaults; human source verification remains mandatory.

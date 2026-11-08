@@ -4,6 +4,7 @@
  * parses or partially overwrite the source-review context when a file fails.
  */
 import type { SourceDocument, ImportResult } from './pipeline.ts';
+import {withSourceInstructionReview} from './sourceInstructionReview.ts';
 
 const MAX_FILES_PER_PICK=20;
 const MAX_SESSION_DOCUMENTS=200;
@@ -72,7 +73,8 @@ export async function importDocumentBatch(
        !imported.documents.length)throw new Error(
       'File '+(i+1)+' returned no source documents. No files were imported.'
     );
-    for(const doc of imported.documents){
+    for(const rawDoc of imported.documents){
+      const doc=withSourceInstructionReview(rawDoc);
       validateDoc(doc);
       const id=key(doc.id),name=key(doc.name);
       if(ids.has(id)||names.has(name)){
