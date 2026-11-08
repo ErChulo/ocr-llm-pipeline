@@ -18,10 +18,27 @@ const WARNING='Possible instructions to an AI extractor were found inside source
 const overridePrompt=/\b(?:ignore|disregard|override|bypass|forget)\b[^\r\n]{0,96}\b(?:system|developer|extraction|model|prompt)\b[^\r\n]{0,40}\b(?:instructions?|rules?|prompts?|messages?)\b/i;
 const previousPrompt=/\b(?:ignore|disregard|override)\b[^\r\n]{0,50}\b(?:previous|prior)\b[^\r\n]{0,30}\b(?:instructions?|messages?|prompts?)\b/i;
 const impersonateRole=/\b(?:you\s+are\s+now|act\s+as|pretend\s+to\s+be)\b[^\r\n]{0,50}\b(?:assistant|system|developer)\b/i;
+const modelRoleEnvelope=/<\|\s*(?:im_start|start_header_id)\s*\|>\s*(?:system|developer|assistant)\b/i;
+const forgedRoleLine=/(?:^|\n)[ \t]*(?:#{1,6}[ \t]*)?(?:system|developer)[ \t]*:[ \t]*(?:ignore|disregard|override|bypass)\b/im;
+
+// Normalize ONLY a temporary screening view. Original source text, source
+// offsets, OCR transcription, SHA-256 fingerprints and evidence never change.
+// The bounded instruction patterns below still determine whether to warn.
+function instructionScreeningView(text:string):string {
+  return text.replace(/[\u200B-\u200D\u2060\uFEFF]/g,'')
+    .replace(/[\r\n\t\f\v]+/g,' ');
+}
+
 
 export function containsSourceInstructionRisk(text:string):boolean {
   if(typeof text!=='string'||!text)return false;
-  return overridePrompt.test(text)||previousPrompt.test(text)||impersonateRole.test(text);
+  // Structured role tokens are a strong prompt-injection signal even when the
+  // adjacent command is separated by a newline. Plain legal references to
+  // "the system" or "a developer" do not meet this condition.
+  if(modelRoleEnvelope.test(text)||forgedRoleLine.test(text))return true;
+  const screening=instructionScreeningView(text);
+  return overridePrompt.test(screening)||previousPrompt.test(screening)||
+    impersonateRole.test(screening)||modelRoleEnvelope.test(screening);
 }
 
 export function withSourceInstructionReview(doc:SourceDocument):SourceDocument {
