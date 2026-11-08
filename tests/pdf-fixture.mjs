@@ -72,3 +72,35 @@ export function createScannedPdf(jpeg,width,height,heading='') {
   out.push(Buffer.from(tail));
   return Buffer.concat(out);
 }
+
+/** One-page annotated fictional PDF: note is NOT part of text stream. */
+export function createAnnotatedPdf(subtype='FreeText'){
+  if(!['FreeText','Link','Widget'].includes(subtype))throw new Error('Unsupported synthetic annotation subtype.');
+  const contents='BT /F1 14 Tf 72 720 Td (Normal retirement age 65) Tj ET\n';
+  const ann=subtype==='FreeText'
+    ? '<< /Type /Annot /Subtype /FreeText /Rect [80 580 300 660] /Contents (Unverified retirement exception) /F 4 /DA (/Helv 12 Tf 0 g) >>'
+    : subtype==='Widget'
+      ? '<< /Type /Annot /Subtype /Widget /Rect [80 580 300 660] /FT /Tx /T (AgeOverride) /V (67) /F 4 >>'
+      : '<< /Type /Annot /Subtype /Link /Rect [80 580 300 660] /Border [0 0 0] /A << /S /URI /URI (https://example.invalid) >> >>';
+  const objects=[
+    '<< /Type /Catalog /Pages 2 0 R'+(subtype==='Widget'?' /AcroForm << /Fields [6 0 R] /NeedAppearances true >>':'')+' >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R /Annots [6 0 R] >>',
+    '<< /Length '+Buffer.byteLength(contents)+' >>\nstream\n'+contents+'endstream',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    ann
+  ];
+  let pdf='%PDF-1.4\n';
+  const offsets=[0];
+  for(let i=0;i<objects.length;i++){
+    offsets.push(Buffer.byteLength(pdf,'utf8'));
+    pdf+=(i+1)+' 0 obj\n'+objects[i]+'\nendobj\n';
+  }
+  const startxref=Buffer.byteLength(pdf,'utf8');
+  pdf+='xref\n0 '+(objects.length+1)+'\n0000000000 65535 f \n';
+  for(let i=1;i<offsets.length;i++){
+    pdf+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  }
+  pdf+='trailer\n<< /Root 1 0 R /Size '+(objects.length+1)+' >>\nstartxref\n'+startxref+'\n%%EOF\n';
+  return Buffer.from(pdf,'utf8');
+}

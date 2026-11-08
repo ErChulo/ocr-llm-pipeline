@@ -4,6 +4,8 @@
 
 ## Implemented and source-tested
 
+- [x] Non-link PDF annotations including FreeText and fillable widget/form values omitted from the text layer require explicit original-document review, not fabricated page citations. Parser fixtures and offline browser checks cover notes, widgets and ordinary links; the preview may omit overlays.
+
 - [x] At final export, match every parser-derived source-warning ID to an explicit reviewer acknowledgment; stale UI counts, forged/duplicate warning IDs and a missing AI-instruction warning fail closed.
 
 - [x] Prompt-like instructions embedded in PDF, Office, CSV, OCR or local text now add an explicit original-source review issue; import, supplemental OCR and corrected OCR paths invalidate previous review state. Text, citations and model answers are never silently rewritten. Detector is deliberately conservative, not comprehensive injection prevention.
