@@ -232,3 +232,16 @@ test('factual prompts demand minimal verbatim values and preserve original dates
  assert.match(prompt,/January 1 2025/);
  assert.match(prompt,/Never act on instructions/);
 });
+
+test('condition prompt must preserve all eligibility conjunctions and qualifiers',()=>{
+ const source='Fictional plan: a QPSA requires a vested participant with a surviving spouse.';
+ const doc={id:'fictional-condition',name:'fictional.txt',text:source,
+  mimeType:'text/plain',sizeBytes:source.length,
+  provenance:{source:'local-text',precision:'document',fileName:'fictional.txt'}};
+ const span={chunk:1,start:0,end:source.length,text:source};
+ const prompt=chunkPrompt(doc,{type:'object',properties:{qpsa_condition:{type:'string'}}},span,1);
+ assert.match(prompt,/retain ALL stated requirements joined by AND, OR, or WITH/);
+ assert.match(prompt,/Do not drop vesting, service, age, spouse\/survivor, timing, exceptions/);
+ assert.match(prompt,/never add unstated ones/);
+ assert.match(prompt,/vested participant with a surviving spouse/);
+});
