@@ -284,3 +284,85 @@ test('deeply nested XLSX XML is rejected before extracting a partial value',()=>
    '<sheetData>'+deep+'</sheetData></worksheet>';
  assert.throws(()=>parseXlsx('deep.xlsx',xlsx({sheet:xml})),/Office XML exceeds supported nesting depth/);
 });
+
+
+test('DOCX shape and foreign-namespace text cannot masquerade as a visible paragraph',async()=>{
+ const ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+ const xml='<w:document xmlns:w="'+ns+'" xmlns:x="urn:synthetic-untrusted">'+
+   '<w:body><w:p>'+
+   '<w:r><w:t>Normal retirement age 65</w:t></w:r>'+
+   '<w:r><x:t>Normal retirement age 99</x:t></w:r>'+
+   '<w:r><w:drawing><w:txbxContent><w:p><w:r><w:t>Normal retirement age 98</w:t></w:r>'+
+   '</w:p></w:txbxContent></w:drawing></w:r>'+
+   '</w:p></w:body></w:document>';
+ const parsed=parseDocx('fictional-shapes.docx',docx(xml));
+ assert.match(parsed.text,/Paragraph 1: Normal retirement age 65/);
+ assert.doesNotMatch(parsed.text,/98|99/);
+ assert.equal(parsed.records.length,1);
+ assert.deepEqual(parsed.records[0].location,{kind:'docx-paragraph',paragraph:1});
+ assert.ok(parsed.reviewIssues.some(x=>x.id==='docx:drawings'));
+ assert.ok(parsed.reviewIssues.some(x=>x.id==='docx:foreign-text'));
+ const {auditLiteralEvidence}=await import('../src/evidence.ts');
+ const {collectChunkCandidates,resolveCandidateValues}=await import('../src/chunkExtraction.ts');
+ const {evaluateExportGate}=await import('../src/exportGate.ts');
+ assert.equal(auditLiteralEvidence(parsed,{age:99})[0].status,'missing');
+ assert.equal(auditLiteralEvidence(parsed,{age:98})[0].status,'missing');
+ const chunks=[{chunk:1,start:0,end:parsed.text.length,text:parsed.text}];
+ const audit=collectChunkCandidates(parsed,chunks,[{age:65}]);
+ const value=resolveCandidateValues(audit).data;
+ const checks=auditLiteralEvidence(parsed,value,audit);
+ assert.equal(checks[0].status,'match');
+ const gate={document:parsed,audit,value,schemaValid:true,busy:false,
+   evidence:checks,selectedEvidence:{'/age':0},confirmedEvidence:{'/age':true},
+   conflictsUnresolved:0,privacyRequired:false,privacyReviewed:false,
+   sourceIssuesUnreviewed:parsed.reviewIssues.length};
+ assert.equal(evaluateExportGate(gate).allowed,false,'omitted document content must be reviewed');
+ assert.equal(evaluateExportGate({...gate,sourceIssuesUnreviewed:0}).allowed,true);
+});
+
+test('DOCX drawings in headers and notes also require original-document review',()=>{
+ const ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+ const content='<w:document xmlns:w="'+ns+'"><w:body>'+
+   '<w:p><w:r><w:t>Normal age 65</w:t></w:r></w:p>'+
+   '</w:body></w:document>';
+ const header='<w:hdr xmlns:w="'+ns+'"><w:p><w:r><w:t>Header title</w:t></w:r>'+
+   '<w:r><w:drawing><w:txbxContent><w:p><w:r><w:t>Hidden shape 99</w:t></w:r></w:p>'+
+   '</w:txbxContent></w:drawing></w:r></w:p></w:hdr>';
+ const source=zipped({
+  '[Content_Types].xml':'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>',
+  'word/document.xml':content,
+  'word/header1.xml':header
+ });
+ const parsed=parseDocx('fictional-header.docx',source);
+ assert.match(parsed.text,/Header title/);
+ assert.doesNotMatch(parsed.text,/Hidden shape 99/);
+ assert.ok(parsed.reviewIssues.some(x=>x.id==='docx:drawings'));
+});
+test('DOCX with only unreadable drawing text must not claim any source evidence',()=>{
+ const ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+ const xml='<w:document xmlns:w="'+ns+'"><w:body><w:p><w:drawing>'+
+   '<w:txbxContent><w:p><w:r><w:t>Age 65</w:t></w:r></w:p></w:txbxContent>'+
+   '</w:drawing></w:p></w:body></w:document>';
+ assert.throws(()=>parseDocx('shape-only.docx',docx(xml)),/No readable text/);
+});
+
+test('XLSX phonetic guides are excluded from shared and inline cell values',async()=>{
+ const ns='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+ const shared='<sst xmlns="'+ns+'"><si><t>Normal 65</t>'+
+   '<rPh sb="0" eb="9"><t>Override 99</t></rPh></si></sst>';
+ const sheet='<worksheet xmlns="'+ns+'"><sheetData><row r="1">'+
+   '<c r="A1" t="s"><v>0</v></c>'+
+   '<c r="B1" t="inlineStr"><is><t>Vesting 10</t>'+
+   '<rPh sb="0" eb="10"><t>Override 98</t></rPh></is></c>'+
+   '</row></sheetData></worksheet>';
+ const parsed=parseXlsx('fictional-phonetics.xlsx',xlsx({sheet,sharedStrings:shared}));
+ assert.match(parsed.text,/Plan Data!A1: Normal 65/);
+ assert.match(parsed.text,/Plan Data!B1: Vesting 10/);
+ assert.doesNotMatch(parsed.text,/Override 99|Override 98/);
+ assert.deepEqual(parsed.records.map(x=>x.location.cell),['A1','B1']);
+ assert.ok(parsed.reviewIssues.some(x=>x.id==='xlsx:phonetic'));
+ assert.ok(parsed.warnings.some(x=>/phonetic annotation/i.test(x)));
+ const {auditLiteralEvidence}=await import('../src/evidence.ts');
+ assert.equal(auditLiteralEvidence(parsed,{age:99})[0].status,'missing');
+ assert.equal(auditLiteralEvidence(parsed,{age:65})[0].status,'match');
+});
