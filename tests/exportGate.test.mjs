@@ -193,7 +193,9 @@ test('final export verifies current source warning IDs even if UI count is zero'
 test('duplicate and malformed source warning identifiers fail closed at export',()=>{
  const issue={id:'source:review',category:'office_unreviewed_content',message:'Inspect'};
  for(const reviewIssues of [
-  [issue,issue],[issue,{...issue}],[{...issue,id:''}],[{...issue,id:null}]
+  [issue,issue],[issue,{...issue}],[{...issue,id:''}],
+  [{...issue,id:' source:review'}],[{...issue,id:'source:review '}],
+  [{...issue,id:null}]
  ]){
   const request={...safe,document:{...d,reviewIssues},sourceIssuesUnreviewed:0,
     sourceIssuesReviewed:{'source:review':true}};
@@ -212,4 +214,13 @@ test('silently omitted source-instruction warning cannot be bypassed by a stale 
  const result=evaluateExportGate(request);
  assert.equal(result.allowed,false);
  assert.ok(result.reasons.some(x=>x.includes('not registered')));
+});
+
+test('malformed source review metadata cannot impersonate zero pending issues',()=>{
+ for(const reviewIssues of [false,{},'approved',{length:0},1]){
+  const result=evaluateExportGate({...safe,document:{...d,reviewIssues},
+   sourceIssuesUnreviewed:0,sourceIssuesReviewed:{}});
+  assert.equal(result.allowed,false);
+  assert.ok(result.reasons.some(x=>x.includes('Source completeness issues')));
+ }
 });
