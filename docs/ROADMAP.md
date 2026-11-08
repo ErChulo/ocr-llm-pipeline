@@ -4,6 +4,8 @@
 
 ## Implemented and source-tested
 
+- [x] Three aligned rows of compact PDF cells trigger original-page review without changing native source words, page identifiers, character offsets, or citation geometry. Synthetic negative and actual PDF parsing tests cover misleading table layouts. An experimental real offline scanned-table OCR probe records five fictional literal fields; this is not a measured model-quality gain or production acceptance.
+
 - [x] Non-link PDF annotations including FreeText and fillable widget/form values omitted from the text layer require explicit original-document review, not fabricated page citations. Parser fixtures and offline browser checks cover notes, widgets and ordinary links; the preview may omit overlays.
 
 - [x] At final export, match every parser-derived source-warning ID to an explicit reviewer acknowledgment; stale UI counts, forged/duplicate warning IDs and a missing AI-instruction warning fail closed.
