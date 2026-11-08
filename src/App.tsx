@@ -71,7 +71,7 @@ export default function App() {
   const [ocrDraft, setOcrDraft] = useState('');
   const [imageViewUrl, setImageViewUrl] = useState('');
   const [pdfView, setPdfView] = useState<{
-    page:number;boxes:Array<{x:number;y:number;width:number;height:number;precision:'pdf-text-item-envelope'}>
+    page:number;boxes:Array<{x:number;y:number;width:number;height:number;precision:'pdf-text-item-envelope'|'pdf-ocr-word-envelope'}>
   }|null>(null);
   const [schema, setSchema] = useState(DEFAULT_SCHEMA);
   const [extraction, setExtraction] = useState<unknown>(null);
