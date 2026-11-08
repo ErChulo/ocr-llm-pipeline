@@ -4,6 +4,8 @@
 
 **Version:** 0.3.0-beta.1. CI verification is not security certification or workplace approval.
 
+**Release gate register:** [Eight explicit measurable exit criteria and current FAIL/BLOCKED evidence](PRODUCTION_ACCEPTANCE_GATES.md). All gates are mandatory before production classification; source tests and fixed fictional OCR metrics alone are insufficient.
+
 ## Implemented and source-tested
 
 - [x] **Bounded adaptive fictional PDF OCR (PRs #68, #69, #73):** new non-regression gate and parser-page-local review retained. Actual nine-page Chromium test improved from 34/36 to **36/36 exact tokens** and from 16/18 to **18/18 same-line row proxies**. A higher-resolution primary pass plus narrowly guarded re-recognition of malformed numeric rows uses actual image pixels; it does **not** invent corrected digits or cell boxes. [Measured evidence and rejected experiments](MULTIPAGE_SCANNED_PDF_QA.md). **Not** production OCR certification.
