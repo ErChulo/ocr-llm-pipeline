@@ -250,7 +250,7 @@ try {
     name:'fictional-scanned-table.pdf',mimeType:'application/pdf',buffer:scannedTablePdf
   });
   await page.locator('.card select').first().locator('option')
-    .filter({hasText:'fictional-scanned-table.pdf'}).waitFor({timeout:150000});
+    .filter({hasText:'fictional-scanned-table.pdf'}).waitFor({state:'attached',timeout:150000});
   await page.locator('.card select').first().selectOption({label:'fictional-scanned-table.pdf'});
   await page.locator('.source-completeness').getByText(/PDF page 1 before export/i)
     .waitFor({timeout:150000});
