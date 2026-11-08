@@ -19,6 +19,7 @@ import { screenPrivacySurfaces, safePrivacySummary } from './privacy';
 import { benchmarkPrompt, scoreBenchmark } from './modelBenchmark';
 import { runLocalCorpusBenchmark, type LocalCorpusReport } from './localCorpusBenchmark';
 import { evaluateExportGate } from './exportGate';
+import { assessCandidateSourceAttribution, attributionAbstentionMessage } from './sourceAttribution';
 import { parseModelJson } from './pipeline';
 import { ocrRecords, currentOcrText, correctOcrText } from './ocrCorrections';
 import { candidatePreviews } from './conflictContext';
@@ -336,6 +337,10 @@ export default function App() {
       }
       const parsedSchema = JSON.parse(schema) as unknown;
       value = JSON.parse(draft) as unknown;
+      const attribution=assessCandidateSourceAttribution(active,currentAudit,value);
+      if(attribution.decision==='abstain'){
+        throw new Error(attributionAbstentionMessage(attribution));
+      }
       const check=await validateLocalJson(parsedSchema,value);
       errors.push(...check.errors);
     } catch (e) { errors.push(errorMessage(e)); }
@@ -407,14 +412,21 @@ export default function App() {
         setValidationErrors(['Resolve ' + merged.unresolved.length + ' conflicting field(s).']);
         setStatus('All sections processed. Review conflicting values.');
       } else {
-        const schemaResult=await validateLocalJson(parsed,merged.data);
-        const okay=schemaResult.valid;
-        setValidationErrors(schemaResult.errors);
-        setValid(okay);
-        setExtraction(okay ? merged.data : null);
-        setStatus(okay
-          ? 'All sections processed. JSON structure passed; facts need review.'
-          : 'All sections processed. Review JSON Schema errors.');
+        const attribution=assessCandidateSourceAttribution(active,record,merged.data);
+        if(attribution.decision==='abstain'){
+          setValidationErrors([attributionAbstentionMessage(attribution)]);
+          setValid(false); setExtraction(null);
+          setStatus('Source attribution abstained. Correct the proposed value using governing evidence.');
+        }else{
+          const schemaResult=await validateLocalJson(parsed,merged.data);
+          const okay=schemaResult.valid;
+          setValidationErrors(schemaResult.errors);
+          setValid(okay);
+          setExtraction(okay ? merged.data : null);
+          setStatus(okay
+            ? 'All sections processed. JSON structure passed; facts need review.'
+            : 'All sections processed. Review JSON Schema errors.');
+        }
       }
     } catch (e) {
       setError(errorMessage(e));

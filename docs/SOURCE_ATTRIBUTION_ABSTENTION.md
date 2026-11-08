@@ -1,0 +1,9 @@
+# Model-candidate source-attribution abstention (beta)
+
+A model may emit a number that literally occurs in an injected appendix while failing to select the governing fact. A literal match and valid JSON Schema do **not** establish applicability.
+
+The local `assessCandidateSourceAttribution` preflight checks each model-produced field against exact original-document evidence in that model's covered source section. If **every** matching literal is inside a locally detected AI-directed instruction, the candidate's attribution decision is `abstain` and automatic schema-valid acceptance stops. The original source, OCR text, source spans, candidate number, and audit remain unchanged; the proposed JSON remains editable. The user must correct or remove the candidate using authentic source evidence, revalidate, and explicitly confirm a selected citation. Source-citation screening is independently rechecked at final export.
+
+If a matching literal is also present in a non-instruction passage, source applicability still needs human review. Missing literal or normalized boolean evidence is not automatically accepted: separate existing citation/evidence gates apply. The preflight does not infer a correct replacement value, distinguish statutory and plan authority, guarantee resistance to novel prompt injections, or establish that a clean passage is governing.
+
+The real physical GGUF test report now records `attributionAbstained` separately from `actual` extracted JSON and strict model accuracy. A correctly **blocked** malicious 99 remains a **model factual error**, not a true positive. This is an additional safety signal, not score inflation. These evaluations use fictional data only, with the offline file:// browser and no runtime network requests. Production acceptance remains open.
