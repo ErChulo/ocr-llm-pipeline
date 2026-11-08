@@ -53,14 +53,21 @@ export function safePrivacySummary(summary:PrivacySummary):string{
  * identifier merely because a JSON value repeats its source.
  * No negative finding certifies an output free of private information.
  */
-export function screenPrivacySurfaces(sourceText:string,candidate:unknown):PrivacySummary{
+export function screenPrivacySurfaces(sourceText:string,candidate:unknown,exportedMetadata:unknown=null):PrivacySummary{
   const source=screenLocalPrivacy(sourceText);
   const serialized=candidate===null||candidate===undefined?'':JSON.stringify(candidate);
   if(typeof serialized!=='string')throw new Error('Current JSON could not be screened for private data.');
   const output=screenLocalPrivacy(serialized);
+  // Names and document IDs also leave the workstation inside the reviewed
+  // JSON envelope, even if neither the source text nor model values contain
+  // them. Treat metadata as another export surface.
+  const metadataJson=exportedMetadata===null?'':JSON.stringify(exportedMetadata);
+  if(typeof metadataJson!=='string')throw new Error('Export metadata could not be screened for private data.');
+  const metadata=screenLocalPrivacy(metadataJson);
   const categories:PrivacySummary['categories']={};
   for(const kind of ['possible_ssn','email','payment_card','phone'] as PrivacyCategory[]){
-    const count=Math.max(source.categories[kind]??0,output.categories[kind]??0);
+    const count=Math.max(source.categories[kind]??0,
+      output.categories[kind]??0,metadata.categories[kind]??0);
     if(count)categories[kind]=count;
   }
   return {categories,requiresReview:Object.keys(categories).length>0};
