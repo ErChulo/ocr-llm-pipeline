@@ -75,7 +75,11 @@ export function importText(filename: string, text: string): ImportResult {
     throw new Error('Text or OCR export exceeds the 20 MB import limit.');
   const ext = filename.split('.').pop()?.toLowerCase();
   if (ext === 'jsonc' || ext === 'json') {
-    const data = obj(JSON.parse(ext === 'jsonc' ? stripJsoncComments(text) : text) as unknown);
+    const sourceJson=ext==='jsonc' ? stripJsoncComments(text) : text;
+    const data=obj(JSON.parse(sourceJson) as unknown);
+    // Imported OCR envelopes are untrusted too: never silently overwrite
+    // repeated extractedText or metadata keys.
+    refuseDuplicateJsonMembers(sourceJson,'OCR export');
     if (!data || !Array.isArray(data.documents)) throw new Error('Expected Bulk OCR Studio JSONC/JSON with a documents array.');
     if(!data.documents.length || data.documents.length>MAX_IMPORTED_DOCUMENTS)
       throw new Error('Bulk OCR export must contain 1 to 200 documents.');
@@ -183,7 +187,7 @@ export function buildExtractionPrompt(doc: SourceDocument, schema: unknown, maxC
  * written with Unicode escapes. The JSON is parsed for valid syntax first.
  * Never include potentially sensitive key text in error messages.
  */
-function refuseDuplicateJsonMembers(text:string):void {
+function refuseDuplicateJsonMembers(text:string,origin:'Model output'|'OCR export'='Model output'):void {
   type Frame={object:boolean;keys:Set<string>;expectingKey:boolean};
   const stack:Frame[]=[];
   for(let i=0;i<text.length;i++){
@@ -200,7 +204,7 @@ function refuseDuplicateJsonMembers(text:string):void {
       if(frame?.object&&frame.expectingKey){
         const key=JSON.parse(text.slice(start,i+1)) as string;
         if(frame.keys.has(key)){
-          throw new Error('Model output contains duplicate JSON keys; review before retrying extraction.');
+          throw new Error(origin+' contains duplicate JSON keys; review the source or retry extraction.');
         }
         frame.keys.add(key);
         frame.expectingKey=false;
