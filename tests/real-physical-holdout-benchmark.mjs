@@ -21,10 +21,14 @@ const caseTimeoutMs=Number(process.env.CASE_TIMEOUT_MS||200000);
 assert.ok(Number.isSafeInteger(caseTimeoutMs)&&caseTimeoutMs>=10000&&caseTimeoutMs<=600000,
   'CASE_TIMEOUT_MS must be between 10,000 and 600,000 milliseconds.');
 assert.ok(existsSync(model),'Select a checksum-verified local GGUF test file.');
-const benchmarkMode='physical-eight-case-holdout-v1';
 assert.equal(physicalHoldoutCases.length,8,'The independent physical holdout must retain all eight cases.');
-const selection=process.env.BENCHMARK_CASES||'all';
+// An explicitly provided but empty selector is invalid; do not turn it into
+// the full eight-case denominator by using an || default.
+const selection=process.env.BENCHMARK_CASES===undefined?'all':process.env.BENCHMARK_CASES;
 const samples=selectPhysicalHoldoutCases(physicalHoldoutCases,selection);
+const benchmarkMode=selection==='all'
+  ? 'physical-eight-case-holdout-v1'
+  : 'physical-bounded-adversarial-holdout-v1';
 const report={
   fixtureVersion:'physical-holdout-v1',
   model:process.env.MODEL_LABEL||'Qwen2.5-0.5B-Instruct Q4_K_M',
