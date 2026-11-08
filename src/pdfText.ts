@@ -8,6 +8,7 @@ import { getDocument, OPS, AnnotationType } from 'pdfjs-dist/legacy/build/pdf.mj
 import 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 import type { SourceDocument, SourceRecord, SourceTextSpan, SourceReviewIssue } from './pipeline.ts';
 import { ocrReviewIssue } from './ocrReview.ts';
+import { countAmbiguousOcrNumericTokens } from './ocrNumericReview.ts';
 import { detectPdfLayoutRisks } from './pdfLayout.ts';
 
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
@@ -179,7 +180,10 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
         if(confidence<75){
           warnings.push('OCR confidence on page '+pageNo+' is '+Math.round(confidence)+'%. Verify the page against its original image.');
         }
-        reviewIssues.push(ocrReviewIssue('pdf',confidence,pageNo));
+        // A count-only hint never rewrites the uncertain OCR transcription,
+        // changes the authentic PDF page citation or invents cell coordinates.
+        const ambiguousCount=countAmbiguousOcrNumericTokens(text);
+        reviewIssues.push(ocrReviewIssue('pdf',confidence,pageNo,ambiguousCount));
       }
       if(!scanned && containsImages){
         if(options.ocrMixedPages){
@@ -190,6 +194,10 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
           supplementalText=result.text.trim();
           supplementalConfidence=result.confidence;
           if(supplementalText)supplementalOcrPages++;
+          const possibleNumericErrors=countAmbiguousOcrNumericTokens(supplementalText);
+          if(possibleNumericErrors)warnings.push('Page '+pageNo+
+            ' supplemental OCR has '+(possibleNumericErrors===100?'at least 100':possibleNumericErrors)+
+            ' possibly ambiguous numeric token(s). Verify against the original. No text was changed.');
           warnings.push('Mixed page '+pageNo+' received supplemental full-page OCR. '
             +'It may repeat selectable text, and OCR did not isolate the image region.');
           reviewIssues.push({id:'pdf:mixed:'+pageNo,category:'mixed_pdf_page',
