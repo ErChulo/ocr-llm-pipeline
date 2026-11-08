@@ -106,7 +106,7 @@ export default function PdfPageViewer({bytes,initialPage,highlightBoxes=NO_BOXES
         <button type="button" className="secondary" disabled={busy||pageNumber>=pageCount}
           onClick={()=>{setPageNumber(n=>n+1);setSize({width:0,height:0});}}>Next page</button>
       </footer>
-      <p className="help">Highlighted boxes show approximate PDF text-item envelopes, not exact glyphs. Check the original page before confirming evidence. This view makes no network requests.</p>
+      <p className="help">Highlighted boxes show approximate PDF.js text-item or Tesseract raster-word envelopes, not exact glyphs or verified table cells. Compare the original page before confirming evidence. This view makes no network requests.</p>
     </section>
   </div>;
 }
