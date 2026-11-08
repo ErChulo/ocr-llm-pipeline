@@ -267,3 +267,40 @@ test('evidence field-value identity rejects stale fields, even when confirmation
   assert.equal(evidenceMatchesCurrentValue({age:65,form:null},checks),false);
   assert.equal(evidenceMatchesCurrentValue({age:65,form:'SLA'},[checks[0],checks[0]]),false);
 });
+
+test('selected citation source offsets, quote and location must remain authentic at export',async()=>{
+ const {evidenceSelectionsAnchoredToDocument}=await import('../src/evidence.ts');
+ const source='Normal retirement age 65. Vested participants receive a benefit.';
+ const current={...doc,text:source,records:undefined};
+ const checks=auditLiteralEvidence(current,{age:65});
+ assert.equal(evidenceSelectionsAnchoredToDocument(current,checks,{'/age':0}),true);
+ const original=checks[0].matches[0];
+ for(const forged of [
+   {...original,start:0},
+   {...original,end:original.end+1},
+   {...original,quote:'unrelated excerpt'},
+   {...original,label:'Page 2'},
+   {...original,location:{kind:'pdf-page',page:99}},
+   {...original,evidenceMethod:'reviewer_quoted_passage'}
+ ]){
+   assert.equal(evidenceSelectionsAnchoredToDocument(current,[{
+     ...checks[0],matches:[forged]
+   }],{'/age':0}),false);
+ }
+});
+test('reviewer quotes and parser-added labels are checked against real cells',async()=>{
+ const {evidenceSelectionsAnchoredToDocument}=await import('../src/evidence.ts');
+ const source='Row 1 column 1: Vesting service continues after the freeze.\\n';
+ const current={...doc,text:source,records:[{
+   start:0,end:source.length,label:'Row 1 column 1',
+   location:{kind:'csv-cell',row:1,column:1}
+ }]};
+ const checks=auditLiteralEvidence(current,{continues:true},undefined,
+   {'/continues':'Vesting service continues after the freeze'});
+ assert.equal(checks[0].status,'match');
+ assert.equal(evidenceSelectionsAnchoredToDocument(current,checks,{'/continues':0}),true);
+ const labelMatch={...checks[0].matches[0],start:0,end:3};
+ assert.equal(evidenceSelectionsAnchoredToDocument(current,[{
+   ...checks[0],matches:[labelMatch]
+ }],{'/continues':0}),false);
+});

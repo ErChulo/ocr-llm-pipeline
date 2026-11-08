@@ -2,6 +2,8 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Revalidate selected field citations against the current source record, actual character offsets, exact excerpt, parser-derived location and full-token value at every export. Reject stale or fabricated citation metadata, including incorrectly cited CSV cell labels. Human source verification remains required.
+
 - Bind export-time evidence review to current JSON leaf paths and values; reject stale, substituted, added, removed, or duplicate confirmations.
 - Screen both the imported source and the current JSON for possible identifiers, fail closed if output-only identifiers are discovered at export, and expire privacy acknowledgement whenever candidate JSON is edited or revalidated. This remains a limited local warning, not comprehensive PII detection or redaction.
 

@@ -1,12 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { evaluateExportGate } from '../src/exportGate.ts';
+import { auditLiteralEvidence } from '../src/evidence.ts';
 const d={id:'a',name:'a.txt',text:'Normal 65',sizeBytes:10,mimeType:'text/plain',
  provenance:{source:'local-text',precision:'document',fileName:'a.txt'}};
 const audit={documentId:'a',documentName:'a.txt',sourceText:'Normal 65',length:9,chunks:[{start:0,end:9,chunk:1}],
  candidates:{},conflicts:[]};
 const evidence=[{path:'/age',value:65,status:'match',
- matches:[{start:7,end:9,quote:'65',label:'Document',location:{kind:'document'}}]}];
+ matches:[{start:7,end:9,quote:'Normal 65',label:'Document',location:{kind:'document'}}]}];
 const safe={document:d,audit,value:{age:65},schemaValid:true,busy:false,evidence,
  selectedEvidence:{'/age':0},confirmedEvidence:{'/age':true},
  conflictsUnresolved:0,privacyRequired:false,privacyReviewed:false};
@@ -52,11 +53,12 @@ test('source-completeness warnings block export until each item is acknowledged'
 
 
 test('export refuses a gap or overlap in the middle of otherwise plausible source coverage',()=>{
- const doc={...d,text:'ABCDEFGHIJKLMNOPQRST'};
+ const doc={...d,text:'Normal 65ABCDEFGHIJK'};
+ const currentEvidence=[{...evidence[0],matches:[{...evidence[0].matches[0],quote:doc.text}]}];
  const correct={...audit,sourceText:doc.text,length:doc.text.length,chunks:[
   {chunk:1,start:0,end:7},{chunk:2,start:7,end:14},{chunk:3,start:14,end:20}
  ]};
- assert.equal(evaluateExportGate({...safe,document:doc,audit:correct}).allowed,true);
+ assert.equal(evaluateExportGate({...safe,document:doc,audit:correct,evidence:currentEvidence}).allowed,true);
  const malformed=[
   [{chunk:1,start:0,end:7},{chunk:2,start:8,end:14},{chunk:3,start:14,end:20}],
   [{chunk:1,start:0,end:7},{chunk:2,start:6,end:14},{chunk:3,start:14,end:20}],
@@ -84,11 +86,12 @@ test('candidate citations cannot refer to fabricated or altered source sections'
 });
 
 test('all multi-section candidate source spans must match an audited section exactly',()=>{
- const document={...d,text:'ABCDEFGHIJKLMNOPQRST'};
+ const document={...d,text:'Normal 65ABCDEFGHIJK'};
+ const currentEvidence=[{...evidence[0],matches:[{...evidence[0].matches[0],quote:document.text}]}];
  const good={...audit,sourceText:document.text,length:20,
   chunks:[{chunk:1,start:0,end:10},{chunk:2,start:10,end:20}],
   candidates:{'/age':[{value:65,spans:[{chunk:1,start:0,end:10},{chunk:2,start:10,end:20}]}]}};
- assert.equal(evaluateExportGate({...safe,document,audit:good}).allowed,true);
+ assert.equal(evaluateExportGate({...safe,document,audit:good,evidence:currentEvidence}).allowed,true);
  const bad={...good,candidates:{'/age':[{value:65,spans:[{chunk:2,start:9,end:20}]}]}};
  assert.equal(evaluateExportGate({...safe,document,audit:bad}).allowed,false);
 });
@@ -112,28 +115,31 @@ test('duplicate or substituted evidence checks cannot authorize export',()=>{
   }
 });
 test('reviewed nested arrays and JSON-pointer-escaped keys are bound exactly',()=>{
-  const value={forms:['SLA','JS50'], 'age/normal':65,'qualification':false};
-  const checks=[
-    {path:'/forms/0',value:'SLA',status:'match',matches:evidence[0].matches},
-    {path:'/forms/1',value:'JS50',status:'match',matches:evidence[0].matches},
-    {path:'/age~1normal',value:65,status:'match',matches:evidence[0].matches},
-    {path:'/qualification',value:false,status:'match',matches:evidence[0].matches}
-  ];
-  const selected=Object.fromEntries(checks.map(c=>[c.path,0]));
-  const confirmed=Object.fromEntries(checks.map(c=>[c.path,true]));
-  const input={...safe,value,evidence:checks,selectedEvidence:selected,confirmedEvidence:confirmed};
-  assert.equal(evaluateExportGate(input).allowed,true);
-  assert.equal(evaluateExportGate({...input,value:{...value,forms:['JS50','SLA']}}).allowed,false);
-  assert.equal(evaluateExportGate({...input,value:{...value,qualification:null}}).allowed,false);
-  assert.equal(evaluateExportGate({...input,value:{...value,'age/normal':66}}).allowed,false);
+ const value={forms:['SLA','JS50'],'age/normal':65,qualification:false};
+ const document={...d,text:'Form SLA. Form JS50. Normal age 65. Participants must be vested.'};
+ const checked=auditLiteralEvidence(document,value,undefined,
+   {'/qualification':'Participants must be vested'});
+ assert.ok(checked.every(c=>c.status==='match'));
+ const selected=Object.fromEntries(checked.map(c=>[c.path,0]));
+ const confirmed=Object.fromEntries(checked.map(c=>[c.path,true]));
+ const verified={...audit,sourceText:document.text,length:document.text.length,
+   chunks:[{chunk:1,start:0,end:document.text.length}]};
+ const input={...safe,document,audit:verified,value,evidence:checked,
+   selectedEvidence:selected,confirmedEvidence:confirmed};
+ assert.equal(evaluateExportGate(input).allowed,true);
+ assert.equal(evaluateExportGate({...input,value:{...value,forms:['JS50','SLA']}}).allowed,false);
+ assert.equal(evaluateExportGate({...input,value:{...value,qualification:null}}).allowed,false);
+ assert.equal(evaluateExportGate({...input,value:{...value,'age/normal':66}}).allowed,false);
 });
 
 test('privacy gate rescans current export JSON even if UI flag omitted it',()=>{
  const output={age:65,email:'fictional.test@example.org'};
- const added={path:'/email',value:'fictional.test@example.org',status:'match',
-   matches:[{start:0,end:25,quote:'fictional.test@example.org',label:'Document',location:{kind:'document'}}]};
- const checks=[...evidence,added];
- const reviewed={...safe,value:output,evidence:checks,
+ const document={...d,text:'Normal 65. Contact fictional.test@example.org.'};
+ const checks=auditLiteralEvidence(document,output);
+ assert.ok(checks.every(c=>c.status==='match'));
+ const checkedAudit={...audit,sourceText:document.text,length:document.text.length,
+   chunks:[{chunk:1,start:0,end:document.text.length}]};
+ const reviewed={...safe,document,audit:checkedAudit,value:output,evidence:checks,
    selectedEvidence:{'/age':0,'/email':0},
    confirmedEvidence:{'/age':true,'/email':true},
    privacyRequired:false,privacyReviewed:false};
@@ -141,4 +147,18 @@ test('privacy gate rescans current export JSON even if UI flag omitted it',()=>{
  assert.equal(blocked.allowed,false);
  assert.ok(blocked.reasons.some(r=>r.includes('private data still needs review')));
  assert.equal(evaluateExportGate({...reviewed,privacyReviewed:true}).allowed,true);
+});
+
+test('forged or stale citation locations and quotations are rejected at the final gate',()=>{
+ const modified=[
+   {...evidence[0].matches[0],quote:'No such quoted context'},
+   {...evidence[0].matches[0],start:0},
+   {...evidence[0].matches[0],location:{kind:'fake-pdf',page:999}}
+ ];
+ for(const match of modified){
+   const forged=[{...evidence[0],matches:[match]}];
+   const result=evaluateExportGate({...safe,evidence:forged});
+   assert.equal(result.allowed,false);
+   assert.ok(result.reasons.some(r=>r.includes('source citations')));
+ }
 });

@@ -235,6 +235,96 @@ export function evidenceMatchesCurrentValue(value:unknown,checks:EvidenceCheck[]
   }
 }
 
+/**
+ * Recheck SELECTED source citations against the current imported document
+ * immediately before export. A review checkbox is not proof that offsets,
+ * quotations, and parser-derived locations still describe this source.
+ * This does not establish factual or actuarial correctness of the citation.
+ */
+export function evidenceSelectionsAnchoredToDocument(
+  doc:SourceDocument,checks:EvidenceCheck[],selections:Record<string,number>
+):boolean {
+  if(!doc||typeof doc.text!=='string'||!Array.isArray(checks))return false;
+  try {
+    const records=recordsFor(doc);
+    let previous=0;
+    // All parser-produced records are ordered, non-overlapping source spans.
+    for(const record of records){
+      if(!Number.isSafeInteger(record.start)||!Number.isSafeInteger(record.end)||
+         record.start<previous||record.end<=record.start||record.end>doc.text.length)return false;
+      previous=record.end;
+    }
+    for(const check of checks){
+      const index=selections[check.path];
+      if(!Number.isSafeInteger(index)||index<0||index>=check.matches.length)return false;
+      const match=check.matches[index];
+      if(!match||!Number.isSafeInteger(match.start)||!Number.isSafeInteger(match.end)||
+         match.start<0||match.end<=match.start||match.end>doc.text.length)return false;
+      // Locate the record containing this offset without scanning every cell
+      // for every field (workbooks can contain thousands of records).
+      let low=0,high=records.length-1,record:SourceRecord|undefined;
+      while(low<=high){
+        const mid=(low+high)>>>1;
+        const current=records[mid];
+        if(match.start<current.start)high=mid-1;
+        else if(match.start>=current.end)low=mid+1;
+        else{record=current;break;}
+      }
+      if(!record||match.end>record.end||match.label!==record.label||
+         !match.location||typeof match.location!=='object')return false;
+      const originalLocation=Object.entries(record.location);
+      if(Object.keys(match.location).length!==originalLocation.length||
+         originalLocation.some(([key,value])=>match.location[key]!==value))return false;
+      const contentStart=bodyStart(doc.text,record);
+      if(match.start<contentStart)return false;
+      const excerpt=doc.text.slice(
+        Math.max(contentStart,match.start-WINDOW),
+        Math.min(record.end,match.end+WINDOW)
+      ).trim();
+      if(excerpt!==match.quote)return false;
+      const matchedText=doc.text.slice(match.start,match.end);
+      const method=check.evidenceMethod??'literal_value';
+      if(match.evidenceMethod && match.evidenceMethod!==method)return false;
+      if(method==='reviewer_quoted_passage'){
+        if(matchedText.length<8||matchedText.length>300||
+           !boundaryOkay(doc.text,match.start,match.end,matchedText))return false;
+      }else if(method==='literal_value'){
+        const token=tokenFor(check.value);
+        if(!token||token.length>800||!new RegExp('^'+
+           token.replace(/[.*+?^$(){}|[\\]\\\\]/g,'\\\\export function evidenceReviewComplete(')+'
+  checks: EvidenceCheck[],
+  selections: Record<string,number>,
+  confirmed: Record<string,boolean>
+): boolean {
+  if (!checks.length) return false;
+  return checks.every(check => check.status==='match' && confirmed[check.path]===true &&
+    Object.hasOwn(selections,check.path) &&
+    Number.isInteger(selections[check.path]) &&
+    selections[check.path]>=0 && selections[check.path]<check.matches.length);
+}
+export function exportReviewedEvidence(
+  checks: EvidenceCheck[], selections: Record<string,number>,
+  confirmed: Record<string,boolean>
+): Record<string,EvidenceMatch> {
+  if (!evidenceReviewComplete(checks,selections,confirmed)) {
+    throw new Error('Evidence review is incomplete; JSON export is blocked.');
+  }
+  const result:Record<string,EvidenceMatch>=Object.create(null);
+  for (const check of checks) {
+    Object.defineProperty(result,check.path,{
+      value:check.matches[selections[check.path]],enumerable:true,writable:true,configurable:true
+    });
+  }
+  return result;
+}
+,'i').test(matchedText)||
+           !boundaryOkay(doc.text,match.start,match.end,check.value))return false;
+      }else return false;
+    }
+    return true;
+  }catch{return false;}
+}
+
 export function evidenceReviewComplete(
   checks: EvidenceCheck[],
   selections: Record<string,number>,
