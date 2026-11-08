@@ -105,7 +105,7 @@ test('multi-page scanned OCR keeps page identity and leaves image-only evidence 
  assert.equal(parsed.records[1].textSpans,undefined,
   'scanned page must not inherit selectable-text glyph coordinates');
  assert.equal(parsed.provenance.source,'pdf-ocr');
- assert.ok(parsed.reviewIssues.some(x=>x.page===2&&x.category==='ocr_page'));
+ assert.ok(parsed.reviewIssues.some(x=>x.page===2&&x.category==='low_ocr_confidence'));
  assert.match(parsed.text,/Page 2:\nEARLY RETIREMENT AGE 55; SERVICE 10/);
  assert.ok(parsed.warnings.some(x=>x.includes('confidence on page 2')));
 });
