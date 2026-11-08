@@ -12,6 +12,7 @@ import {createWorker,OEM} from 'tesseract.js';
 import {createMultiPageScannedPdf} from './pdf-fixture.mjs';
 import {measuredTesseractWords} from '../src/ocrWords.ts';
 import {assessSpatialOcrRows} from '../src/ocrSpatial.ts';
+import {reorientedBoxToOriginalPixels} from '../src/ocrGeometryRotation.ts';
 
 mkdirSync('tmp',{recursive:true});
 const refs=[
@@ -27,6 +28,7 @@ const refs=[
 ];
 const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-gpu']});
 let jpegs=[];
+const correctedJpegs=[];
 const external=[];
 try{
  const page=await browser.newPage();
@@ -36,7 +38,7 @@ try{
   else await route.continue();
  });
  for(const scenario of refs){
-  const raster=await page.evaluate(({kind})=>{
+  const raster=await page.evaluate(async ({kind})=>{
    const rotated=kind==='rotated-90-degree-text';
    const canvas=document.createElement('canvas');
    canvas.width=rotated?550:1100;canvas.height=rotated?1100:550;
@@ -53,9 +55,26 @@ try{
     c.font='bold 26px Arial';c.fillText('SERVICE',270,170);
     c.font='34px Arial';c.fillText('20',290,247);c.fillText('30',290,324);
    }
-   return {jpeg:canvas.toDataURL('image/jpeg',0.97).split(',')[1],width:canvas.width,height:canvas.height};
+   const jpeg=canvas.toDataURL('image/jpeg',0.97).split(',')[1];
+   let correctedJpeg=null;
+   if(rotated){
+     // Decode the JPEG actually embedded in the PDF, then undo precisely
+     // the applied clockwise quarter-turn in another local raster canvas.
+     const decoded=new Image();
+     decoded.src='data:image/jpeg;base64,'+jpeg;
+     await decoded.decode();
+     const corrected=document.createElement('canvas');
+     corrected.width=canvas.height;corrected.height=canvas.width;
+     const cc=corrected.getContext('2d');
+     cc.fillStyle='#fff';cc.fillRect(0,0,corrected.width,corrected.height);
+     cc.translate(0,corrected.height);cc.rotate(-Math.PI/2);
+     cc.drawImage(decoded,0,0);
+     correctedJpeg=corrected.toDataURL('image/jpeg',0.97).split(',')[1];
+   }
+   return {jpeg,correctedJpeg,width:canvas.width,height:canvas.height};
   },{kind:scenario.kind});
   jpegs.push({jpeg:Buffer.from(raster.jpeg,'base64'),width:raster.width,height:raster.height});
+  correctedJpegs.push(raster.correctedJpeg?Buffer.from(raster.correctedJpeg,'base64'):null);
  }
  await page.close();
 }finally{await browser.close();}
@@ -98,9 +117,45 @@ try{
    }else{fp++;metric.falsePositive++;}
   }
   const fn=source.gold.length-matched.size;metric.falseNegative+=fn;
+  let orientationProbe=null;
+  if(correctedJpegs[i]){
+    const corrected=await worker.recognize(correctedJpegs[i],{}, {text:true,blocks:true});
+    const unrotatedWords=measuredTesseractWords(corrected.data.blocks,image.height,image.width);
+    const assessment=assessSpatialOcrRows({
+      page:source.page,imageWidth:image.height,imageHeight:image.width,
+      text:corrected.data.text||'',words:unrotatedWords
+    });
+    const observed=assessment.pairs.map(pair=>({
+      age:pair.age.text,factor:pair.factor.text,page:pair.page,
+      ageBox:reorientedBoxToOriginalPixels(pair.age.bbox,image.width,image.height,90),
+      factorBox:reorientedBoxToOriginalPixels(pair.factor.bbox,image.width,image.height,90),
+      region:reorientedBoxToOriginalPixels(pair.region,image.width,image.height,90)
+    }));
+    const found=new Set();
+    let correct=0,incorrect=0;
+    for(const pair of observed){
+      const at=source.gold.findIndex((g,j)=>!found.has(j)&&
+        g.age===pair.age&&g.factor===pair.factor&&
+        centerInside(pair.ageBox,g.ageRect)&&centerInside(pair.factorBox,g.factorRect));
+      if(at>=0){found.add(at);correct++;}else incorrect++;
+      assert.equal(pair.page,source.page);
+      assert.ok(pair.region.x0>=0&&pair.region.y0>=0&&
+        pair.region.x1<=image.width&&pair.region.y1<=image.height);
+    }
+    assert.equal(incorrect,0,'Do not attribute a rotated OCR cell to the wrong original-region.');
+    orientationProbe={
+      status:assessment.status,reason:assessment.reason,
+      actualSourceTransform:'inverse of an observed 90-degree canvas rotation',
+      correctedRasterDimensions:{width:image.height,height:image.width},
+      sourceRasterDimensions:{width:image.width,height:image.height},
+      confidence:corrected.data.confidence??null,
+      correct,falseMatches:incorrect,missed:source.gold.length-correct,
+      candidates:observed
+    };
+  }
   pageResults.push({page:source.page,kind:source.kind,wordCount:words.length,
    ocrConfidence:data.confidence??null,status:scored.status,reason:scored.reason,
-   truePositive:tp,falsePositive:fp,falseNegative:fn,
+   truePositive:tp,falsePositive:fp,falseNegative:fn,orientationProbe,
    candidates:scored.pairs.map(p=>({
     age:p.age.text,factor:p.factor.text,page:p.page,region:p.region,
     imageWidth:p.imageWidth,imageHeight:p.imageHeight,precision:p.precision
