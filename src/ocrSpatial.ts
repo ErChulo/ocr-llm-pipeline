@@ -101,7 +101,10 @@ export function assessSpatialOcrRows(
   const anyNumeric=/^\(?[+\-−–]?\s*(?:[$€£]\s*)?\d[\d,./]*(?:[eE][+\-]?\d+)?\s*%?\)?$/;
   const intervening=provisional.some(({age,factor})=>words.some(word=>
     word!==age && word!==factor && anyNumeric.test(word.text) &&
-    word.bbox.x0>=age.bbox.x1 && word.bbox.x1<=factor.bbox.x0 &&
+    // Any measured numeric box intersecting the age-to-factor corridor,
+    // including PARTIAL overlap with a chosen cell, prevents a confident pair.
+    // Fully contained-only checks miss skewed, overlapping third columns.
+    word.bbox.x1>age.bbox.x0 && word.bbox.x0<factor.bbox.x1 &&
     sameRow(age,word) && sameRow(word,factor)
   ));
   if(intervening)return empty('intervening-numeric-column');

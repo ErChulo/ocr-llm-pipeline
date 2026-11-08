@@ -55,3 +55,23 @@ test('non-numeric wording between measured columns does not fabricate a cell',()
   assert.equal(v.status,'candidates');
   assert.equal(v.pairs.length,2);
 });
+
+test('partially overlapping numeric cells abstain instead of hiding third-column ambiguity',()=>{
+  for(const [x,width] of [[110,45],[420,35],[540,36]]){
+    const v=assessSpatialOcrRows({...args,
+      words:[...original,word('17',x,239,width)],
+      text:args.text+'\n17'});
+    assert.equal(v.status,'abstain','numeric box x='+x+' must never authorize a pair');
+    assert.equal(v.reason,'intervening-numeric-column');
+    assert.deepEqual(v.pairs,[]);
+  }
+});
+test('numeric notes fully outside observed row corridor do not invent ambiguity',()=>{
+  for(const [x,width] of [[10,30],[700,38]]){
+    const v=assessSpatialOcrRows({...args,
+      words:[...original,word('17',x,239,width)],
+      text:args.text+'\n17'});
+    assert.equal(v.status,'candidates','outside numeric box at x='+x);
+    assert.equal(v.pairs.length,2);
+  }
+});
