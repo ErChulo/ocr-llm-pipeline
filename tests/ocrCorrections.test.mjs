@@ -75,3 +75,17 @@ test('mixed-PDF supplemental OCR remains an independently editable source record
  assert.equal(fixed.records[0].location.kind,'pdf-page');
  assert.equal(fixed.sourceSha256,d.sourceSha256);
 });
+
+test('manual OCR correction invalidates measured spatial candidates on only the edited page',()=>{
+ const initial=doc();
+ initial.records[1].ocrSpatial={status:'candidates',reason:'measured-only',pairs:[{
+   page:2,age:{text:'55',confidence:91,bbox:{x0:10,y0:40,x1:30,y1:55}},
+   factor:{text:'0.8750',confidence:90,bbox:{x0:100,y0:40,x1:180,y1:55}},
+   precision:'tesseract-raster-word-envelope'
+ }]};
+ const fixed=correctOcrText(initial,1,'OCR confirmed 55');
+ assert.equal(initial.records[1].ocrSpatial.status,'candidates');
+ assert.equal(fixed.records[1].ocrSpatial,undefined,
+   'edited source text cannot inherit old OCR word coordinates');
+ assert.equal(fixed.records[1].location.page,2);
+});

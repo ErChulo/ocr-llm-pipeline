@@ -3,6 +3,7 @@ import { parsePdf } from './pdfText.ts';
 import { parseCsv } from './csv.ts';
 import { sha256Bytes } from './fingerprint.ts';
 import { ocrReviewIssue } from './ocrReview.ts';
+import type { SpatialAssessment } from './ocrSpatial.ts';
 import { countAmbiguousOcrNumericTokens } from './ocrNumericReview.ts';
 export type SourceTextSpan = {
   start: number;
@@ -14,6 +15,8 @@ export type SourceRecord = {
   start: number; end: number; label: string;
   location: Record<string, string | number>;
   textSpans?: SourceTextSpan[];
+  /** Measured raster-word geometry ONLY; experimental diagnostic, not export evidence. */
+  ocrSpatial?: SpatialAssessment;
 };
 export type SourceReviewIssue = {
   id:string;

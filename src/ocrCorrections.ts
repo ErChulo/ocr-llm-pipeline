@@ -69,6 +69,9 @@ export function correctOcrText(doc:SourceDocument,index:number,edited:string):So
       : {...record.location};
     updated.push({
       ...record,start:before,end:output.length,location,
+      // Edited transcription is no longer the actual Tesseract word sequence.
+      // Invalidate spatial candidates instead of attaching stale raster boxes.
+      ...(i===index?{ocrSpatial:undefined}:{}),
       ...(i===index?{textSpans:undefined}:record.textSpans?{
         textSpans:record.textSpans.map(span=>({...span,start:span.start+shift,end:span.end+shift}))
       }:{})
