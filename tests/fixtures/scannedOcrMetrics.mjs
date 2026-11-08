@@ -20,7 +20,7 @@ export function scoreFictionalScannedPages(bodyByPage,expectedPages){
     if(!Number.isSafeInteger(entry.page)||entry.page<1||
       !Array.isArray(entry.rows)||!entry.rows.length||
       entry.rows.some(pair=>!Array.isArray(pair)||pair.length!==2||
-        pair.some(value=>typeof value!=='string'||!/^[0-9]+(?:\\.[0-9]+)?$/.test(value))))
+        pair.some(value=>typeof value!=='string'||!/^[0-9]+(?:\.[0-9]+)?$/.test(value))))
       throw new Error('Invalid fictional numeric ground truth.');
     const body=bodyByPage[entry.page];
     if(typeof body!=='string')throw new Error('Missing actual OCR page '+entry.page+'.');
