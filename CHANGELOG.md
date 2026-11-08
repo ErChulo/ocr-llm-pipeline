@@ -2,6 +2,9 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Reject conflicting or escaped duplicate keys in model-generated JSON rather than silently accepting the last value. Add deterministic adversarial tests.
+- Restore the exact original percentage spelling only from one unambiguous equivalent decimal percentage literal in the same model source section, retaining the model value in the audit and requiring manual source confirmation. No real-model quality improvement is claimed without measurement.
+
 - Extend final privacy review to the exported document ID and filename. These metadata fields can contain identifiers even when source text and the extracted JSON are otherwise clean; unit tests confirm fail-closed handling without leaking matched values.
 
 - Verify PDF text-item evidence boxes at final JSON export against the parser's overlapping text spans; reject shifted/forged rectangles, missing overlays, and invented PDF geometry for plain-text/CSV sources. Boxes remain approximate PDF.js text-item envelopes, not precise character highlights.

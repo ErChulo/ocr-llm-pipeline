@@ -6,10 +6,11 @@
 import type { SourceDocument } from './pipeline.ts';
 import { parseModelJson } from './pipeline.ts';
 import { restoreSourceDate,sourceDateField } from './sourceDateRestoration.ts';
+import { restoreSourcePercent } from './sourcePercentRestoration.ts';
 
 export type SourceSpan = { chunk: number; start: number; end: number };
 export type TextChunk = SourceSpan & { text: string };
-export type Candidate = { value: unknown; spans: SourceSpan[]; sourceDateRestoredFrom?: string[] };
+export type Candidate = { value: unknown; spans: SourceSpan[]; sourceDateRestoredFrom?: string[]; sourcePercentRestoredFrom?: string[] };
 export type Conflict = { path: string; candidates: Candidate[] };
 export type ExtractionAudit = {
   documentId: string;
@@ -160,7 +161,10 @@ function addLeaves(obj: Record<string, unknown>, path: string, span: SourceSpan,
     // Restore only a uniquely grounded textual date representation, never
     // an actuarial interpretation or date from a different model section.
     const restored=sourceDateField(key)?restoreSourceDate(value,sectionText):null;
-    const verifiedRepresentation=restored?.value??value;
+    // Repair only a model-supplied percentage STRING, never a numeric value.
+    const restoredPercent=typeof value==='string'
+      ? restoreSourcePercent(value,sectionText):null;
+    const verifiedRepresentation=restored?.value??restoredPercent?.value??value;
     const found = candidates[childPath] ||= [];
     const norm = canonical(verifiedRepresentation);
     const existing = found.find(c => canonical(c.value) === norm);
@@ -169,9 +173,13 @@ function addLeaves(obj: Record<string, unknown>, path: string, span: SourceSpan,
       if(restored && !existing.sourceDateRestoredFrom?.includes(restored.modelValue)){
         (existing.sourceDateRestoredFrom ||= []).push(restored.modelValue);
       }
+      if(restoredPercent && !existing.sourcePercentRestoredFrom?.includes(restoredPercent.modelValue)){
+        (existing.sourcePercentRestoredFrom ||= []).push(restoredPercent.modelValue);
+      }
     }else{
       found.push({value:verifiedRepresentation,spans:[span],
-        ...(restored?{sourceDateRestoredFrom:[restored.modelValue]}:{})});
+        ...(restored?{sourceDateRestoredFrom:[restored.modelValue]}:{}),
+        ...(restoredPercent?{sourcePercentRestoredFrom:[restoredPercent.modelValue]}:{})});
     }
   }
 }

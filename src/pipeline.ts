@@ -75,7 +75,11 @@ export function importText(filename: string, text: string): ImportResult {
     throw new Error('Text or OCR export exceeds the 20 MB import limit.');
   const ext = filename.split('.').pop()?.toLowerCase();
   if (ext === 'jsonc' || ext === 'json') {
-    const data = obj(JSON.parse(ext === 'jsonc' ? stripJsoncComments(text) : text) as unknown);
+    const sourceJson=ext==='jsonc' ? stripJsoncComments(text) : text;
+    const data=obj(JSON.parse(sourceJson) as unknown);
+    // Imported OCR envelopes are untrusted too: never silently overwrite
+    // repeated extractedText or metadata keys.
+    refuseDuplicateJsonMembers(sourceJson,'OCR export');
     if (!data || !Array.isArray(data.documents)) throw new Error('Expected Bulk OCR Studio JSONC/JSON with a documents array.');
     if(!data.documents.length || data.documents.length>MAX_IMPORTED_DOCUMENTS)
       throw new Error('Bulk OCR export must contain 1 to 200 documents.');
@@ -177,12 +181,56 @@ export function buildExtractionPrompt(doc: SourceDocument, schema: unknown, maxC
   ].join('\n\n');
   return { prompt, truncated };
 }
+/**
+ * JSON.parse silently keeps the last member of an object with duplicate keys.
+ * Reject such ambiguity in model-produced factual JSON, including aliases
+ * written with Unicode escapes. The JSON is parsed for valid syntax first.
+ * Never include potentially sensitive key text in error messages.
+ */
+function refuseDuplicateJsonMembers(text:string,origin:'Model output'|'OCR export'='Model output'):void {
+  type Frame={object:boolean;keys:Set<string>;expectingKey:boolean};
+  const stack:Frame[]=[];
+  for(let i=0;i<text.length;i++){
+    if(text[i]==='"'){
+      const start=i;
+      let escaped=false,closed=false;
+      for(i++;i<text.length;i++){
+        if(escaped){escaped=false;continue;}
+        if(text[i]==='\\'){escaped=true;continue;}
+        if(text[i]==='"'){closed=true;break;}
+      }
+      if(!closed)throw new Error('Model output is not valid JSON; human review is required.');
+      const frame=stack.at(-1);
+      if(frame?.object&&frame.expectingKey){
+        const key=JSON.parse(text.slice(start,i+1)) as string;
+        if(frame.keys.has(key)){
+          throw new Error(origin+' contains duplicate JSON keys; review the source or retry extraction.');
+        }
+        frame.keys.add(key);
+        frame.expectingKey=false;
+      }
+      continue;
+    }
+    const ch=text[i];
+    if(ch==='{')stack.push({object:true,keys:new Set(),expectingKey:true});
+    else if(ch==='[')stack.push({object:false,keys:new Set(),expectingKey:false});
+    else if(ch==='}'||ch===']')stack.pop();
+    else if(ch===','){
+      const frame=stack.at(-1);
+      if(frame?.object)frame.expectingKey=true;
+    }
+  }
+}
 export function parseModelJson(text: string): unknown {
   const trimmed = text.trim();
   const fence = String.fromCharCode(96).repeat(3);
   const clean = trimmed.startsWith(fence)
     ? trimmed.replace(new RegExp('^' + fence + '(?:json)?\\s*', 'i'), '').replace(new RegExp('\\s*' + fence + '$'), '')
     : trimmed;
-  try { return JSON.parse(clean) as unknown; }
+  if(clean.length>1_000_000)throw new Error('Model JSON exceeds the one-million-character safety limit.');
+  let value:unknown;
+  try { value=JSON.parse(clean) as unknown; }
   catch { throw new Error('Model output is not valid JSON; human review is required.'); }
+  refuseDuplicateJsonMembers(clean);
+  return value;
 }

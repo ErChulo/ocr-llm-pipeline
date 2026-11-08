@@ -87,6 +87,13 @@ function boundaryOkay(source: string,start: number,end: number,value: unknown): 
     const first=characters[0]??'',last=characters.at(-1)??'';
     const before=source[start-1]||'',after=source[end]||'';
     const prev=source[start-2]||'',next=source[end+1]||'';
+    // A positive percentage must not borrow textual evidence from a
+    // negative or explicitly signed percentage. Parenthesized amounts can
+    // be accounting negatives; refuse rather than infer the sign.
+    if(/^(?:\d+(?:\.\d+)?|\.\d+)[ \t]?%$/.test(token)){
+      if(/[-+−–]\s*$/.test(source.slice(Math.max(0,start-8),start)))return false;
+      if(before==='('&&after===')')return false;
+    }
     if(word.test(first) && word.test(before))return false;
     if(word.test(last) && word.test(after))return false;
     if(word.test(first) && /[-–/]/.test(before) && word.test(prev))return false;
