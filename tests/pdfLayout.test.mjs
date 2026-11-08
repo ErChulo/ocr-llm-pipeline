@@ -45,3 +45,39 @@ test('missing and invalid geometry never creates fabricated page coordinates',()
  ];
  assert.deepEqual(detectPdfLayoutRisks(items,612),[]);
 });
+
+
+test('three compact aligned PDF table rows trigger review even without wide gaps',()=>{
+ const items=[
+  item('Age',72,720,25),item('Benefit',145,720,49),
+  item('55',72,690,17),item('0.8750',145,690,42),
+  item('65',72,660,17),item('1.0000',145,660,42)
+ ];
+ assert.deepEqual(detectPdfLayoutRisks(items,612),['aligned_tabular_cells']);
+});
+
+test('a single aligned row, two repeated rows or prose never assert a table',()=>{
+ const one=[item('Age',72,720,25),item('Benefit',145,720,49)];
+ const two=[...one,item('55',72,690,17),item('0.8750',145,690,42)];
+ assert.deepEqual(detectPdfLayoutRisks(one,612),[]);
+ assert.deepEqual(detectPdfLayoutRisks(two,612),[]);
+ const prose=[
+  item('Normal retirement age',72,720,147,true),
+  item('Early retirement age',72,696,139,true),
+  item('Survivor benefits',72,672,122,true)
+ ];
+ assert.deepEqual(detectPdfLayoutRisks(prose,612),[]);
+});
+
+test('invalid, rotated and overlapping fake table coordinates never create aligned cells',()=>{
+ const rotated=[720,690,660].flatMap(y=>[
+  {str:'Age',transform:[0,12,-12,0,72,y],width:20},
+  {str:'Benefit',transform:[0,12,-12,0,145,y],width:50}
+ ]);
+ assert.deepEqual(detectPdfLayoutRisks(rotated,612),['rotated_text']);
+ const overlap=[720,690,660].flatMap(y=>[
+  item('Long paragraph heading',72,y,140),
+  item('Overlapping second phrase',145,y,100)
+ ]);
+ assert.equal(detectPdfLayoutRisks(overlap,612).includes('aligned_tabular_cells'),false);
+});
