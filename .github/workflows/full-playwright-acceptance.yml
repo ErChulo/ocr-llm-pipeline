@@ -10,6 +10,12 @@ on:
       - 'tests/browser-accessibility.mjs'
       - 'src/ocrSpatial.ts'
       - 'tests/ocrSpatial.test.mjs'
+      - 'src/exportGate.ts'
+      - 'src/disclaimedEvidence.ts'
+      - 'tests/disclaimedEvidence.test.mjs'
+      - 'src/sourceAttribution.ts'
+      - 'tests/sourceAttribution.test.mjs'
+      - 'src/App.tsx'
 
 concurrency:
   group: full-playwright-acceptance-${{ github.ref }}
