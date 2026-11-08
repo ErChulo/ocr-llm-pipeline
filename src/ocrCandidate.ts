@@ -47,6 +47,7 @@ export function chooseOcrCandidate(baseline:OcrCandidate,sparse:OcrCandidate):Oc
   if(total(baseNums)<2||!isMultisetSubset(baseNums,moreNums)||
      total(moreNums)<=total(baseNums)||basePairs.size<1||
      !isMultisetSubset(basePairs,morePairs)||
-     total(morePairs)<=total(basePairs))return unchanged;
+     total(morePairs)<=total(basePairs)||
+     !Array.from(morePairs.keys()).some(pair=>!basePairs.has(pair)))return unchanged;
   return {selected:'sparse',reason:'numeric-superset'};
 }
