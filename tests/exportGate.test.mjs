@@ -53,7 +53,7 @@ test('source-completeness warnings block export until each item is acknowledged'
 
 
 test('export refuses a gap or overlap in the middle of otherwise plausible source coverage',()=>{
- const doc={...d,text:'Normal 65ABCDEFGHIJK'};
+ const doc={...d,text:'Normal 65 ABCDEFGHIJ'};
  const currentEvidence=[{...evidence[0],matches:[{...evidence[0].matches[0],quote:doc.text}]}];
  const correct={...audit,sourceText:doc.text,length:doc.text.length,chunks:[
   {chunk:1,start:0,end:7},{chunk:2,start:7,end:14},{chunk:3,start:14,end:20}
@@ -86,7 +86,7 @@ test('candidate citations cannot refer to fabricated or altered source sections'
 });
 
 test('all multi-section candidate source spans must match an audited section exactly',()=>{
- const document={...d,text:'Normal 65ABCDEFGHIJK'};
+ const document={...d,text:'Normal 65 ABCDEFGHIJ'};
  const currentEvidence=[{...evidence[0],matches:[{...evidence[0].matches[0],quote:document.text}]}];
  const good={...audit,sourceText:document.text,length:20,
   chunks:[{chunk:1,start:0,end:10},{chunk:2,start:10,end:20}],
