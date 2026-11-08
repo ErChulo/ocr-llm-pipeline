@@ -5,7 +5,7 @@
 import type { SourceDocument } from './pipeline.ts';
 import type { ExtractionAudit } from './chunkExtraction.ts';
 import type { EvidenceCheck } from './evidence.ts';
-import { evidenceReviewComplete } from './evidence.ts';
+import { evidenceReviewComplete, evidenceMatchesCurrentValue } from './evidence.ts';
 
 export type ExportGateInputs = {
   document: SourceDocument | null;
@@ -70,6 +70,9 @@ export function evaluateExportGate(input:ExportGateInputs):ExportGate{
   if(input.busy)reasons.push('A local operation is still running.');
   if(!input.schemaValid || value===null)reasons.push('The latest JSON has not passed schema validation.');
   if(input.conflictsUnresolved>0)reasons.push('One or more extracted values are still disputed.');
+  if(!evidenceMatchesCurrentValue(value,input.evidence)){
+    reasons.push('Reviewed evidence no longer matches the current JSON fields and values.');
+  }
   if(!evidenceReviewComplete(input.evidence,input.selectedEvidence,input.confirmedEvidence)){
     reasons.push('Every nonempty field must have confirmed source evidence.');
   }

@@ -256,3 +256,14 @@ test('reviewer supplied passage must appear as complete text boundaries',()=>{
   assert.equal(quoted[0].status,'match');
   assert.equal(quoted[0].evidenceMethod,'reviewer_quoted_passage');
 });
+
+test('evidence field-value identity rejects stale fields, even when confirmations are complete',async()=>{
+  const {evidenceMatchesCurrentValue}=await import('../src/evidence.ts');
+  const checks=auditLiteralEvidence({...doc,records:undefined},{age:65,form:'SLA'});
+  assert.equal(evidenceMatchesCurrentValue({age:65,form:'SLA'},checks),true);
+  assert.equal(evidenceMatchesCurrentValue({age:65,form:'JS50'},checks),false);
+  assert.equal(evidenceMatchesCurrentValue({age:65},checks),false);
+  assert.equal(evidenceMatchesCurrentValue({age:65,form:'SLA',other:0},checks),false);
+  assert.equal(evidenceMatchesCurrentValue({age:65,form:null},checks),false);
+  assert.equal(evidenceMatchesCurrentValue({age:65,form:'SLA'},[checks[0],checks[0]]),false);
+});
