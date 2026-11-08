@@ -371,6 +371,15 @@ try {
         isInside(toUpright(pair.factor.bbox,pair.imageWidth,pair.imageHeight),row.factorBox));
       if(at>=0){matchedRows.add(at);correctCells++;}
     }
+    if(correctCells!==2)console.log('FICTIONAL PIXEL CELL DIAGNOSTIC',JSON.stringify({
+      turn:originalClockwiseTurn,visualRegions:fictionalCellRegions,
+      observed:evidence.pairs.map(p=>({
+        age:p.age.text,factor:p.factor.text,frame:[p.imageWidth,p.imageHeight],
+        rawAge:p.age.bbox,rawFactor:p.factor.bbox,
+        uprightAgeCenter:toUpright(p.age.bbox,p.imageWidth,p.imageHeight),
+        uprightFactorCenter:toUpright(p.factor.bbox,p.imageWidth,p.imageHeight)
+      }))
+    }));
     assert.equal(correctCells,2,'original-image visual cell annotation mismatch on turn '+
       originalClockwiseTurn);
     assert.equal(external.length,0,'all rotated original-pixel OCR remains offline');
