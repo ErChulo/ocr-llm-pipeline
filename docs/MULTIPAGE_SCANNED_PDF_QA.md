@@ -17,6 +17,40 @@ On the skewed page, **age 58 was not recognized**; the corresponding first row-p
 
 The [verified source/build run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42488253166) passed **259/259** tests. The [full Playwright and accessibility run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42488253202) passed. In that separate **synthetic text-only real-GGUF** cohort, official Qwen2.5 0.5B again produced **7/8** exact cases, **93.75%** strict micro F1, with **360.637 seconds** elapsed on the model test. Do not combine the text-model and image-OCR denominators.
 
+## Six-page rotated follow-up — observed November 8, 2026
+
+Merged [PR #58](https://github.com/ErChulo/ocr-llm-pipeline/pull/58)
+expanded the actual offline Chromium OCR fixture to **six entirely fictional
+image-only PDF pages**. Pages 4–6 store counter-rotated raster pixels with
+parser-recognized PDF `/Rotate` metadata; pages 1–3 retain the earlier
+clear/low-contrast/skew cases unchanged. The
+[passing browser CI run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42495080457)
+uploaded `fictional-multipage-scanned-pdf-ocr.json` with these *measured* counts:
+
+| Page | Rotation / scan condition | Exact numeric tokens | Same-line row-pair proxy |
+| --- | --- | ---: | ---: |
+| 1 | 0°, clear | 4/4 | 2/2 |
+| 2 | 0°, low contrast with ruling | 4/4 | 2/2 |
+| 3 | 0°, slight skew | 3/4 | 1/2 |
+| 4 | 90°, counter-rotated source pixels | 3/4 | 1/2 |
+| 5 | 180°, counter-rotated source pixels | 4/4 | 2/2 |
+| 6 | 270°, counter-rotated source pixels | 4/4 | 2/2 |
+| **Total** | **Six pages** | **22/24 (91.67%)** | **10/12 (83.33%)** |
+
+The unrecognized tokens were fictional age **58** on the skewed page
+and **57** on the 90°-rotated page. There were **zero exact wrong-page
+target matches**, **six independent original-page review requirements**, and
+**zero external browser requests**. The score is not a cell-level provenance
+measure: the row-pair test is a same-line string proxy, and no raster glyph
+coordinates or spatial cell addresses were generated.
+
+The [source/build run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42495080425)
+passed **266/266** tests and produced the single HTML. The
+[full offline Playwright acceptance](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42495080432)
+and accessibility jobs passed. These runs do not certify real-world OCR,
+numeric fidelity, model factual correctness, workstation suitability,
+or agency production authorization.
+
 ## Corpus and provenance
 
 The offline Chromium smoke test generates one entirely fictional, three-page PDF containing three independent JPEG image XObjects and **no selectable text layer**. No real plan, case, participant, or employee data is included. It exercises:
