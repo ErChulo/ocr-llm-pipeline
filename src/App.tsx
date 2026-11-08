@@ -112,7 +112,8 @@ export default function App() {
     confirmedEvidence:evidenceConfirmed,
     conflictsUnresolved: audit?.conflicts.filter(c=>!Object.hasOwn(conflictChoices,c.path)).length ?? 0,
     privacyRequired:privacy.requiresReview, privacyReviewed,
-    sourceIssuesUnreviewed:pendingSourceIssues.length
+    sourceIssuesUnreviewed:pendingSourceIssues.length,
+    sourceIssuesReviewed
   });
 
   useEffect(() => () => { void engine.current.unload(); void terminateOcr(); }, []);

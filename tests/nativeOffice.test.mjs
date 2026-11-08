@@ -317,7 +317,11 @@ test('DOCX shape and foreign-namespace text cannot masquerade as a visible parag
    conflictsUnresolved:0,privacyRequired:false,privacyReviewed:false,
    sourceIssuesUnreviewed:parsed.reviewIssues.length};
  assert.equal(evaluateExportGate(gate).allowed,false,'omitted document content must be reviewed');
- assert.equal(evaluateExportGate({...gate,sourceIssuesUnreviewed:0}).allowed,true);
+ assert.equal(evaluateExportGate({...gate,sourceIssuesUnreviewed:0}).allowed,false,
+   'a stale count alone cannot approve omitted drawing and foreign XML text');
+ const sourceIssuesReviewed=Object.fromEntries(parsed.reviewIssues.map(issue=>[issue.id,true]));
+ assert.equal(evaluateExportGate({...gate,sourceIssuesUnreviewed:0,
+   sourceIssuesReviewed}).allowed,true);
 });
 
 test('DOCX drawings in headers and notes also require original-document review',()=>{
