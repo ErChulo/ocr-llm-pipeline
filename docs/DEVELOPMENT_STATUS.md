@@ -6,7 +6,8 @@
 
 - The reviewed baseline for this follow-up is main commit `3d1e84a03787cf4ccbd3554dcb7a9aa6a33dbccc`. Merged PR #54 added an independent three-page image-only fictional PDF matrix. [Measured offline `file://` results](MULTIPAGE_SCANNED_PDF_QA.md): **11/12** exact page-local literals, **5/6** same-line age/factor pairs, zero wrong-page target matches, three required page reviews, and zero external requests (CI 42488253190). The skewed third page missed age **58**. Row proximity is not verified spatial cell association.
 
-- Latest verified main baseline: `0284329c16cc803aed28ccbac8fa7f04bec3fb7c` (PRs #54, #55 and #56 merged).
+- Latest verified main baseline: `ce0e7a62fef355c1d810b19635147f3fe857fdb5` (PR #58 merged). The [six-page rotated scan matrix](MULTIPAGE_SCANNED_PDF_QA.md) measured **22/24** exact page-local numeric tokens, **10/12** same-line row-pair proxies, and **0** wrong-page target literals. It missed fictional age 58 on the skewed page and age 57 on the 90° rotated page; 180°/270° pages each scored 4/4. These are OCR diagnostics, not spatial cell citations.
+- After PR #58, **266/266** source tests and the single-file HTML build passed ([build CI](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42495080425)); [offline browser smoke](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42495080457) and [full Playwright acceptance](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42495080432) passed with six source-review requirements and zero browser network requests.
 - After PR #56, **262/262** source tests passed, TypeScript compile and standalone HTML build passed ([CI run 42489238115](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42489238115)).
 - Offline Chromium file URL smoke and full Playwright acceptance passed on the integrated PDF feature branch, with external browser requests blocked.
 - Accessibility suite passed; this does not replace testing on the actual approved managed workstation.
