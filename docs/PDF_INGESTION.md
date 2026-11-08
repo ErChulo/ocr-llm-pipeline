@@ -19,7 +19,7 @@
 - OCR may misread numbers, dates, names and formulas even at 100% reported confidence. Always compare with the PDF or image; confidence is only a diagnostic.
 - Text embedded in an image on a page that already has text can remain unrecognized.
 - PDF FreeText annotations and interactive widget/form values can contain provisions absent from selectable text. The app flags non-link annotations and requires original-PDF inspection in an approved viewer showing annotation/form values; its embedded viewer may not display these overlays.
-- PDF tables, columns, rotated text and complex layouts may not preserve logical reading order. A conservative geometry check flags suspicious pages for mandatory original-page review; absence of a warning **does not prove** reading-order correctness.
+- PDF tables, columns, rotated text and complex layouts may not preserve logical reading order. Repeated compact aligned rows (three or more) now also trigger a visual-review warning even when individual cell gaps are too narrow for the wide-gap heuristic. A conservative geometry check flags suspicious pages for mandatory original-page review; absence of a warning **does not prove** reading-order correctness.
 - Mixed pages can be reprocessed with **OCR mixed PDF pages**. This is an explicit user action, not automatic: the entire page is rendered and OCR text is stored as a separate page-derived record. It may repeat native text; compare against the original and manually correct errors. A prior manual correction disables this operation to prevent losing edited text.
 - A PDF text-item envelope is **not** a verified box around every character or a claim-level factual citation.
 - File-size and safety limits remain 20 MB, 300 pages and 2 million extracted characters.
