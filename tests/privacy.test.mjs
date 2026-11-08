@@ -42,3 +42,18 @@ test('both input and output without identifiers cause no warning',()=>{
  assert.deepEqual(screenPrivacySurfaces('Normal retirement at 65.',{age:65}),
    {categories:{},requiresReview:false});
 });
+
+test('document identifiers and filenames are screened as exported metadata',()=>{
+ const plain='Normal retirement age 65.';
+ const candidate={age:65};
+ const filenameOnly=screenPrivacySurfaces(plain,candidate,{
+   name:'synthetic-123-45-6789.txt',id:'plain-file'
+ });
+ assert.equal(filenameOnly.requiresReview,true);
+ assert.equal(filenameOnly.categories.possible_ssn,1);
+ const idOnly=screenPrivacySurfaces(plain,candidate,{
+   name:'plain.txt',id:'fictional.test@example.org'
+ });
+ assert.equal(idOnly.categories.email,1);
+ assert.equal(JSON.stringify(idOnly).includes('fictional.test@'),false);
+});

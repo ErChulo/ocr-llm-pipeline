@@ -162,3 +162,13 @@ test('forged or stale citation locations and quotations are rejected at the fina
    assert.ok(result.reasons.some(r=>r.includes('source citations')));
  }
 });
+
+test('export preflight independently flags possible private identifiers in document metadata',()=>{
+ const document={...d,id:'synthetic-123-45-6789',name:'synthetic-123-45-6789.txt'};
+ const reviewed={...audit,documentId:document.id,documentName:document.name};
+ const input={...safe,document,audit:reviewed,privacyRequired:false,privacyReviewed:false};
+ const blocked=evaluateExportGate(input);
+ assert.equal(blocked.allowed,false);
+ assert.ok(blocked.reasons.some(r=>r.includes('private data still needs review')));
+ assert.equal(evaluateExportGate({...input,privacyReviewed:true}).allowed,true);
+});

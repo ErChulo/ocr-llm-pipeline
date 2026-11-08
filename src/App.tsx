@@ -96,7 +96,7 @@ export default function App() {
   const correctablePages = useMemo(()=>active?ocrRecords(active):[],[active]);
   const chosenOcrPage = correctablePages[ocrPageChoice] ?? correctablePages[0] ?? null;
   // Screen what is actually exported as well as the imported source.
-  const privacy = useMemo(() => active ? screenPrivacySurfaces(active.text,extraction) :
+  const privacy = useMemo(() => active ? screenPrivacySurfaces(active.text,extraction,{name:active.name,id:active.id}) :
     {categories:{},requiresReview:false}, [active,extraction]);
   // A literal text match is only a candidate citation. The user must review
   // each value and confirm one actual source location before exporting.
@@ -666,7 +666,7 @@ export default function App() {
             </p>}
             {active && privacy.requiresReview && <section className="privacy-review">
               <h3>Protected information check</h3>
-              <p className="warning">Possible personal data in the source or current JSON: {safePrivacySummary(privacy)}.</p>
+              <p className="warning">Possible personal data in the source, current JSON or document identity: {safePrivacySummary(privacy)}.</p>
               <p className="help">The check runs locally and is not exhaustive. Do not put protected information in public repositories.</p>
               <label className="evidence-confirm">
                 <input type="checkbox" checked={privacyReviewed} onChange={e=>setPrivacyReviewed(e.currentTarget.checked)}/>

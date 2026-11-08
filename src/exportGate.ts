@@ -87,7 +87,7 @@ export function evaluateExportGate(input:ExportGateInputs):ExportGate{
   // actual output at the final export boundary, not only the UI summary.
   let privacyRequired=input.privacyRequired;
   try{
-    if(document)privacyRequired ||= screenPrivacySurfaces(document.text,value).requiresReview;
+    if(document)privacyRequired ||= screenPrivacySurfaces(document.text,value,{name:document.name,id:document.id}).requiresReview;
   }catch{
     reasons.push('The local privacy screen could not inspect the current JSON.');
   }
