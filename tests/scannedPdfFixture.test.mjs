@@ -11,13 +11,15 @@ test('fictional multipage raster PDF preserves page boundaries, rotation and nat
   const pdf=createMultiPageScannedPdf([
     {jpeg,width:360,height:160},
     {jpeg,width:360,height:160,rotation:90},
+    {jpeg,width:360,height:160,rotation:180},
+    {jpeg,width:360,height:160,rotation:270},
     {jpeg,width:360,height:160,heading:'FICTIONAL NATIVE HEADING'}
   ]);
   const task=getDocument({data:Uint8Array.from(pdf),useWasm:false,disableFontFace:true});
   try{
     const doc=await task.promise;
-    assert.equal(doc.numPages,3);
-    for(let i=1;i<=3;i++){
+    assert.equal(doc.numPages,5);
+    for(let i=1;i<=5;i++){
       const page=await doc.getPage(i);
       const ops=await page.getOperatorList();
       assert.ok(ops.fnArray.some(op=>[
@@ -25,14 +27,13 @@ test('fictional multipage raster PDF preserves page boundaries, rotation and nat
       ].includes(op)),'every page has a distinct PDF image source');
       const strings=(await page.getTextContent()).items
         .filter(item=>'str' in item).map(item=>item.str).join(' ');
-      if(i<3)assert.equal(strings.trim(),'','scans must not gain invented selectable text');
+      if(i<5)assert.equal(strings.trim(),'','scans must not gain invented selectable text');
       else assert.match(strings,/FICTIONAL NATIVE HEADING/);
-      if(i===2){
-        assert.equal(page.rotate,90);
-        const viewport=page.getViewport({scale:1});
-        assert.equal(viewport.width,160);
-        assert.equal(viewport.height,360);
-      }
+      const rotation=[0,0,90,180,270,0][i];
+      assert.equal(page.rotate,rotation);
+      const viewport=page.getViewport({scale:1});
+      assert.equal(viewport.width,rotation===90||rotation===270?160:360);
+      assert.equal(viewport.height,rotation===90||rotation===270?360:160);
       page.cleanup();
     }
   }finally{await task.destroy();}
@@ -51,6 +52,7 @@ test('no OCR callback blocks even a multipage raster document without saving par
 test('multipage raster fixtures reject invalid inputs and cannot forge rotation',()=>{
   assert.throws(()=>createMultiPageScannedPdf([]),/1–300 pages/);
   assert.throws(()=>createMultiPageScannedPdf([{jpeg,width:360,height:160,rotation:45}]),/Invalid fictional scanned PDF page/);
+  assert.throws(()=>createMultiPageScannedPdf([{jpeg,width:360,height:160,rotation:360}]),/Invalid fictional scanned PDF page/);
   assert.throws(()=>createMultiPageScannedPdf([{jpeg,width:4000,height:160}]),/Invalid fictional scanned PDF page/);
   assert.throws(()=>createMultiPageScannedPdf([{jpeg:Buffer.alloc(4),width:360,height:160}]),/Invalid fictional scanned PDF page/);
 });
