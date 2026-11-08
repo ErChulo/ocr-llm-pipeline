@@ -4,6 +4,8 @@
 
 ## Implemented and source-tested
 
+- [x] Extend the offline source-instruction *review warning* to catch AI-directed directives split across lines, invisible-character obfuscation, ChatML-style role boundaries and forged system/developer headings. Screening does not rewrite source bytes, OCR text, evidence locations, or model outputs. Adversarial source and export-gate regressions cover these forms; actual-model injection resistance and false-positive rates remain open.
+
 - [x] Add a reproducible **three-page fictional scanned-PDF** fixture with page-derived OCR records, distinct age/factor facts, an image-only PDF text layer and mandatory per-page original review. Measured offline Chromium acceptance: **11/12** page-local exact literals and **5/6** same-line age/factor pairs; the slightly skewed page missed age **58**. A wrong-page target literal fails the browser check (none observed). A separate PDF.js unit fixture checks actual /Rotate 90 metadata and mixed native/raster pages; that does **not** certify OCR of 90-degree text. See [methodology](MULTIPAGE_SCANNED_PDF_QA.md); recorded scores must come from the completed browser artifact, not be assumed.
 
 
