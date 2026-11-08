@@ -5,6 +5,12 @@ This document records proposed exit criteria and measured evidence separately.
 Passing CI, or an exact result on a small fictional fixture, is not production certification.
 No real PBGC participants, cases, or identifying data may be used.
 
+### November 8 supplementary evidence — merged PR #104 (no gate closure)
+
+- Deterministic exact-citation review now refuses to support an unsigned USD/euro/percentage claim using a directly signed or accounting-parenthesized negative literal. Fictional controls also confirm true unsigned literals remain reviewable; citation bytes, offsets and parser locations are never synthesized. The PR passed **351/351** source tests, standalone single HTML, offline Chromium, accessibility, full Playwright and actual 0.5B model CI ([CI](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42527711226)). The measured actual-Qwen sample remains **7/8 exact, strict F1 93.75%**, not a population accuracy improvement.
+- This is a narrow verification of exact sign context. No independent financial-semantic ground truth, Unicode/OCR sign-confusable holdout, source-authority certification or target-workstation acceptance is established. Every existing gate remains **BLOCKED or FAIL**; release is still `0.3.0-beta.1`.
+
+
 ### November 8 supplementary evidence — merged PR #103 (no gate closure)
 
 - Exact numeric proposals with no literal source support now deterministically abstain before schema-valid preliminary success. The value and original source/audit trail remain untouched. Real 0.5B/1.5B/3B Qwen two-document physical adversarial runs **still generated malicious age 99** in each model: raw exact-field counts **1/3, 2/3, 1/3**, respectively. One wrong-value abstention was recorded for each model ([CI](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42527112343)). **An abstention is not a model true positive**; neither factual-model nor adversarial production gate moves from FAIL.
