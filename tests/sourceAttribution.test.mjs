@@ -57,9 +57,12 @@ test('role-spoofed values and source-absent model guesses are never verified',()
   const source=doc('FICTIONAL PLAN: normal age 65.');
   const {audit,value}=candidate(source,123);
   const assessment=assessCandidateSourceAttribution(source,audit,value);
-  assert.equal(assessment.decision,'review-required');
+  assert.equal(assessment.decision,'abstain');
   assert.deepEqual(assessment.unmatchedPaths,['/normal_age']);
-  // The separate existing export evidence gate refuses the missing citation.
+  assert.deepEqual(assessment.abstentions,[{
+    path:'/normal_age',reason:'source-absent-numeric-literal'
+  }]);
+  // A missing numeric source literal now blocks prevalidation, not only export.
 });
 
 
@@ -115,4 +118,40 @@ test('missing document or model audit abstains without guessing provenance',()=>
     path:'/',reason:'missing-source-audit'
   }]);
  }
+});
+
+test('numeric model hallucinations abstain before schema validation; source and proposals never change',()=>{
+  for(const missing of [99,'99','12.50%','$500','-6.25']){
+    const source=doc('Governing provision: normal_age 65; permitted interest 6%.');
+    const before=structuredClone(source);
+    const input=candidate(source,missing);
+    const valueBefore=structuredClone(input.value);
+    const decision=assessCandidateSourceAttribution(source,input.audit,input.value);
+    assert.equal(decision.decision,'abstain',String(missing));
+    assert.deepEqual(decision.abstentions,[{
+      path:'/normal_age',reason:'source-absent-numeric-literal'
+    }],String(missing));
+    assert.match(attributionAbstentionMessage(decision),/no matching original source literal/);
+    assert.deepEqual(input.value,valueBefore);
+    assert.deepEqual(source,before);
+  }
+});
+test('exactly sourced numeric literals stay review-required, not automatically approved',()=>{
+  for(const literal of [65,'65','6%','12.50%','$500']){
+    const source=doc('Governing fictional source: normal_age '+literal+'.');
+    const input=candidate(source,literal);
+    const assessment=assessCandidateSourceAttribution(source,input.audit,input.value);
+    assert.equal(assessment.decision,'review-required',String(literal));
+    assert.deepEqual(assessment.unmatchedPaths,[]);
+  }
+});
+test('normalized nonnumeric claims keep manual quoted-evidence path rather than fabricated numeric support',()=>{
+  const source=doc('Fictional source says January first in the year 2026.');
+  const chunk={chunk:1,start:0,end:source.text.length,text:source.text};
+  const audit=collectChunkCandidates(source,[chunk],[{date:'2026-01-01',spouse_eligible:true}]);
+  const decision=assessCandidateSourceAttribution(source,audit,
+    {date:'2026-01-01',spouse_eligible:true});
+  assert.equal(decision.decision,'review-required');
+  assert.deepEqual(decision.unmatchedPaths,['/date','/spouse_eligible']);
+  assert.deepEqual(decision.abstentions,[]);
 });
