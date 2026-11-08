@@ -4,6 +4,8 @@
 
 ## Implemented and source-tested
 
+- [x] **Bounded adaptive fictional PDF OCR (PRs #68, #69, #71):** new non-regression gate and parser-page-local review retained. Actual nine-page Chromium test improved from 34/36 to **36/36 exact tokens** and from 16/18 to **18/18 same-line row proxies**. A higher-resolution primary pass plus narrowly guarded re-recognition of malformed numeric rows uses actual image pixels; it does **not** invent corrected digits or cell boxes. [Measured evidence and rejected experiments](MULTIPAGE_SCANNED_PDF_QA.md). **Not** production OCR certification.
+
 - [x] **Selected-citation instruction guard (PR #63):** final JSON export rejects a literal value cited from an AI-directed instruction line, even after source-risk acknowledgement. The reviewer must select an authentic source passage and correct the proposed value manually. The warning is displayed beside the selected citation. It is not a general factual verifier or prompt-injection sanitizer. [Implementation constraints](INSTRUCTION_CITATION_GUARD.md).
 
 - [x] **OCR numeric uncertainty warning (PR #64):** count-only review hint for tokens with visually confusable letters and digits, shared by scanned PDF/image/mixed OCR. No OCR correction, source mutation, value logging or fabricated cell coordinates. [Limitations](OCR_NUMERIC_AMBIGUITY.md).
