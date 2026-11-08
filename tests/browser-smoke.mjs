@@ -285,6 +285,40 @@ try {
   console.log('REAL BROWSER: fictional scanned-table OCR literal exact fields '+
     exactTableFields+'/'+expectedTable.length+'; diagnostic only, requires source review.');
 
+  // Actual deployed file:// OCR: source JPEG pixels are sideways, with NO
+  // PDF /Rotate metadata. The bounded local fallback must recover a unique
+  // measured orientation, retain parser page 1 and demand original review.
+  const sidewaysJpeg=await page.evaluate(async base64=>{
+    const img=new Image();
+    img.src='data:image/jpeg;base64,'+base64;
+    await img.decode();
+    const rotated=document.createElement('canvas');
+    rotated.width=550;rotated.height=1100;
+    const ctx=rotated.getContext('2d');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,550,1100);
+    ctx.translate(550,0);ctx.rotate(Math.PI/2);ctx.drawImage(img,0,0);
+    return rotated.toDataURL('image/jpeg',0.96).split(',')[1];
+  },scannedTableJpeg);
+  const sidewaysName='fictional-sideways-pixels-without-pdf-rotation.pdf';
+  const sidewaysPdf=createScannedPdf(Buffer.from(sidewaysJpeg,'base64'),550,1100);
+  await filePicker.setInputFiles({name:sidewaysName,
+    mimeType:'application/pdf',buffer:sidewaysPdf});
+  await page.locator('.card select').first().locator('option')
+    .filter({hasText:sidewaysName}).waitFor({state:'attached',timeout:180000});
+  await page.locator('.card select').first().selectOption({label:sidewaysName});
+  await page.locator('.source-completeness').getByText(/PDF page 1 before export/i)
+    .waitFor({timeout:180000});
+  const sidewaysText=await page.locator('.preview').innerText();
+  assert.match(sidewaysText,/^Page 1:/,'authentic PDF parser page preserved');
+  for(const token of ['55','65','0.8750','1.0000']){
+    assert.match(sidewaysText,new RegExp('(^|[^0-9.])'+token.replace('.','\\.')+'($|[^0-9.])'),
+      'Measured quarter-turn OCR must recover fictional numeric token '+token);
+  }
+  assert.equal(await page.locator('.source-completeness input[type="checkbox"]').count(),1,
+    'orientation recovery must not authorize source facts without review');
+  assert.equal(external.length,0,'rotated raw-image OCR must remain offline');
+  console.log('REAL BROWSER: actual local OCR recovered 4/4 sideways-JPEG literals with original PDF page and unverified review.');
+
   const fictionalScans=[{
     fixture:'fictional-scanned-table.pdf',variation:'high-contrast-baseline',
     exactFieldCount:exactTableFields,literalMatches:tableHits
