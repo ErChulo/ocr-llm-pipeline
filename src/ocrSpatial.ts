@@ -12,7 +12,7 @@ export type SpatialCandidate={
   region:MeasuredRasterBox;
   imageWidth:number;
   imageHeight:number;
-  precision:'tesseract-raster-word-envelope';
+  precision:'tesseract-raster-word-envelope'|'tesseract-inverse-quarter-turn-envelope';
   transcriptRanges:{age:{start:number;end:number};factor:{start:number;end:number}};
 };
 export type SpatialAssessment={
