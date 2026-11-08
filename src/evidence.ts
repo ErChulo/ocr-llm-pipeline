@@ -87,12 +87,17 @@ function boundaryOkay(source: string,start: number,end: number,value: unknown): 
     const first=characters[0]??'',last=characters.at(-1)??'';
     const before=source[start-1]||'',after=source[end]||'';
     const prev=source[start-2]||'',next=source[end+1]||'';
-    // A positive percentage must not borrow textual evidence from a
-    // negative or explicitly signed percentage. Parenthesized amounts can
-    // be accounting negatives; refuse rather than infer the sign.
-    if(/^(?:\d+(?:\.\d+)?|\.\d+)[ \t]?%$/.test(token)){
-      if(/[-+−–]\s*$/.test(source.slice(Math.max(0,start-8),start)))return false;
-      if(before==='('&&after===')')return false;
+    // Currency and percentage strings reach the non-numeric branch because
+    // they contain a currency/percent sign. Never cite an UNSIGNED positive
+    // amount from a signed or accounting-negative original source token.
+    // This check is intentionally contextual and preserves source offsets.
+    const unsignedFinancial=/^(?:[$€£]\s*)?(?:\d+(?:,\d{3})*(?:\.\d+)?|\.\d+)[ \t]?%?$/.test(token)
+      && /[$€£%]/.test(token);
+    if(unsignedFinancial){
+      const prefix=source.slice(Math.max(0,start-8),start);
+      const suffix=source.slice(end,Math.min(source.length,end+4));
+      if(/[+\-−–]\s*$/.test(prefix))return false;
+      if(/\(\s*$/.test(prefix)&&/^\s*\)/.test(suffix))return false;
     }
     if(word.test(first) && word.test(before))return false;
     if(word.test(last) && word.test(after))return false;
