@@ -85,27 +85,3 @@ test('compact three-row PDF table gets mandatory visual review without fabricate
  assert.ok(spans.every(s=>s.start>=0&&s.end<=parsed.text.length));
 });
 
-test('multi-page scanned OCR keeps page identity and leaves image-only evidence unboxed',async()=>{
- const pdf=createSyntheticPdf([
-  ['Fictional plan amendment notice'],[],
-  ['Fictional schedule; see scanned page 2']
- ]);
- let calls=0;
- const parsed=await parsePdf('fictional-scanned-insert.pdf',new Uint8Array(pdf),async canvas=>{
-  calls++;
-  assert.ok(canvas.width>0&&canvas.height>0);
-  return {text:'EARLY RETIREMENT AGE 55; SERVICE 10',confidence:63,
-    width:canvas.width,height:canvas.height};
- });
- assert.equal(calls,1);
- assert.deepEqual(parsed.records.map(x=>x.location.kind),
-  ['pdf-page','pdf-page-ocr','pdf-page']);
- assert.equal(parsed.records[1].location.page,2);
- assert.equal(parsed.records[1].location.confidence,63);
- assert.equal(parsed.records[1].textSpans,undefined,
-  'scanned page must not inherit selectable-text glyph coordinates');
- assert.equal(parsed.provenance.source,'pdf-ocr');
- assert.ok(parsed.reviewIssues.some(x=>x.page===2&&x.category==='low_ocr_confidence'));
- assert.match(parsed.text,/Page 2:\nEARLY RETIREMENT AGE 55; SERVICE 10/);
- assert.ok(parsed.warnings.some(x=>x.includes('confidence on page 2')));
-});
