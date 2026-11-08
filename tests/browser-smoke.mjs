@@ -483,7 +483,7 @@ try {
   // Read-only diagnostic; this corpus is generated in this test from fixed
   // fictional strings. Do not add such document-text logging to the app.
   for(const item of pageResults.filter(entry=>entry.missingLiterals.length)){
-    const excerpt=bodyByPage[item.page].split(/\\r?\\n/).slice(0,16)
+    const excerpt=bodyByPage[item.page].split(/\r?\n/).slice(0,16)
       .map(line=>line.slice(0,120)).join(' | ');
     console.log('FICTIONAL FIXTURE OCR DEBUG '+JSON.stringify({
       page:item.page,rotation:item.rotation,missing:item.missingLiterals,excerpt
