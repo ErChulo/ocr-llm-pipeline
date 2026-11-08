@@ -4,6 +4,8 @@
 
 ## Implemented and source-tested
 
+- [x] Broaden purely fictional raster-PDF OCR measurements beyond the clean scan with deterministic low-contrast and skew/speckling conditions. Record per-fixture exact literal counts in an offline CI artifact, not as a factual or table-cell certification. See [dated development status](DEVELOPMENT_STATUS.md).
+
 - [x] Three aligned rows of compact PDF cells trigger original-page review without changing native source words, page identifiers, character offsets, or citation geometry. Synthetic negative and actual PDF parsing tests cover misleading table layouts. An experimental real offline scanned-table OCR probe records five fictional literal fields; this is not a measured model-quality gain or production acceptance.
 
 - [x] Non-link PDF annotations including FreeText and fillable widget/form values omitted from the text layer require explicit original-document review, not fabricated page citations. Parser fixtures and offline browser checks cover notes, widgets and ordinary links; the preview may omit overlays.
