@@ -2,6 +2,8 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Flag omitted PDF annotations and form widgets for mandatory original-file inspection, excluding their values from native page text citations. Synthetic FreeText/AcroForm/link fixtures and offline Playwright checks cover this source completeness hazard; rebase a previously passing but outdated PR on current source safety gates.
+
 - Final JSON export independently checks each current source-completeness warning ID against reviewer acknowledgements. Reject stale zero counts, malformed/duplicated warning identities, and unregistered embedded AI instruction risks; expand adversarial export-gate tests.
 
 - Measure the independent eight-case physical PDF/DOCX/XLSX/CSV corpus with official offline GGUFs: Qwen 0.5B 88.89% strict F1, 6/8 exact; Qwen 1.5B 94.44%, 7/8 exact. Both models incorrectly followed an embedded CSV instruction-like appendix for normal age 99; separate source-location diagnostics revealed the wrong citation. Document a source-warning mitigation, model limitations, and zero browser network requests. Add Playwright verification that instruction acknowledgements are per-document.
