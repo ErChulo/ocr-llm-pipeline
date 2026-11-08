@@ -412,6 +412,20 @@ const report={
    orientationMetrics.expectedLiterals),
   status:'experimental-manual-known-orientation-not-deployed'
  },
+ // Unlike the known-angle probe, this test-only selector sees ALL four
+ // candidate passes and abstains on ambiguity. It never sees ground truth.
+ blindOrientationSweep:{
+  ...blindMetrics,
+  acceptedPrecision:ratio(blindMetrics.truePositive,
+    blindMetrics.truePositive+blindMetrics.falsePositive),
+  recall:ratio(blindMetrics.truePositive,
+    blindMetrics.truePositive+blindMetrics.falseNegative),
+  numericLiteralRecall:ratio(blindMetrics.recognizedLiterals,
+    blindMetrics.expectedLiterals),
+  selectedOrientationAccuracy:ratio(blindMetrics.selectedCorrectOrientations,
+    blindMetrics.selectedCorrectOrientations+blindMetrics.selectedWrongOrientations),
+  status:'experimental-unique-measured-orientation-for-review-only'
+ },
  abstentionRate:metric.abstainedPages/metric.pageCount,
  numericLiteralRecall:ratio(metric.recognizedNumericLiterals,metric.expectedNumericLiterals),
  externalRequests:external.length,cases:rows,status:'measured_not_certified',
@@ -426,5 +440,9 @@ assert.equal(orientationMetrics.falsePositive,0,
  'Experimental inverse-rotated OCR source envelope was wrongly associated');
 assert.equal(orientationMetrics.wrongPage,0,
  'Experimental inverse-rotated OCR must retain original parser PDF page');
+assert.equal(blindMetrics.falsePositive,0,
+ 'Measured orientation selection accepted an incorrect original-image cell');
+assert.equal(blindMetrics.wrongPage,0,
+ 'Measured orientation selection must never invent a different PDF page');
 assert.equal(metric.requiredAmbiguousAbstentions,1);
 assert.equal(external.length,0);
