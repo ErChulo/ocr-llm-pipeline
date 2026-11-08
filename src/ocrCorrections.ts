@@ -71,6 +71,17 @@ export function correctOcrText(doc:SourceDocument,index:number,edited:string):So
       ...record,start:before,end:output.length,location,
       ...(i===index?{textSpans:undefined}:record.textSpans?{
         textSpans:record.textSpans.map(span=>({...span,start:span.start+shift,end:span.end+shift}))
+      }:{}),
+      // Human-corrected OCR no longer has a guaranteed mapping to its original
+      // Tesseract word rectangles. Never retain stale image-region evidence.
+      // Unedited following records retain their measured boxes but must shift
+      // absolute transcript offsets with their source text.
+      ...(i===index?{ocrSpatialRows:undefined}:record.ocrSpatialRows?{
+        ocrSpatialRows:record.ocrSpatialRows.map(row=>({
+          ...row,
+          age:{...row.age,start:row.age.start+shift,end:row.age.end+shift},
+          factor:{...row.factor,start:row.factor.start+shift,end:row.factor.end+shift}
+        }))
       }:{})
     });
     last=record.end;
