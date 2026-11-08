@@ -74,7 +74,7 @@ test('PDF FreeText notes omitted from native text require explicit original anno
  assert.ok(issue,'unextracted annotation needs source review');
  assert.equal(issue.category,'pdf_annotation_review');
  assert.equal(issue.page,1);
- assert.match(issue.message,/approved PDF viewer showing annotations/);
+ assert.match(issue.message,/viewer displaying annotations and form field values/);
  assert.ok(result.warnings.some(w=>w.includes('non-link annotation')));
 });
 
