@@ -1,0 +1,63 @@
+name: Experimental physical-document GGUF holdout 1.5B
+
+concurrency:
+  group: physical-holdout-1p5b-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/physical-holdout-1p5b-gguf.yml'
+      - 'tests/real-physical-holdout-benchmark.mjs'
+      - 'tests/fixtures/physicalHoldoutCases.mjs'
+      - 'tests/fixtures/physicalHoldoutProvenance.mjs'
+      - 'tests/physicalHoldoutCorpus.test.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  holdout-1p5b:
+    runs-on: ubuntu-latest
+    timeout-minutes: 52
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install exact-pinned dependencies and build offline HTML
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+          npm run build
+      - name: Install Chromium automation on networked CI runner
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Download and checksum official Qwen 1.5B GGUF (CI only)
+        timeout-minutes: 12
+        run: |
+          mkdir -p tmp
+          curl -fL --retry 3 --retry-all-errors \
+            'https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf' \
+            -o tmp/qwen2.5-1.5b-instruct-q4_k_m.gguf
+          printf '%s  %s\n' \
+            '6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e' \
+            'tmp/qwen2.5-1.5b-instruct-q4_k_m.gguf' | sha256sum -c -
+      - name: Measure eight independent physical-document holdout cases under file URL
+        timeout-minutes: 35
+        env:
+          CASE_TIMEOUT_MS: '300000'
+          MODEL_LABEL: Official Qwen2.5-1.5B-Instruct Q4_K_M
+          MODEL_FILE: tmp/qwen2.5-1.5b-instruct-q4_k_m.gguf
+        run: node tests/real-physical-holdout-benchmark.mjs
+      - name: Upload fictional-only holdout report and screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: physical-holdout-1p5b-gguf-report
+          path: |
+            tmp/real-corpus-report.json
+            tmp/real-corpus-final.png
+          if-no-files-found: ignore
