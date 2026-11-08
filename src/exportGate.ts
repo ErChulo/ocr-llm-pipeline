@@ -8,6 +8,7 @@ import type { EvidenceCheck } from './evidence.ts';
 import { evidenceReviewComplete, evidenceMatchesCurrentValue, evidenceSelectionsAnchoredToDocument } from './evidence.ts';
 import { screenPrivacySurfaces } from './privacy.ts';
 import { containsSourceInstructionRisk,selectedCitationIsInstructionRisk } from './sourceInstructionReview.ts';
+import {selectedCitationExpresslyDisclaimed} from './disclaimedEvidence.ts';
 
 export type ExportGateInputs = {
   document: SourceDocument | null;
@@ -92,6 +93,13 @@ export function evaluateExportGate(input:ExportGateInputs):ExportGate{
     return match&&selectedCitationIsInstructionRisk(document.text,match.start,match.end);
   })){
     reasons.push('A selected source citation is inside possible AI-directed instruction text. Select an authentic governing passage instead; acknowledging the source warning is insufficient.');
+  }
+  if(document&&input.evidence.some(check=>{
+    const index=input.selectedEvidence?.[check.path];
+    const match=Number.isSafeInteger(index)&&index>=0?check.matches?.[index]:null;
+    return match&&selectedCitationExpresslyDisclaimed(document.text,match.start,match.end);
+  })){
+    reasons.push('A selected source citation is expressly disclaimed as an example, sample, or non-governing passage. Select authentic applicable evidence; literal presence alone is insufficient.');
   }
   const issues=document?.reviewIssues??[];
   const issueIds=new Set<string>();
