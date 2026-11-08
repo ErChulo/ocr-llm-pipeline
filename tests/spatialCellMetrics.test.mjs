@@ -68,3 +68,31 @@ test('malformed or incomplete independent annotations and missing observed pages
     status:'abstain',reason:'unknown',pairs:actual.pairs
   }}]),/Abstained pages may not/);
 });
+
+test('center-only match is insufficient when measured word rectangle crosses an annotated cell boundary',()=>{
+  const target=actual.pairs[0];
+  const straddling={...target,age:{...target.age,bbox:{
+    x0:100,y0:239,x1:260,y1:266
+  }}};
+  // x-center=180 lies within the authored age cell [60,200], but
+  // 60/160 pixels of the word are outside that cell. It is NOT a TP.
+  const partial={...actual,pairs:[straddling,actual.pairs[1]]};
+  const m=scoreSpatialCells(truth,[{page:3,assessment:partial}]);
+  assert.equal(m.correct,1);
+  assert.equal(m.falseMatches,1);
+  assert.equal(m.missed,1);
+  assert.equal(m.precision,0.5);
+  assert.equal(m.recall,0.5);
+  assert.equal(m.minMeasuredWordRegionCoverage,0.95);
+});
+test('a barely intersecting measured word is rejected even if a familiar numeral matches',()=>{
+  const first=actual.pairs[0];
+  const almostOutside={...first,factor:{...first.factor,bbox:{
+    x0:655,y0:239,x1:757,y1:266
+  }}};
+  const m=scoreSpatialCells(truth,[{page:3,assessment:{
+    ...actual,pairs:[almostOutside,actual.pairs[1]]
+  }}]);
+  assert.equal(m.falseMatches,1);
+  assert.equal(m.correct,1);
+});
