@@ -21,7 +21,7 @@
 - **JSON extraction:** bounded whole-source sectioning, JSON Schema validation, conflict review, editable JSON, context-overflow restart, and rejection of incomplete or output-token-limited generation.
 - **Source evidence:** literal value searches with parser-derived document/page/paragraph/table/cell locations. Users must inspect and confirm each match before export. Every OCR page or image requires original-source acknowledgement, even at high confidence; original images can be inspected inside the offline app. Whole-token string and numeric matching reduces accidental matches within unrelated codes. Literal matches and valid JSON **do not independently establish factual or actuarial accuracy**.
 - **Office XML security:** DOCX/XLSX parser traversals have a bounded nesting depth and node count, reducing malicious-file stack-exhaustion risk. Independent parser audit remains required.
-- **Safety:** local possible-PII flags for source and current output JSON; renewed acknowledgement after edits; SHA-256 source fingerprints; and export gates that refuse changed source text, stale evidence approvals, unresolved conflicts, missing evidence and invalid JSON. The privacy screen is not comprehensive.
+- **Safety:** local possible-PII flags for source and current output JSON; renewed acknowledgement after edits; SHA-256 source fingerprints; and export gates that refuse changed source text, stale evidence approvals, unanchored source citations, unresolved conflicts, missing evidence and invalid JSON. The privacy screen is not comprehensive.
 - **Usability:** offline hash routing, black/white PBGC logo pairing, theme switch, collapsible printable Guide and a synthetic known-answer model check.
 
 ## Where it is verified

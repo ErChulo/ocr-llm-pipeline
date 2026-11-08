@@ -235,6 +235,66 @@ export function evidenceMatchesCurrentValue(value:unknown,checks:EvidenceCheck[]
   }
 }
 
+
+/** Recheck selected source quotes, text offsets and parser record locations at export. */
+export function evidenceSelectionsAnchoredToDocument(
+  doc:SourceDocument,checks:EvidenceCheck[],selections:Record<string,number>
+):boolean {
+  if(!doc||typeof doc.text!=='string'||!Array.isArray(checks))return false;
+  try {
+    const records=recordsFor(doc);
+    let previous=0;
+    for(const record of records){
+      if(!Number.isSafeInteger(record.start)||!Number.isSafeInteger(record.end)||
+         record.start<previous||record.end<=record.start||record.end>doc.text.length)return false;
+      previous=record.end;
+    }
+    for(const check of checks){
+      if(!check||!Array.isArray(check.matches))return false;
+      const index=selections[check.path];
+      if(!Number.isSafeInteger(index)||index<0||index>=check.matches.length)return false;
+      const match=check.matches[index];
+      if(!match||!Number.isSafeInteger(match.start)||!Number.isSafeInteger(match.end)||
+         match.start<0||match.end<=match.start||match.end>doc.text.length)return false;
+      let low=0,high=records.length-1,record:SourceRecord|undefined;
+      while(low<=high){
+        const mid=(low+high)>>>1;
+        const current=records[mid];
+        if(match.start<current.start)high=mid-1;
+        else if(match.start>=current.end)low=mid+1;
+        else{record=current;break;}
+      }
+      if(!record||match.end>record.end||match.label!==record.label||
+         !match.location||typeof match.location!=='object')return false;
+      const location=Object.entries(record.location);
+      if(Object.keys(match.location).length!==location.length||
+         location.some(([key,value])=>match.location[key]!==value))return false;
+      const contentStart=bodyStart(doc.text,record);
+      if(match.start<contentStart)return false;
+      const excerpt=doc.text.slice(
+        Math.max(contentStart,match.start-WINDOW),
+        Math.min(record.end,match.end+WINDOW)
+      ).trim();
+      if(excerpt!==match.quote)return false;
+      const matchedText=doc.text.slice(match.start,match.end);
+      const method=check.evidenceMethod??'literal_value';
+      if(match.evidenceMethod && match.evidenceMethod!==method)return false;
+      if(method==='reviewer_quoted_passage'){
+        if(matchedText.length<8||matchedText.length>300||
+           !boundaryOkay(doc.text,match.start,match.end,matchedText))return false;
+      }else if(method==='literal_value'){
+        const token=tokenFor(check.value);
+        // Match the same case-insensitive literal that evidence discovery
+        // matched; never accept a different substring at the old offset.
+        if(!token||token.length>800||
+           token.toLowerCase()!==matchedText.toLowerCase()||
+           !boundaryOkay(doc.text,match.start,match.end,check.value))return false;
+      }else return false;
+    }
+    return true;
+  }catch{return false;}
+}
+
 export function evidenceReviewComplete(
   checks: EvidenceCheck[],
   selections: Record<string,number>,
