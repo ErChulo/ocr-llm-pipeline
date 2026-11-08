@@ -13,6 +13,7 @@ import {createMultiPageScannedPdf} from './pdf-fixture.mjs';
 import {measuredTesseractWords} from '../src/ocrWords.ts';
 import {assessSpatialOcrRows} from '../src/ocrSpatial.ts';
 import {reorientedBoxToOriginalPixels} from '../src/ocrGeometryRotation.ts';
+import {measuredWordInsideCell,MIN_WORD_REGION_COVERAGE} from './fixtures/spatialCellMetrics.mjs';
 
 mkdirSync('tmp',{recursive:true});
 const refs=[
@@ -87,8 +88,14 @@ const worker=await createWorker('eng',OEM.LSTM_ONLY,{
 });
 const metric={truePositive:0,falsePositive:0,falseNegative:0,abstained:0,cases:refs.length};
 const pageResults=[];
-const centerInside=(b,r)=>((b.x0+b.x1)/2>=r[0]&&(b.x0+b.x1)/2<=r[2]&&
- (b.y0+b.y1)/2>=r[1]&&(b.y0+b.y1)/2<=r[3]);
+// Independently authored regions use original source JPEG pixel units.
+ // Convert those reference ROIs to normalized coordinates ONLY for scoring.
+ // OCR boxes themselves remain the authentic measured pixel rectangles.
+const coveredByAnnotatedCell=(measuredBox,referencePixelRect,width,height)=>
+ measuredWordInsideCell({bbox:measuredBox},{
+  x0:referencePixelRect[0]/width,y0:referencePixelRect[1]/height,
+  x1:referencePixelRect[2]/width,y1:referencePixelRect[3]/height
+ },width,height);
 try{
  for(let i=0;i<refs.length;i++){
   const source=refs[i],image=jpegs[i];
@@ -109,8 +116,8 @@ try{
    assert.equal((data.text||'').slice(p.transcriptRanges.age.start,p.transcriptRanges.age.end),p.age.text);
    assert.equal((data.text||'').slice(p.transcriptRanges.factor.start,p.transcriptRanges.factor.end),p.factor.text);
    const annotation=source.gold.find((g,j)=>!matched.has(j)&&g.age===p.age.text&&
-    g.factor===p.factor.text&&centerInside(p.age.bbox,g.ageRect)&&
-    centerInside(p.factor.bbox,g.factorRect));
+    g.factor===p.factor.text&&coveredByAnnotatedCell(p.age.bbox,g.ageRect,image.width,image.height)&&
+    coveredByAnnotatedCell(p.factor.bbox,g.factorRect,image.width,image.height));
    if(annotation){
     const pos=source.gold.indexOf(annotation);
     matched.add(pos);tp++;metric.truePositive++;
@@ -136,7 +143,8 @@ try{
     for(const pair of observed){
       const at=source.gold.findIndex((g,j)=>!found.has(j)&&
         g.age===pair.age&&g.factor===pair.factor&&
-        centerInside(pair.ageBox,g.ageRect)&&centerInside(pair.factorBox,g.factorRect));
+        coveredByAnnotatedCell(pair.ageBox,g.ageRect,image.width,image.height)&&
+        coveredByAnnotatedCell(pair.factorBox,g.factorRect,image.width,image.height));
       if(at>=0){found.add(at);correct++;}else incorrect++;
       assert.equal(pair.page,source.page);
       assert.ok(pair.region.x0>=0&&pair.region.y0>=0&&
@@ -175,6 +183,8 @@ const report={
  falseMatchRate:ratio(metric.falsePositive,metric.truePositive+metric.falsePositive),
  abstentionRate:metric.abstained/metric.cases,
  externalRequestCount:external.length,
+ minWordBoxCoverage:MIN_WORD_REGION_COVERAGE,
+ scoringMethod:'area overlap of each measured word box with independently authored cell region',
  results:pageResults,status:'measured_not_certified'
 };
 writeFileSync('tmp/spatial-raster-report.json',JSON.stringify(report,null,2));

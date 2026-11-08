@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {scoreSpatialCells} from './fixtures/spatialCellMetrics.mjs';
+import {scoreSpatialCells,measuredWordInsideCell,MIN_WORD_REGION_COVERAGE} from './fixtures/spatialCellMetrics.mjs';
 import {assessSpatialOcrRows} from '../src/ocrSpatial.ts';
 
 // Fictional test boxes simulate measured OCR geometry; this unit test does
@@ -95,4 +95,15 @@ test('a barely intersecting measured word is rejected even if a familiar numeral
   }}]);
   assert.equal(m.falseMatches,1);
   assert.equal(m.correct,1);
+});
+
+test('shared overlap scorer rejects a center-inside but mostly outside raster word box',()=>{
+ const region={x0:.1,y0:.2,x1:.3,y1:.4},w=1000,h=500;
+ const box=(x0,y0,x1,y1)=>({bbox:{x0,y0,x1,y1}});
+ assert.equal(MIN_WORD_REGION_COVERAGE,.95);
+ assert.equal(measuredWordInsideCell(box(150,120,250,160),region,w,h),true);
+ // Center x=300 is inside the reference boundary, but only 50% of box overlaps.
+ assert.equal(measuredWordInsideCell(box(200,120,400,160),region,w,h),false);
+ assert.equal(measuredWordInsideCell(box(995,120,1006,160),region,w,h),false);
+ assert.equal(measuredWordInsideCell(box(NaN,120,200,160),region,w,h),false);
 });
