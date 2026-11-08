@@ -7,13 +7,20 @@
  */
 const validRegion=r=>r && [r.x0,r.y0,r.x1,r.y1].every(Number.isFinite) &&
   r.x0>=0&&r.y0>=0&&r.x1>r.x0&&r.y1>r.y0&&r.x1<=1&&r.y1<=1;
-const centerInside=(word,region,w,h)=>{
+// Minimum proportion of each ACTUALLY MEASURED OCR word rectangle that
+// must lie in the independently authored ground-truth cell. Center-only
+// scoring can accept large rectangles that straddle adjacent cells.
+const MIN_WORD_REGION_COVERAGE=0.95;
+const measuredWordInsideCell=(word,region,w,h)=>{
   const b=word?.bbox;
   if(!b||![b.x0,b.y0,b.x1,b.y1,w,h].every(Number.isFinite)||
     w<=0||h<=0||b.x0<0||b.y0<0||b.x1<=b.x0||b.y1<=b.y0||
     b.x1>w||b.y1>h)return false;
-  const x=(b.x0+b.x1)/(2*w),y=(b.y0+b.y1)/(2*h);
-  return x>=region.x0&&x<=region.x1&&y>=region.y0&&y<=region.y1;
+  const regionPx={x0:region.x0*w,y0:region.y0*h,
+    x1:region.x1*w,y1:region.y1*h};
+  const intersectW=Math.max(0,Math.min(b.x1,regionPx.x1)-Math.max(b.x0,regionPx.x0));
+  const intersectH=Math.max(0,Math.min(b.y1,regionPx.y1)-Math.max(b.y0,regionPx.y0));
+  return intersectW*intersectH/((b.x1-b.x0)*(b.y1-b.y0)) >= MIN_WORD_REGION_COVERAGE;
 };
 
 /**
@@ -55,8 +62,8 @@ export function scoreSpatialCells(truth,observed){
       const expected=valid ? entry.rows.findIndex((row,i)=>!matchedRows.has(i) &&
         candidate.page===entry.page&&candidate.age?.text===row.age&&
         candidate.factor?.text===row.factor&&
-        centerInside(candidate.age,row.ageRegion,w,h)&&
-        centerInside(candidate.factor,row.factorRegion,w,h)) : -1;
+        measuredWordInsideCell(candidate.age,row.ageRegion,w,h)&&
+        measuredWordInsideCell(candidate.factor,row.factorRegion,w,h)) : -1;
       if(expected<0){falseMatches++;if(candidate?.page!==entry.page)wrongPage++;}
       else {matchedRows.add(expected);correct++;}
     }
@@ -69,6 +76,7 @@ export function scoreSpatialCells(truth,observed){
     abstainedPages=perPage.filter(p=>p.abstained).length;
   return {
     groundTruthRows:groundTruth,acceptedPairs:accepted,correct,
+    minMeasuredWordRegionCoverage:MIN_WORD_REGION_COVERAGE,
     falseMatches:sum('falseMatches'),missed:sum('missed'),wrongPage:sum('wrongPage'),
     abstainedPages,pages:perPage.length,
     // Precision is undefined rather than 100% when ALL pages abstain.
