@@ -12,6 +12,7 @@ import { countAmbiguousOcrNumericTokens } from './ocrNumericReview.ts';
 import { hasMalformedNumericTableRow, preferFallbackForMalformedRows } from './ocrResolutionChoice.ts';
 import { detectPdfLayoutRisks } from './pdfLayout.ts';
 import { assessSpatialOcrRows, type SpatialAssessment } from './ocrSpatial.ts';
+import { restoredOriginalRasterSpatial } from './ocrOrientation.ts';
 
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
 const MAX_PAGES = 300;
@@ -201,8 +202,19 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
         // Diagnostic ONLY: retain the actual page number and Tesseract pixel
         // envelopes from the OCR pass selected for this page. No inferred boxes,
         // automatic field approval, or promotion to source citations.
-        spatial=assessSpatialOcrRows({page:pageNo,imageWidth:result.width,
+        const measuredSpatial=assessSpatialOcrRows({page:pageNo,imageWidth:result.width,
           imageHeight:result.height,text,words:result.words??[]});
+        spatial=result.orientationCorrection
+          ? restoredOriginalRasterSpatial(measuredSpatial,pageNo,
+            result.orientationCorrection.originalWidth,
+            result.orientationCorrection.originalHeight,
+            result.orientationCorrection.sourceClockwiseTurn)
+          : measuredSpatial;
+        if(result.orientationCorrection)warnings.push('PDF page '+pageNo+
+          ' used a uniquely measured quarter-turn OCR orientation ('+
+          result.orientationCorrection.sourceClockwiseTurn+
+          ' degrees clockwise in source raster). All transcribed values remain unverified. '+
+          'Spatial diagnostic rectangles are inverse-transformed from observed OCR pixels; review the original page.');
         scanned=true;
         ocrPages++;
         if(!text)throw new Error('OCR found no readable text on PDF page '+pageNo+'. Import was stopped.');
