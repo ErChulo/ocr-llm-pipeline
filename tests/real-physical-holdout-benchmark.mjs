@@ -13,7 +13,7 @@ import {physicalHoldoutCases} from './fixtures/physicalHoldoutCases.mjs';
 import {selectPhysicalHoldoutCases} from './fixtures/holdoutSelection.mjs';
 import {assessHoldoutProvenance} from './fixtures/physicalHoldoutProvenance.mjs';
 import { scoreCorpus } from '../src/syntheticQuality.ts';
-import {startLocalPeakRssSampler} from './fixtures/linuxMemorySampler.mjs';
+import {startLocalPeakRssSampler,findChromiumDescendantPid} from './fixtures/linuxMemorySampler.mjs';
 import assert from 'node:assert/strict';
 
 mkdirSync('tmp',{recursive:true});
@@ -42,7 +42,7 @@ const report={
 };
 const persist=()=>writeFileSync('tmp/real-corpus-report.json',JSON.stringify(report,null,2));
 const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-gpu']});
-const memorySampler=startLocalPeakRssSampler(browser.process()?.pid);
+const memorySampler=startLocalPeakRssSampler(findChromiumDescendantPid());
 const page=await browser.newPage({viewport:{width:1280,height:900}});
 const started=Date.now();
 let qualityFailure=false;
