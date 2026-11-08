@@ -328,14 +328,20 @@ test('DOCX drawings in headers and notes also require original-document review',
  const header='<w:hdr xmlns:w="'+ns+'"><w:p><w:r><w:t>Header title</w:t></w:r>'+
    '<w:r><w:drawing><w:txbxContent><w:p><w:r><w:t>Hidden shape 99</w:t></w:r></w:p>'+
    '</w:txbxContent></w:drawing></w:r></w:p></w:hdr>';
+ const footnote='<w:footnotes xmlns:w="'+ns+'"><w:footnote w:id="7"><w:p>'+
+   '<w:r><w:t>Note text</w:t></w:r><w:r><w:drawing><w:txbxContent>'+
+   '<w:p><w:r><w:t>Hidden note 97</w:t></w:r></w:p>'+
+   '</w:txbxContent></w:drawing></w:r></w:p></w:footnote></w:footnotes>';
  const source=zipped({
   '[Content_Types].xml':'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>',
   'word/document.xml':content,
-  'word/header1.xml':header
+  'word/header1.xml':header,
+  'word/footnotes.xml':footnote
  });
  const parsed=parseDocx('fictional-header.docx',source);
  assert.match(parsed.text,/Header title/);
- assert.doesNotMatch(parsed.text,/Hidden shape 99/);
+ assert.match(parsed.text,/Note text/);
+ assert.doesNotMatch(parsed.text,/Hidden shape 99|Hidden note 97/);
  assert.ok(parsed.reviewIssues.some(x=>x.id==='docx:drawings'));
 });
 test('DOCX with only unreadable drawing text must not claim any source evidence',()=>{
