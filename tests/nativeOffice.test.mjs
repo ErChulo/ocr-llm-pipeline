@@ -390,7 +390,7 @@ test('XLSX conflicting or repeated coordinates are rejected before any citation 
 
 test('XLSX rejects cells outside the actual worksheet coordinate grid',()=>{
  const ns='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
- const makeSheet=cell=>'<worksheet xmlns="'+ns+'"><sheetData><row r="1">'+
+ const makeSheet=cell=>'<worksheet xmlns="'+ns+'"><sheetData><row r="'+(cell==='XFD1048576'?'1048576':'1')+'">'+
   '<c r="'+cell+'"><v>65</v></c></row></sheetData></worksheet>';
  for(const cell of ['XFE1','ZZZ1','A1048577']){
    assert.throws(()=>parseXlsx('outside.xlsx',xlsx({sheet:makeSheet(cell)})),
@@ -475,4 +475,66 @@ test('Office ZIP duplicate entry filenames are refused, not silently overwritten
  assert.equal(replacements,2,'local and central-directory names must both be altered');
  assert.throws(()=>parseDocx('duplicate-part.docx',bytes),
    /duplicate part names/);
+});
+
+
+test('OOXML foreign paragraph element cannot invent Word paragraph provenance',()=>{
+ const ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+ const source='<w:document xmlns:w="'+ns+'" xmlns:fake="urn:fictional-attack"><w:body>'+
+   '<w:p><w:r><w:t>Normal age 65</w:t></w:r></w:p>'+
+   '<fake:p><w:r><w:t>Normal age 99</w:t></w:r></fake:p>'+
+   '</w:body></w:document>';
+ const result=parseDocx('foreign-paragraph.docx',docx(source));
+ assert.equal(result.records.length,1);
+ assert.match(result.text,/Normal age 65/);
+ assert.doesNotMatch(result.text,/Normal age 99/);
+ assert.ok(result.reviewIssues.some(issue=>issue.id==='docx:foreign-text'));
+});
+test('OOXML foreign wrappers within Word paragraphs cannot introduce false text',()=>{
+ const ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+ const source='<w:document xmlns:w="'+ns+'" xmlns:fake="urn:fictional-attack"><w:body>'+
+   '<w:p><w:r><w:t>Normal age 65</w:t></w:r>'+
+   '<fake:r><w:t>Normal age 99</w:t></fake:r></w:p>'+
+   '</w:body></w:document>';
+ const result=parseDocx('foreign-run.docx',docx(source));
+ assert.match(result.text,/Normal age 65/);
+ assert.doesNotMatch(result.text,/Normal age 99/);
+ assert.ok(result.reviewIssues.some(issue=>issue.id==='docx:foreign-text'));
+});
+test('XLSX foreign namespace cells and values cannot masquerade as native Excel facts',()=>{
+ const ns='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+ const wrap=inner=>'<worksheet xmlns="'+ns+'" xmlns:fake="urn:fictional-attack">'+
+   '<sheetData><row r="1">'+inner+'</row></sheetData></worksheet>';
+ for(const item of [
+  '<fake:c r="A1"><fake:v>99</fake:v></fake:c><c r="B1"><v>65</v></c>',
+  '<c r="A1"><fake:v>99</fake:v></c>',
+  '<c r="A1" t="inlineStr"><is><fake:t>99</fake:t></is></c>'
+ ]){
+  assert.throws(()=>parseXlsx('spoofed.xlsx',xlsx({sheet:wrap(item)})),
+    /unexpected namespace/i);
+ }
+});
+test('XLSX cell addresses must agree with their enclosing worksheet data row',()=>{
+ const ns='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+ for(const sheet of [
+  '<worksheet xmlns="'+ns+'"><sheetData><row r="1"><c r="A2"><v>65</v></c></row></sheetData></worksheet>',
+  '<worksheet xmlns="'+ns+'"><sheetData><row r="1"></row></sheetData><c r="A1"><v>65</v></c></worksheet>',
+  '<worksheet xmlns="'+ns+'"><sheetData><row r="0"><c r="A1"><v>65</v></c></row></sheetData></worksheet>'
+ ]){
+  assert.throws(()=>parseXlsx('displaced.xlsx',xlsx({sheet})),
+    /coordinates disagree|not in a worksheet data row/i);
+ }
+});
+test('XLSX package relationships must use the correct relationship XML namespace',()=>{
+ const ns='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+ const relns='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+ const source=zipped({
+  'xl/workbook.xml':'<workbook xmlns="'+ns+'" xmlns:r="'+relns+'"><sheets>'+
+   '<sheet name="Plan" sheetId="1" r:id="rId1"/></sheets></workbook>',
+  'xl/_rels/workbook.xml.rels':'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships" xmlns:fake="urn:fictional-attack">'+
+   '<fake:Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+  'xl/worksheets/sheet1.xml':'<worksheet xmlns="'+ns+'"><sheetData><row r="1">'+
+    '<c r="A1"><v>65</v></c></row></sheetData></worksheet>'
+ });
+ assert.throws(()=>parseXlsx('bad-rel.xlsx',source),/unexpected namespace/i);
 });
