@@ -4,6 +4,12 @@
 
 ## Implemented and source-tested
 
+- [x] **Selected-citation instruction guard (PR #63):** final JSON export rejects a literal value cited from an AI-directed instruction line, even after source-risk acknowledgement. The reviewer must select an authentic source passage and correct the proposed value manually. The warning is displayed beside the selected citation. It is not a general factual verifier or prompt-injection sanitizer. [Implementation constraints](INSTRUCTION_CITATION_GUARD.md).
+
+- [x] **OCR numeric uncertainty warning (PR #64):** count-only review hint for tokens with visually confusable letters and digits, shared by scanned PDF/image/mixed OCR. No OCR correction, source mutation, value logging or fabricated cell coordinates. [Limitations](OCR_NUMERIC_AMBIGUITY.md).
+
+- [x] **Nine-page raster-PDF fictional challenge corpus (PR #65):** actual offline browser measured **34/36** exact numeric tokens and **16/18** same-line row-pair proxies, zero wrong-page target literals, nine original-page reviews and zero browser network requests. The previously missed ages **58** and **57** were still missing. Small text, blur/JPEG and ruled-table pages each scored 4/4 numeric tokens but do not establish real-world accuracy or cell association. [Measured results](MULTIPAGE_SCANNED_PDF_QA.md).
+
 - [x] Expand actual standalone `file://` scanned-PDF acceptance to **six fictional image-only pages**, including 90°, 180° and 270° PDF rotations. Measured **22/24** exact numeric tokens, **10/12** same-line row-pair proxies, **zero** wrong-page target values, and six required original-page reviews. Skewed age 58 and rotated age 57 were missed. The row proxy does **not** assert spatial table-cell provenance. [Source and measured report](MULTIPAGE_SCANNED_PDF_QA.md); [CI 42495080457](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42495080457).
 
 - [x] Run real checksum-verified local Qwen2.5 GGUF **0.5B, 1.5B and 3B** on the identical two-document fictional malicious-CSV/survivor-condition holdout. Strict field scores **1/3, 2/3, 1/3** respectively, all zero browser network. **Every model chose false age 99** from untrusted data; the 3B survivor answer retained the condition but failed strict wording equality. The model failure remains a release blocker. [Methodology/results](THREE_MODEL_ADVERSARIAL_SWEEP.md); [CI 42496782321](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42496782321).
