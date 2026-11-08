@@ -61,7 +61,7 @@ try{
   persist();
   for(const sample of samples){
     const item={id:sample.id,category:sample.category,format:sample.format,
-      status:'pending',elapsedMs:0,schemaValid:false,actual:{},errors:[]};
+      status:'pending',elapsedMs:0,schemaValid:false,attributionAbstained:false,actual:{},errors:[]};
     report.cases.push(item);
     const phaseStarted=Date.now();
     try{
@@ -92,6 +92,7 @@ try{
       const raw=await page.getByRole('textbox',{name:'Candidate JSON for review'}).inputValue();
       const alerts=await page.locator('[role="alert"]').allTextContents();
       item.errors=alerts.map(x=>x.slice(0,180));
+      item.attributionAbstained=(await page.getByText(/Source attribution abstained/i).count())>0;
       item.schemaValid=await page.getByText('JSON Schema passed. Verify all facts before use.').count()>0;
       if(raw.trim()){
         try{item.actual=JSON.parse(raw);}catch{item.status='invalid_json';}
