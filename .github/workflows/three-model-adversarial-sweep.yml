@@ -1,0 +1,82 @@
+name: Experimental 0.5B / 1.5B / 3B adversarial GGUF sweep
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/three-model-adversarial-sweep.yml'
+      - 'tests/real-physical-holdout-benchmark.mjs'
+      - 'tests/fixtures/holdoutSelection.mjs'
+      - 'tests/holdoutSelection.test.mjs'
+
+concurrency:
+  group: adversarial-3model-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  measured-physical-subset:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        model:
+          - id: 0p5b
+            label: Official Qwen2.5-0.5B-Instruct Q4_K_M
+            filename: qwen2.5-0.5b-instruct-q4_k_m.gguf
+            url: https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf
+            sha256: 74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db
+          - id: 1p5b
+            label: Official Qwen2.5-1.5B-Instruct Q4_K_M
+            filename: qwen2.5-1.5b-instruct-q4_k_m.gguf
+            url: https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf
+            sha256: 6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e
+          - id: 3b
+            label: Official Qwen2.5-3B-Instruct Q4_K_M
+            filename: qwen2.5-3b-instruct-q4_k_m.gguf
+            url: https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf
+            sha256: 626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run source tests and build immutable offline single HTML
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+          npm run build
+      - name: Install Chromium automation on networked CI host only
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Download and checksum-verify selected official Qwen GGUF on CI only
+        timeout-minutes: 12
+        env:
+          MODEL_URL: ${{ matrix.model.url }}
+          MODEL_SHA256: ${{ matrix.model.sha256 }}
+          MODEL_FILE: tmp/${{ matrix.model.filename }}
+        run: |
+          mkdir -p tmp
+          curl -fL --retry 3 --retry-all-errors "$MODEL_URL" -o "$MODEL_FILE"
+          printf '%s  %s\n' "$MODEL_SHA256" "$MODEL_FILE" | sha256sum -c -
+      - name: Measure two identical fictional adversarial source documents in offline file URL
+        timeout-minutes: 26
+        env:
+          BENCHMARK_CASES: csv-quoted-instruction,docx-survivor-qualifiers
+          CASE_TIMEOUT_MS: '360000'
+          MODEL_LABEL: ${{ matrix.model.label }}
+          MODEL_FILE: tmp/${{ matrix.model.filename }}
+        run: node tests/real-physical-holdout-benchmark.mjs
+      - name: Upload exact field, provenance and failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: physical-adversarial-${{ matrix.model.id }}
+          path: |
+            tmp/real-corpus-report.json
+            tmp/real-corpus-final.png
+          if-no-files-found: ignore
