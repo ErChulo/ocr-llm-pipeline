@@ -45,6 +45,8 @@ No real PBGC participants, cases, or identifying data may be used.
 4. Derive reported candidate regions exclusively from authentic measured Tesseract pixels plus actual PDF parser page and viewport. A test fixture's authored region is *ground truth*, not a source citation. Manual OCR edits must invalidate stale associations.
 5. No raw or transformed source rectangles may be invented. A geometrically plausible row is still unverified factual evidence until reviewed.
 
+**Sampling limitation (additional evidence, not a substitute for any gate):** Even if 18 of 18 accepted associations are correct on a fixed fictional cohort, 100% observed precision is not proof of >=99.5% true precision. Under a hypothetical independent Bernoulli sampling model, the **exact one-sided 95% Clopper-Pearson lower bound** is `0.05^(1/18) = 84.668%`. With zero observed failures, **at least 598 independent pairs** would be needed merely for that statistical lower bound to reach 99.5%. Real table rows on the same pages are dependent and development fixtures are not blinded, so neither 18/18 nor 598/598 can substitute for independently stratified, source-authentic production testing. See `tests/precisionSampleEvidence.test.mjs` for the arithmetic and the explicit refusal to invent a zero-error bound when failures occur.
+
 ### 3 — Source truth and applicability
 
 1. Ensure **100%** of exported nonempty facts have inspectable document identity, source location and original-file review trace.
