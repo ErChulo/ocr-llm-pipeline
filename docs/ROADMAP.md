@@ -6,6 +6,7 @@
 
 - [x] Add repeated compact-table PDF geometry warnings without changing extracted words, original page identities, text-item offsets, or asserted citation precision. Add both negative geometric regressions and a real PDF parser fixture. A fictional raster-table Playwright OCR diagnostic produces a separate non-certifying field-level artifact when offline CI runs; figures must be reported from completed runs, never inferred.
 
+- [x] Non-link PDF annotations including FreeText and fillable widget/form values omitted from the text layer require explicit original-document review, not fabricated page citations. Parser fixtures and offline browser checks cover notes, widgets and ordinary links; the preview may omit overlays.
 
 - [x] At final export, match every parser-derived source-warning ID to an explicit reviewer acknowledgment; stale UI counts, forged/duplicate warning IDs and a missing AI-instruction warning fail closed.
 

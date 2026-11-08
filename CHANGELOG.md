@@ -4,6 +4,7 @@
 
 - Flag three-row aligned compact PDF tables that the wide-gap detector misses, without rearranging text or inventing coordinates. Extend fictional native/scanned-page provenance regressions and instrument an offline Playwright raster-table OCR accuracy diagnostic. Results are not a verified model-quality gain or workplace acceptance.
 
+- Flag omitted PDF annotations and form widgets for mandatory original-file inspection, excluding their values from native page text citations. Synthetic FreeText/AcroForm/link fixtures and offline Playwright checks cover this source completeness hazard; rebase a previously passing but outdated PR on current source safety gates.
 
 - Final JSON export independently checks each current source-completeness warning ID against reviewer acknowledgements. Reject stale zero counts, malformed/duplicated warning identities, and unregistered embedded AI instruction risks; expand adversarial export-gate tests.
 

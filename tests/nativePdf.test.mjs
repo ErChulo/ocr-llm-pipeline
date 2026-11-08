@@ -65,6 +65,37 @@ test('text-bearing PDF with image content requires source-completeness acknowled
  assert.ok(parsed.reviewIssues?.some(x=>x.id==='pdf:mixed:1'&&x.page===1));
 });
 
+test('PDF FreeText notes omitted from native text require explicit original annotation review',async()=>{
+ const {createAnnotatedPdf}=await import('./pdf-fixture.mjs');
+ const result=await parsePdf('annotated.pdf',new Uint8Array(createAnnotatedPdf('FreeText')));
+ assert.match(result.text,/Normal retirement age 65/);
+ assert.doesNotMatch(result.text,/Unverified retirement exception/);
+ const issue=result.reviewIssues.find(i=>i.id==='pdf:annotations:1');
+ assert.ok(issue,'unextracted annotation needs source review');
+ assert.equal(issue.category,'pdf_annotation_review');
+ assert.equal(issue.page,1);
+ assert.match(issue.message,/viewer displaying annotations and form field values/);
+ assert.ok(result.warnings.some(w=>w.includes('non-link annotation')));
+});
+
+test('ordinary PDF hyperlink annotations are not confused with text or form fields',async()=>{
+ const {createAnnotatedPdf}=await import('./pdf-fixture.mjs');
+ const result=await parsePdf('hyperlink.pdf',new Uint8Array(createAnnotatedPdf('Link')));
+ assert.equal(result.reviewIssues.some(i=>i.category==='pdf_annotation_review'),false);
+ assert.match(result.text,/Normal retirement age 65/);
+});
+
+test('fillable PDF widget values are not fabricated as native text-layer evidence',async()=>{
+ const {createAnnotatedPdf}=await import('./pdf-fixture.mjs');
+ const result=await parsePdf('widget.pdf',new Uint8Array(createAnnotatedPdf('Widget')));
+ assert.match(result.text,/Normal retirement age 65/);
+ assert.doesNotMatch(result.text,/67|AgeOverride/);
+ const issue=result.reviewIssues.find(i=>i.id==='pdf:annotations:1');
+ assert.ok(issue,'form fields omitted from page text require original-file review');
+ assert.equal(issue.category,'pdf_annotation_review');
+ assert.equal(issue.page,1);
+ assert.match(issue.message,/form field values/);
+});
 
 test('compact three-row PDF table gets mandatory visual review without fabricated cell coordinates',async()=>{
  const pdf=createSyntheticPdf([[
