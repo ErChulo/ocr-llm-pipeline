@@ -4,6 +4,8 @@
 
 ## Implemented and source-tested
 
+- [x] Source-level adversarial extraction tests for duplicate JSON members, percent-value ambiguity, conflicting amendments, injected instructions and citation boundaries. Percentage notation restoration is source-scoped and audited, not an actuarial inference or measured GGUF accuracy improvement.
+
 - [x] Standalone bundled HTML under `file://`, local GGUF and WebAssembly worker.
 - [x] Small GGUF real-browser load and text generation with zero external requests.
 - [x] PDF text and scanned page OCR; English image OCR; DOCX, XLSX, CSV and text import.

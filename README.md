@@ -9,6 +9,7 @@
 
 ## What is implemented
 
+- **Adversarial extraction guards:** refuse duplicate JSON object keys and restore only uniquely corroborated exact percentage wording from the originating source section; preserve the model output in the audit and require human source review.
 - **Source-exact date wording:** when a model-formatted date uniquely matches an unambiguous date literal inside the same source section, the extraction candidate uses the original wording and retains the model's initial value in the review audit. Conflicts or ambiguous formats stay unchanged; export still requires independent reviewer confirmation.
 - **Reproducible extraction settings:** factual JSON extraction uses greedy sampling (temperature 0, top-p 1), while chat retains separate conversational defaults; human source verification remains mandatory.
 - **On-device quality diagnostics:** Settings provides an opt-in eight-case fictional pension corpus benchmark. It runs the selected GGUF without network access, reports strict micro precision/recall/F1, per-case omissions and failures, and exports a synthetic-only JSON diagnostic. This is not production acceptance.
