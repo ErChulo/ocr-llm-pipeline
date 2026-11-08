@@ -82,12 +82,14 @@ export function evaluateExportGate(input:ExportGateInputs):ExportGate{
   if(!evidenceReviewComplete(input.evidence,input.selectedEvidence,input.confirmedEvidence)){
     reasons.push('Every nonempty field must have confirmed source evidence.');
   }
-  const issues=document?.reviewIssues??[];
+  const declaredIssues=document?.reviewIssues;
+  // Malformed imported metadata must never be interpreted as an empty review list.
+  const issues=Array.isArray(declaredIssues)?declaredIssues:[];
   const issueIds=new Set<string>();
-  let invalidIssue=false;
+  let invalidIssue=declaredIssues!=null&&!Array.isArray(declaredIssues);
   for(const issue of issues){
     if(!issue||typeof issue.id!=='string'||!issue.id.trim()||
-       issueIds.has(issue.id)){
+       issue.id!==issue.id.trim()||issueIds.has(issue.id)){
       invalidIssue=true;
       break;
     }
