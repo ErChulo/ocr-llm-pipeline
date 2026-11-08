@@ -285,39 +285,113 @@ try {
   console.log('REAL BROWSER: fictional scanned-table OCR literal exact fields '+
     exactTableFields+'/'+expectedTable.length+'; diagnostic only, requires source review.');
 
-  // Actual deployed file:// OCR: source JPEG pixels are sideways, with NO
-  // PDF /Rotate metadata. The bounded local fallback must recover a unique
-  // measured orientation, retain parser page 1 and demand original review.
-  const sidewaysJpeg=await page.evaluate(async base64=>{
-    const img=new Image();
-    img.src='data:image/jpeg;base64,'+base64;
-    await img.decode();
-    const rotated=document.createElement('canvas');
-    rotated.width=550;rotated.height=1100;
-    const ctx=rotated.getContext('2d');
-    ctx.fillStyle='#fff';ctx.fillRect(0,0,550,1100);
-    ctx.translate(550,0);ctx.rotate(Math.PI/2);ctx.drawImage(img,0,0);
-    return rotated.toDataURL('image/jpeg',0.96).split(',')[1];
-  },scannedTableJpeg);
-  const sidewaysName='fictional-sideways-pixels-without-pdf-rotation.pdf';
-  const sidewaysPdf=createScannedPdf(Buffer.from(sidewaysJpeg,'base64'),550,1100);
-  await filePicker.setInputFiles({name:sidewaysName,
-    mimeType:'application/pdf',buffer:sidewaysPdf});
-  await page.locator('.card select').first().locator('option')
-    .filter({hasText:sidewaysName}).waitFor({state:'attached',timeout:180000});
-  await page.locator('.card select').first().selectOption({label:sidewaysName});
-  await page.locator('.source-completeness').getByText(/PDF page 1 before export/i)
-    .waitFor({timeout:180000});
-  const sidewaysText=await page.locator('.preview').innerText();
-  assert.match(sidewaysText,/^Page 1:/,'authentic PDF parser page preserved');
-  for(const token of ['55','65','0.8750','1.0000']){
-    assert.match(sidewaysText,new RegExp('(^|[^0-9.])'+token.replace('.','\\.')+'($|[^0-9.])'),
-      'Measured quarter-turn OCR must recover fictional numeric token '+token);
+  // Genuine deployed file:// fallback, NOT the isolated pure selector:
+  // independently rotate original fictional JPEG pixels through all quarter
+  // turns while providing NO PDF /Rotate metadata. Every pass must retrieve
+  // actual image pixels, Tesseract words and parser-derived page numbers.
+  const actualPixelRotationCases=[];
+  const fictionalCellRegions=[
+    {age:'55',factor:'0.8750',age:{x0:65,x1:150,y0:212,y1:260},
+      factorBox:{x0:435,x1:590,y0:212,y1:260}},
+    {age:'65',factor:'1.0000',age:{x0:65,x1:150,y0:290,y1:340},
+      factorBox:{x0:435,x1:590,y0:290,y1:340}}
+  ];
+  // These fixture-authored visual cell regions were not derived from OCR and
+  // are used ONLY to independently score actual measured OCR rectangles.
+  const isInside=(p,roi)=>p.x>=roi.x0&&p.x<=roi.x1&&
+    p.y>=roi.y0&&p.y<=roi.y1;
+  for(const originalClockwiseTurn of [90,180,270]){
+    const rotatedJpeg=await page.evaluate(async ({base64,turn})=>{
+      const img=new Image();img.src='data:image/jpeg;base64,'+base64;
+      await img.decode();
+      const rotated=document.createElement('canvas');
+      rotated.width=turn===180?1100:550;
+      rotated.height=turn===180?550:1100;
+      const ctx=rotated.getContext('2d');
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,rotated.width,rotated.height);
+      if(turn===90){ctx.translate(550,0);ctx.rotate(Math.PI/2);}
+      else if(turn===180){ctx.translate(1100,550);ctx.rotate(Math.PI);}
+      else{ctx.translate(0,1100);ctx.rotate(-Math.PI/2);}
+      ctx.drawImage(img,0,0);
+      return rotated.toDataURL('image/jpeg',0.96).split(',')[1];
+    },{base64:scannedTableJpeg,turn:originalClockwiseTurn});
+    const width=originalClockwiseTurn===180?1100:550;
+    const height=originalClockwiseTurn===180?550:1100;
+    const name='fictional-raw-pixel-'+originalClockwiseTurn+'-without-pdf-rotate.pdf';
+    const rotatedPdf=createScannedPdf(Buffer.from(rotatedJpeg,'base64'),width,height);
+    await filePicker.setInputFiles({name,mimeType:'application/pdf',buffer:rotatedPdf});
+    await page.locator('.card select').first().locator('option')
+      .filter({hasText:name}).waitFor({state:'attached',timeout:180000});
+    await page.locator('.card select').first().selectOption({label:name});
+    await page.locator('.source-completeness').getByText(/PDF page 1 before export/i)
+      .waitFor({timeout:180000});
+    const observedText=await page.locator('.preview').innerText();
+    assert.match(observedText,/^Page 1:/,'actual parser-authored PDF page preserved');
+    const expected=['55','65','0.8750','1.0000'];
+    let recognized=0;
+    for(const token of expected){
+      const matched=new RegExp('(^|[^0-9.])'+token.replace('.','\\.')+'($|[^0-9.])').test(observedText);
+      if(matched)recognized++;
+      assert.ok(matched,'Rotated '+originalClockwiseTurn+
+        ' actual file:// OCR must recognize fictional token '+token);
+    }
+    assert.equal(await page.locator('.source-completeness input[type="checkbox"]').count(),1,
+      'rotated OCR must remain unverified until the original PDF is reviewed');
+    const panel=page.locator('.ocr-spatial-diagnostics');
+    await panel.waitFor({timeout:12000});
+    await panel.locator('summary').click();
+    const entries=JSON.parse(await panel.locator(
+      'pre[aria-label="Measured OCR spatial diagnostics"]').innerText());
+    assert.equal(entries.length,1,'only this parser-authored PDF page belongs here');
+    assert.equal(entries[0].page,1);
+    const evidence=entries[0].assessment;
+    assert.equal(evidence.status,'candidates');
+    assert.equal(evidence.pairs.length,2,
+      'actual inverse-rotated Tesseract source boxes should produce both measured rows');
+    const matchedRows=new Set();
+    let correctCells=0;
+    const toUpright=(box,w,h)=>{
+      const x=(box.x0+box.x1)/2/w,y=(box.y0+box.y1)/2/h;
+      if(originalClockwiseTurn===90)return {x:y*1100,y:(1-x)*550};
+      if(originalClockwiseTurn===180)return {x:(1-x)*1100,y:(1-y)*550};
+      return {x:(1-y)*1100,y:x*550};
+    };
+    for(const pair of evidence.pairs){
+      assert.equal(pair.page,1);
+      assert.equal(pair.precision,'tesseract-inverse-quarter-turn-envelope',
+        'source diagnostics must retain measured inverse-mapped pixel provenance');
+      for(const b of [pair.age.bbox,pair.factor.bbox,pair.region]){
+        assert.ok(b.x0>=0&&b.y0>=0&&b.x1<=pair.imageWidth&&
+          b.y1<=pair.imageHeight&&b.x1>b.x0&&b.y1>b.y0,
+          'measured inverse pixel boxes remain bounded inside actual rendered source');
+      }
+      const at=fictionalCellRegions.findIndex((row,index)=>!matchedRows.has(index)&&
+        pair.age.text===row.age&&pair.factor.text===row.factor&&
+        isInside(toUpright(pair.age.bbox,pair.imageWidth,pair.imageHeight),row.age)&&
+        isInside(toUpright(pair.factor.bbox,pair.imageWidth,pair.imageHeight),row.factorBox));
+      if(at>=0){matchedRows.add(at);correctCells++;}
+    }
+    assert.equal(correctCells,2,'original-image visual cell annotation mismatch on turn '+
+      originalClockwiseTurn);
+    assert.equal(external.length,0,'all rotated original-pixel OCR remains offline');
+    actualPixelRotationCases.push({turn:originalClockwiseTurn,
+      expectedLiterals:4,recognizedLiterals:recognized,expectedPairs:2,
+      truePositive:correctCells,falsePositive:evidence.pairs.length-correctCells,
+      wrongPage:0,sourceReviewRequired:true,externalRequests:external.length});
+    console.log('REAL BROWSER: source-pixel '+originalClockwiseTurn+
+      '° without PDF /Rotate: '+recognized+'/4 fictional literals, '+
+      correctCells+'/2 independently annotated measured pairs, 0 false matches.');
   }
-  assert.equal(await page.locator('.source-completeness input[type="checkbox"]').count(),1,
-    'orientation recovery must not authorize source facts without review');
-  assert.equal(external.length,0,'rotated raw-image OCR must remain offline');
-  console.log('REAL BROWSER: actual local OCR recovered 4/4 sideways-JPEG literals with original PDF page and unverified review.');
+  writeFileSync('tmp/fictional-original-pixel-rotation-browser.json',JSON.stringify({
+    cohort:'Three fictional original-pixel quarter-turn JPEGs in unrotated-metadata PDFs',
+    source:'real standalone file:// PDF.js raster plus pinned local Tesseract',
+    geometry:'measured OCR word envelopes inverse mapped into parser page raster',
+    scoring:'fixture-authored original-upright visual cell ROIs; center inclusion',
+    cases:actualPixelRotationCases,
+    rawOriginalJpegBaseline:'separate unchanged 16/22 twelve-page benchmark',
+    status:'measured-not-independent-production-certification',
+    limitations:'A fixed generated tiny fixture does not establish general 97% recall or 99.5% precision.'
+  },null,2)+'\n');
 
   const fictionalScans=[{
     fixture:'fictional-scanned-table.pdf',variation:'high-contrast-baseline',
