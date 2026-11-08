@@ -339,7 +339,7 @@ try {
       'rotated OCR must remain unverified until the original PDF is reviewed');
     const panel=page.locator('.ocr-spatial-diagnostics');
     await panel.waitFor({timeout:12000});
-    await panel.locator('summary').click();
+    if(await panel.getAttribute('open')===null)await panel.locator('summary').click();
     const entries=JSON.parse(await panel.locator(
       'pre[aria-label="Measured OCR spatial diagnostics"]').innerText());
     assert.equal(entries.length,1,'only this parser-authored PDF page belongs here');
@@ -374,6 +374,7 @@ try {
     assert.equal(correctCells,2,'original-image visual cell annotation mismatch on turn '+
       originalClockwiseTurn);
     assert.equal(external.length,0,'all rotated original-pixel OCR remains offline');
+    if(await panel.getAttribute('open')!==null)await panel.locator('summary').click();
     actualPixelRotationCases.push({turn:originalClockwiseTurn,
       expectedLiterals:4,recognizedLiterals:recognized,expectedPairs:2,
       truePositive:correctCells,falsePositive:evidence.pairs.length-correctCells,
