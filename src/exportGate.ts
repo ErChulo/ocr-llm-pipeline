@@ -7,7 +7,7 @@ import type { ExtractionAudit } from './chunkExtraction.ts';
 import type { EvidenceCheck } from './evidence.ts';
 import { evidenceReviewComplete, evidenceMatchesCurrentValue, evidenceSelectionsAnchoredToDocument } from './evidence.ts';
 import { screenPrivacySurfaces } from './privacy.ts';
-import { containsSourceInstructionRisk } from './sourceInstructionReview.ts';
+import { containsSourceInstructionRisk,selectedCitationIsInstructionRisk } from './sourceInstructionReview.ts';
 
 export type ExportGateInputs = {
   document: SourceDocument | null;
@@ -81,6 +81,17 @@ export function evaluateExportGate(input:ExportGateInputs):ExportGate{
   }
   if(!evidenceReviewComplete(input.evidence,input.selectedEvidence,input.confirmedEvidence)){
     reasons.push('Every nonempty field must have confirmed source evidence.');
+  }
+  // Literal presence inside a forged model/system instruction is not
+  // governing evidence. Acknowledging a source-wide warning cannot override
+  // this separate citation-level check. A reviewer must choose an authentic
+  // source passage/value instead; never autocorrect the model's candidate.
+  if(document&&input.evidence.some(check=>{
+    const index=input.selectedEvidence?.[check.path];
+    const match=Number.isSafeInteger(index)&&index>=0?check.matches?.[index]:null;
+    return match&&selectedCitationIsInstructionRisk(document.text,match.start,match.end);
+  })){
+    reasons.push('A selected source citation is inside possible AI-directed instruction text. Select an authentic governing passage instead; acknowledging the source warning is insufficient.');
   }
   const issues=document?.reviewIssues??[];
   const issueIds=new Set<string>();

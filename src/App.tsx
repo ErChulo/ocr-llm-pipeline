@@ -11,7 +11,7 @@ import type { GgufProfile } from './ggufPreflight';
 import { formatGenerationTiming } from './generationTiming';
 import { importFile, type SourceDocument } from './pipeline';
 import { importDocumentBatch } from './importBatch';
-import {withSourceInstructionReview} from './sourceInstructionReview';
+import {withSourceInstructionReview,selectedCitationIsInstructionRisk} from './sourceInstructionReview';
 import { terminateOcr } from './ocr';
 import { extractWholeDocument, resolveCandidateValues, type ExtractionAudit } from './chunkExtraction';
 import { auditLiteralEvidence, evidenceReviewComplete, exportReviewedEvidence } from './evidence';
@@ -735,6 +735,13 @@ export default function App() {
                     {Object.hasOwn(evidenceChoices,check.path) && check.matches[evidenceChoices[check.path]] &&
                       <>
                         <blockquote className="evidence-quote">{check.matches[evidenceChoices[check.path]].quote}</blockquote>
+                        {active && selectedCitationIsInstructionRisk(
+                          active.text,
+                          check.matches[evidenceChoices[check.path]].start,
+                          check.matches[evidenceChoices[check.path]].end
+                        ) && <p className="warning" role="alert">
+                          This selected passage may be an instruction to the AI model, not a governing plan provision. Export is blocked even if you confirm this citation. Select an authentic source passage or correct the proposed value.
+                        </p>}
                         {active?.pdfBytes && typeof check.matches[evidenceChoices[check.path]].location.page === 'number' &&
                           <button type="button" className="secondary" onClick={()=>{
                             const matched=check.matches[evidenceChoices[check.path]];
@@ -751,9 +758,11 @@ export default function App() {
                     </label>
                   </>}
               </div>)}
-              <p className={evidenceComplete?'success':'warning'}>
-                {evidenceComplete?'Every value has a confirmed source location. Export is available.':
-                  'Export remains blocked until each JSON value has a confirmed source.'}
+              <p className={exportGate.allowed?'success':'warning'} role="status">
+                {exportGate.allowed?'Every required review passed. Export is available.':
+                  evidenceComplete?exportGate.reasons[0]??
+                    'Additional export checks must pass before the result can be saved.':
+                    'Export remains blocked until each JSON value has a confirmed source.'}
               </p>
             </section>}
 
