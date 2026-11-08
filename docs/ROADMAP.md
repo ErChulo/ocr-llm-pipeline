@@ -4,6 +4,8 @@
 
 ## Implemented and source-tested
 
+- [x] Add repeated compact-table PDF geometry warnings without changing extracted words, original page identities, text-item offsets, or asserted citation precision. Add both negative geometric regressions and a real PDF parser fixture. A fictional raster-table Playwright OCR diagnostic produces a separate non-certifying field-level artifact when offline CI runs; figures must be reported from completed runs, never inferred.
+
 - [x] Prompt-like instructions embedded in PDF, Office, CSV, OCR or local text now add an explicit original-source review issue; import, supplemental OCR and corrected OCR paths invalidate previous review state. Text, citations and model answers are never silently rewritten. Detector is deliberately conservative, not comprehensive injection prevention.
 
 - [x] Independent eight-case **physical** fictional pension holdout includes PDF multi-page amendments and columns, DOCX tables/survivors, XLSX hidden rows/percentage fidelity and CSV dates/instruction injection. Each annotated fact and location is checked against the actual parser; diagnostic evidence is never treated as reviewer approval. [Methodology](PHYSICAL_HOLDOUT_BENCHMARK.md). A separate real-GGUF file:// benchmark is experimental; scores must not be inferred from previous text-only tests.
