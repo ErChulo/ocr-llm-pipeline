@@ -4,15 +4,15 @@
 
 ## Verified source and browser acceptance
 
-- The reviewed baseline for this follow-up is main commit `3d1e84a03787cf4ccbd3554dcb7a9aa6a33dbccc`. PR #54 adds an independent three-page, image-only fictional PDF matrix. Its new per-page literal, adjacent-row and wrong-page diagnostics must be read from the [actual offline-browser artifact](MULTIPAGE_SCANNED_PDF_QA.md); no improvement or production acceptance is inferred from adding a test.
+- The reviewed baseline for this follow-up is main commit `3d1e84a03787cf4ccbd3554dcb7a9aa6a33dbccc`. Merged PR #54 added an independent three-page image-only fictional PDF matrix. [Measured offline `file://` results](MULTIPAGE_SCANNED_PDF_QA.md): **11/12** exact page-local literals, **5/6** same-line age/factor pairs, zero wrong-page target matches, three required page reviews, and zero external requests (CI 42488253190). The skewed third page missed age **58**. Row proximity is not verified spatial cell association.
 
 
-- Main baseline before this scan-matrix branch: e7199df40951c10e837788c1ee928b6dcfea9e0b (PDF annotation reviews and compact-table geometry).
-- Baseline source CI: **256/256** passing, TypeScript compile and standalone HTML build passing.
+- Current verified main baseline: `e9775e74568621f92435f34f3ca7d08502b7ecf9` (merged PR #54).
+- After PR #54, **259/259** source tests passed, TypeScript compile and standalone HTML build passed (CI run 42488253166).
 - Offline Chromium file URL smoke and full Playwright acceptance passed on the integrated PDF feature branch, with external browser requests blocked.
 - Accessibility suite passed; this does not replace testing on the actual approved managed workstation.
 - Single high-contrast fictional scanned PDF table: 5/5 exact numeric literals recognized by local English OCR. An exact literal does not validate table-cell pairing, interpretations, or legal applicability. Every OCR page requires original-file review.
-- This branch adds two deterministic, fictional physical scan variations: low-contrast JPEG and slightly skewed/speckled JPEG. Their **observed** per-fixture counts are published by the offline browser workflow as fictional-scanned-pdf-ocr.json. Never replace absent results with assumed scores.
+- Three deterministic single-page fictional physical scans (baseline, low contrast, skew/speckling) each measured **5/5** exact numeric literals in offline Chromium, separately from the new multi-page cohort. Browser artifacts preserve the observed counts; none certify table-cell pairing.
 
 ## Separate real-GGUF cohorts — not interchangeable
 
