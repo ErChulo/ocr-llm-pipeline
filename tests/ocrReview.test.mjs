@@ -33,3 +33,17 @@ test('PDF review requires an authentic positive page number',()=>{
     assert.throws(()=>ocrReviewIssue('pdf',85,page),/actual page number/);
   }
 });
+
+test('OCR numeric ambiguity adds a count-only source warning, not an invented correction',()=>{
+ const pdf=ocrReviewIssue('pdf',97,2,3);
+ assert.equal(pdf.id,'pdf:ocr:2','same page review issue identity');
+ assert.equal(pdf.category,'ocr_unverified');
+ assert.match(pdf.message,/3 number-like token\(s\)/);
+ assert.match(pdf.message,/nothing was auto-corrected/i);
+ assert.doesNotMatch(pdf.message,/S7|5B|0\.8O00/,'never echo input source tokens');
+ const image=ocrReviewIssue('image',98,undefined,100);
+ assert.match(image.message,/at least 100 number-like token/);
+ assert.equal(image.page,undefined);
+ const baseline=ocrReviewIssue('pdf',97,2,0);
+ assert.doesNotMatch(baseline.message,/number-like token/);
+});
