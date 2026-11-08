@@ -46,3 +46,22 @@ export function safePrivacySummary(summary:PrivacySummary):string{
   return (Object.entries(summary.categories) as [PrivacyCategory,number][])
     .map(([kind,count])=>count+' '+labels[kind]).join('; ');
 }
+
+/**
+ * Conservative local screen for BOTH the imported source and the current
+ * JSON result. The maximum per-category count avoids double-reporting an
+ * identifier merely because a JSON value repeats its source.
+ * No negative finding certifies an output free of private information.
+ */
+export function screenPrivacySurfaces(sourceText:string,candidate:unknown):PrivacySummary{
+  const source=screenLocalPrivacy(sourceText);
+  const serialized=candidate===null||candidate===undefined?'':JSON.stringify(candidate);
+  if(typeof serialized!=='string')throw new Error('Current JSON could not be screened for private data.');
+  const output=screenLocalPrivacy(serialized);
+  const categories:PrivacySummary['categories']={};
+  for(const kind of ['possible_ssn','email','payment_card','phone'] as PrivacyCategory[]){
+    const count=Math.max(source.categories[kind]??0,output.categories[kind]??0);
+    if(count)categories[kind]=count;
+  }
+  return {categories,requiresReview:Object.keys(categories).length>0};
+}

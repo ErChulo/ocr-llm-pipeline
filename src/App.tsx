@@ -14,7 +14,7 @@ import { importDocumentBatch } from './importBatch';
 import { terminateOcr } from './ocr';
 import { extractWholeDocument, resolveCandidateValues, type ExtractionAudit } from './chunkExtraction';
 import { auditLiteralEvidence, evidenceReviewComplete, exportReviewedEvidence } from './evidence';
-import { screenLocalPrivacy, safePrivacySummary } from './privacy';
+import { screenPrivacySurfaces, safePrivacySummary } from './privacy';
 import { benchmarkPrompt, scoreBenchmark } from './modelBenchmark';
 import { runLocalCorpusBenchmark, type LocalCorpusReport } from './localCorpusBenchmark';
 import { evaluateExportGate } from './exportGate';
@@ -95,8 +95,9 @@ export default function App() {
     .filter(issue=>sourceIssuesReviewed[issue.id]!==true);
   const correctablePages = useMemo(()=>active?ocrRecords(active):[],[active]);
   const chosenOcrPage = correctablePages[ocrPageChoice] ?? correctablePages[0] ?? null;
-  const privacy = useMemo(() => active ? screenLocalPrivacy(active.text) :
-    {categories:{},requiresReview:false}, [active]);
+  // Screen what is actually exported as well as the imported source.
+  const privacy = useMemo(() => active ? screenPrivacySurfaces(active.text,extraction) :
+    {categories:{},requiresReview:false}, [active,extraction]);
   // A literal text match is only a candidate citation. The user must review
   // each value and confirm one actual source location before exporting.
   const evidenceChecks = useMemo(() =>
@@ -339,6 +340,7 @@ export default function App() {
     finally { setBusy(false); }
     setValidationErrors(errors);
     setReviewerQuotes({}); setEvidenceChoices({}); setEvidenceConfirmed({});
+    setPrivacyReviewed(false);
     setValid(errors.length === 0);
     setExtraction(errors.length === 0 ? value : null);
     setStatus(errors.length === 0
@@ -356,6 +358,7 @@ export default function App() {
     setReviewDraft(JSON.stringify(merged.data, null, 2));
     setValid(false); setExtraction(null); setValidationErrors([]);
     setReviewerQuotes({}); setEvidenceChoices({}); setEvidenceConfirmed({});
+    setPrivacyReviewed(false);
   }
 
   async function onCheckSchema() {
@@ -589,7 +592,7 @@ export default function App() {
             <p className="help">{active ? 'Source: ' + active.name : 'Select a document first.'} All text sections must finish before export.</p>
             <label>Target JSON Schema
               <textarea className="schema" aria-label="Target JSON Schema" value={schema} spellCheck={false}
-                onChange={e => { setSchema(e.currentTarget.value); setSchemaFeedback(''); setValid(false); setExtraction(null); setReviewerQuotes({}); setEvidenceChoices({}); setEvidenceConfirmed({}); }}/>
+                onChange={e => { setSchema(e.currentTarget.value); setSchemaFeedback(''); setValid(false); setExtraction(null); setReviewerQuotes({}); setEvidenceChoices({}); setEvidenceConfirmed({}); setPrivacyReviewed(false); }}/>
             </label>
             <div className="actions">
               <button className="secondary" disabled={busy} onClick={() => void onCheckSchema()}>
@@ -655,7 +658,7 @@ export default function App() {
               placeholder={busy ? 'The local model is extracting...' : 'No extraction yet.'}
               value={audit ? reviewDraft : rawExtraction}
               disabled={!audit || busy}
-              onChange={e => { setReviewDraft(e.currentTarget.value); setValid(false); setExtraction(null); setReviewerQuotes({}); setEvidenceChoices({}); setEvidenceConfirmed({}); }}/>
+              onChange={e => { setReviewDraft(e.currentTarget.value); setValid(false); setExtraction(null); setReviewerQuotes({}); setEvidenceChoices({}); setEvidenceConfirmed({}); setPrivacyReviewed(false); }}/>
             {audit && <div className="actions"><button type="button" className="secondary" disabled={busy}
               onClick={() => void validateDraft(reviewDraft, audit, conflictChoices)}>Validate edited JSON</button></div>}
             {audit && <p className={valid ? 'success' : 'warning'}>
@@ -663,7 +666,7 @@ export default function App() {
             </p>}
             {active && privacy.requiresReview && <section className="privacy-review">
               <h3>Protected information check</h3>
-              <p className="warning">Possible personal data: {safePrivacySummary(privacy)}.</p>
+              <p className="warning">Possible personal data in the source or current JSON: {safePrivacySummary(privacy)}.</p>
               <p className="help">The check runs locally and is not exhaustive. Do not put protected information in public repositories.</p>
               <label className="evidence-confirm">
                 <input type="checkbox" checked={privacyReviewed} onChange={e=>setPrivacyReviewed(e.currentTarget.checked)}/>

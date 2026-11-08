@@ -127,3 +127,18 @@ test('reviewed nested arrays and JSON-pointer-escaped keys are bound exactly',()
   assert.equal(evaluateExportGate({...input,value:{...value,qualification:null}}).allowed,false);
   assert.equal(evaluateExportGate({...input,value:{...value,'age/normal':66}}).allowed,false);
 });
+
+test('privacy gate rescans current export JSON even if UI flag omitted it',()=>{
+ const output={age:65,email:'fictional.test@example.org'};
+ const added={path:'/email',value:'fictional.test@example.org',status:'match',
+   matches:[{start:0,end:25,quote:'fictional.test@example.org',label:'Document',location:{kind:'document'}}]};
+ const checks=[...evidence,added];
+ const reviewed={...safe,value:output,evidence:checks,
+   selectedEvidence:{'/age':0,'/email':0},
+   confirmedEvidence:{'/age':true,'/email':true},
+   privacyRequired:false,privacyReviewed:false};
+ const blocked=evaluateExportGate(reviewed);
+ assert.equal(blocked.allowed,false);
+ assert.ok(blocked.reasons.some(r=>r.includes('private data still needs review')));
+ assert.equal(evaluateExportGate({...reviewed,privacyReviewed:true}).allowed,true);
+});
