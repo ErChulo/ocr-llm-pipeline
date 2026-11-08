@@ -13,6 +13,7 @@ import {getDocument,OPS} from 'pdfjs-dist/legacy/build/pdf.mjs';
 import {createMultiPageScannedPdf} from './pdf-fixture.mjs';
 import {measuredTesseractWords} from '../src/ocrWords.ts';
 import {assessSpatialOcrRows} from '../src/ocrSpatial.ts';
+import {reorientedBoxToOriginalPixels} from '../src/ocrGeometryRotation.ts';
 import {measuredWordInsideCell,MIN_WORD_REGION_COVERAGE} from './fixtures/spatialCellMetrics.mjs';
 
 const cases=[
@@ -71,7 +72,7 @@ try{
   if(/^(https?|wss?):/i.test(url)){external.push(url);await route.abort();}
   else await route.continue();
  });
- rasters=await page.evaluate((cases)=>cases.map(s=>{
+ rasters=await page.evaluate(async (cases)=>Promise.all(cases.map(async s=>{
   const base=document.createElement('canvas');
   base.width=1100;base.height=550;
   const c=base.getContext('2d');
@@ -128,15 +129,35 @@ try{
    cr.drawImage(drawn,0,0);drawn=rotated;
   }
   const quality=s.kind==='blur-jpeg'?0.56:low?0.55:0.92;
-  return {jpeg:drawn.toDataURL('image/jpeg',quality).split(',')[1],
-   width:drawn.width,height:drawn.height};
- }),cases);
+  const jpeg=drawn.toDataURL('image/jpeg',quality).split(',')[1];
+  let correctedJpeg=null;
+  if(s.rotation){
+   // A test-only probe: decode the ACTUAL JPEG encoded for this PDF page,
+   // undo its authored quarter-turn, then independently measure OCR again.
+   // Neither raster nor its geometry is selected by the deployed application.
+   const decoded=new Image();
+   decoded.src='data:image/jpeg;base64,'+jpeg;
+   await decoded.decode();
+   const corrected=document.createElement('canvas');
+   corrected.width=1100;corrected.height=550;
+   const cc=corrected.getContext('2d');
+   cc.fillStyle='#fff';cc.fillRect(0,0,1100,550);
+   if(s.rotation===90){cc.translate(0,550);cc.rotate(-Math.PI/2);}
+   else if(s.rotation===180){cc.translate(1100,550);cc.rotate(Math.PI);}
+   else{cc.translate(1100,0);cc.rotate(Math.PI/2);}
+   cc.drawImage(decoded,0,0);
+   correctedJpeg=corrected.toDataURL('image/jpeg',0.96).split(',')[1];
+  }
+  return {jpeg,correctedJpeg,width:drawn.width,height:drawn.height};
+ })),cases);
  await page.close();
 }finally{await browser.close();}
 assert.equal(external.length,0,'Offline fictional fixture generation made external requests');
 const images=rasters.map(x=>({
  jpeg:Buffer.from(x.jpeg,'base64'),width:x.width,height:x.height
 }));
+const correctedImages=rasters.map(r=>r.correctedJpeg?
+ Buffer.from(r.correctedJpeg,'base64'):null);
 const pdf=createMultiPageScannedPdf(images);
 assert.equal(pdf.subarray(0,5).toString(),'%PDF-');
 const task=getDocument({data:Uint8Array.from(pdf),useWasm:false,disableFontFace:true});
