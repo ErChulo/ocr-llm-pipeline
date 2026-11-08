@@ -185,6 +185,11 @@ const metric={
  abstainedPages:0,wrongPage:0,requiredAmbiguousAbstentions:0,
  recognizedNumericLiterals:0,expectedNumericLiterals:cases.length*4
 };
+const orientationMetrics={
+ attemptedPages:0,truePositive:0,falsePositive:0,falseNegative:0,
+ acceptedPairs:0,wrongPage:0,abstainedPages:0,
+ correctedLiteralHits:0,expectedLiterals:0
+};
 const rows=[];
 try{
  for(let i=0;i<cases.length;i++){
@@ -223,7 +228,67 @@ try{
   metric.falseNegative+=missed;
   const literalHits=fixture.rows.flat().filter(token=>literalPresent(ocrText,token)).length;
   metric.recognizedNumericLiterals+=literalHits;
+  let orientationProbe=null;
+  if(correctedImages[i]){
+   orientationMetrics.attemptedPages++;
+   orientationMetrics.expectedLiterals+=fixture.rows.flat().length;
+   const corrected=await worker.recognize(correctedImages[i],{},
+    {text:true,blocks:true});
+   const correctedText=corrected.data.text||'';
+   const observedWords=measuredTesseractWords(corrected.data.blocks,
+    source.height,source.width);
+   const correctedAssessment=assessSpatialOcrRows({
+    page,imageWidth:source.height,imageHeight:source.width,
+    text:correctedText,words:observedWords
+   });
+   if(correctedAssessment.status==='abstain')orientationMetrics.abstainedPages++;
+   const matchedOriginal=new Set();
+   let correctedTP=0,correctedFP=0;
+   const candidates=correctedAssessment.pairs.map(pair=>{
+    const ageBox=reorientedBoxToOriginalPixels(pair.age.bbox,
+      source.width,source.height,fixture.rotation);
+    const factorBox=reorientedBoxToOriginalPixels(pair.factor.bbox,
+      source.width,source.height,fixture.rotation);
+    const region=reorientedBoxToOriginalPixels(pair.region,
+      source.width,source.height,fixture.rotation);
+    return {page:pair.page,age:pair.age.text,factor:pair.factor.text,
+      ageBox,factorBox,region};
+   });
+   for(const pair of candidates){
+    orientationMetrics.acceptedPairs++;
+    if(pair.page!==page){orientationMetrics.wrongPage++;correctedFP++;
+      orientationMetrics.falsePositive++;continue;}
+    const bounded=box=>box.x0>=0&&box.y0>=0&&box.x1<=source.width&&
+      box.y1<=source.height&&box.x1>box.x0&&box.y1>box.y0;
+    assert.ok(bounded(pair.ageBox)&&bounded(pair.factorBox)&&bounded(pair.region),
+      'Measured inverse-quarter-turn OCR envelope must remain inside original source image');
+    const at=reference.rows.findIndex((r,j)=>!matchedOriginal.has(j)&&
+      r.age===pair.age&&r.factor===pair.factor&&
+      insideGold(pair.ageBox,r.ageRect,source.width,source.height)&&
+      insideGold(pair.factorBox,r.factorRect,source.width,source.height));
+    if(at>=0){matchedOriginal.add(at);correctedTP++;
+      orientationMetrics.truePositive++;}
+    else{correctedFP++;orientationMetrics.falsePositive++;}
+   }
+   const missedAfterProbe=reference.rows.length-matchedOriginal.size;
+   orientationMetrics.falseNegative+=missedAfterProbe;
+   const correctedHits=fixture.rows.flat().filter(token=>
+     literalPresent(correctedText,token)).length;
+   orientationMetrics.correctedLiteralHits+=correctedHits;
+   orientationProbe={
+    status:correctedAssessment.status,reason:correctedAssessment.reason,
+    sourcePixelFrame:{width:source.width,height:source.height},
+    correctedPixelFrame:{width:source.height,height:source.width},
+    authoredQuarterTurn:fixture.rotation,
+    coordinateProvenance:'inverse of observed quarter-turn on actually measured OCR boxes',
+    confidence:corrected.data.confidence??null,
+    correctedLiteralHits:correctedHits,
+    truePositive:correctedTP,falsePositive:correctedFP,
+    falseNegative:missedAfterProbe,candidates
+   };
+  }
   rows.push({page,condition:fixture.kind,rotation:fixture.rotation||0,
+   orientationProbe,
    rasterWidth:source.width,rasterHeight:source.height,
    confidence:data.confidence??null,wordCount:words.length,
    // Diagnostic only: actually measured OCR header words on fictional pages.
@@ -250,6 +315,18 @@ const report={
  ...metric,
  acceptedPrecision:ratio(metric.truePositive,metric.truePositive+metric.falsePositive),
  recall:ratio(metric.truePositive,metric.truePositive+metric.falseNegative),
+ // Test-only orientation-probe results do NOT overwrite raw OCR totals or
+ // change what a deployed app selects as its source transcription.
+ orientationProbe:{
+  ...orientationMetrics,
+  acceptedPrecision:ratio(orientationMetrics.truePositive,
+   orientationMetrics.truePositive+orientationMetrics.falsePositive),
+  recall:ratio(orientationMetrics.truePositive,
+   orientationMetrics.truePositive+orientationMetrics.falseNegative),
+  correctedLiteralRecall:ratio(orientationMetrics.correctedLiteralHits,
+   orientationMetrics.expectedLiterals),
+  status:'experimental-manual-known-orientation-not-deployed'
+ },
  abstentionRate:metric.abstainedPages/metric.pageCount,
  numericLiteralRecall:ratio(metric.recognizedNumericLiterals,metric.expectedNumericLiterals),
  externalRequests:external.length,cases:rows,status:'measured_not_certified',
@@ -260,5 +337,9 @@ writeFileSync('tmp/stratified-raster-report.json',JSON.stringify(report,null,2)+
 console.log('STRATIFIED REAL RASTER REPORT',JSON.stringify(report));
 assert.equal(metric.wrongPage,0,'Wrong parser-derived page attribution');
 assert.equal(metric.falsePositive,0,'Accepted false spatial association');
+assert.equal(orientationMetrics.falsePositive,0,
+ 'Experimental inverse-rotated OCR source envelope was wrongly associated');
+assert.equal(orientationMetrics.wrongPage,0,
+ 'Experimental inverse-rotated OCR must retain original parser PDF page');
 assert.equal(metric.requiredAmbiguousAbstentions,1);
 assert.equal(external.length,0);
