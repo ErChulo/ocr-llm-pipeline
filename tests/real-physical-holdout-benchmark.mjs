@@ -10,6 +10,7 @@ import { resolve,basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { mkdirSync,writeFileSync,readFileSync,statSync,existsSync } from 'node:fs';
 import {physicalHoldoutCases} from './fixtures/physicalHoldoutCases.mjs';
+import {selectPhysicalHoldoutCases} from './fixtures/holdoutSelection.mjs';
 import {assessHoldoutProvenance} from './fixtures/physicalHoldoutProvenance.mjs';
 import { scoreCorpus } from '../src/syntheticQuality.ts';
 import assert from 'node:assert/strict';
@@ -21,13 +22,17 @@ assert.ok(Number.isSafeInteger(caseTimeoutMs)&&caseTimeoutMs>=10000&&caseTimeout
   'CASE_TIMEOUT_MS must be between 10,000 and 600,000 milliseconds.');
 assert.ok(existsSync(model),'Select a checksum-verified local GGUF test file.');
 const benchmarkMode='physical-eight-case-holdout-v1';
-const samples=physicalHoldoutCases;
-assert.equal(samples.length,8,'The independent physical holdout must retain all eight cases.');
+assert.equal(physicalHoldoutCases.length,8,'The independent physical holdout must retain all eight cases.');
+const selection=process.env.BENCHMARK_CASES||'all';
+const samples=selectPhysicalHoldoutCases(physicalHoldoutCases,selection);
 const report={
   fixtureVersion:'physical-holdout-v1',
   model:process.env.MODEL_LABEL||'Qwen2.5-0.5B-Instruct Q4_K_M',
   modelBytes:statSync(model).size,
-  benchmarkMode,fixtureCount:samples.length,source:'fictional-only',origin:'file://',
+  benchmarkMode,fixtureCount:samples.length,holdoutUniverseCount:physicalHoldoutCases.length,
+  selection:selection==='all'?'all-eight':'explicit-bounded-subset',
+  selectedCaseIds:samples.map(sample=>sample.id),
+  source:'fictional-only',origin:'file://',
   cases:[],externalRequests:[],status:'starting',startedAt:new Date().toISOString()
 };
 const persist=()=>writeFileSync('tmp/real-corpus-report.json',JSON.stringify(report,null,2));
