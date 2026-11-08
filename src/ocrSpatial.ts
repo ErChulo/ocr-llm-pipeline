@@ -66,11 +66,12 @@ export function assessSpatialOcrRows(
   if(!anchors)return empty('excessive-transcript-complexity');
   const headerAge=words.filter(word=>word.text.toUpperCase()==='AGE');
   const headerFactor=words.filter(word=>word.text.toUpperCase()==='FACTOR');
-  const headers=headerAge.flatMap(age=>headerFactor.filter(factor=>
-    age.bbox.x1<factor.bbox.x0 && sameRow(age,factor))
-    .map(factor=>({age,factor})));
-  if(headers.length!==1)return empty('ambiguous-or-missing-column-headers');
-  const {age:ageHeader,factor:factorHeader}=headers[0];
+  // Refuse repeated headers before any cross-product can exhaust memory.
+  if(headerAge.length!==1||headerFactor.length!==1)return empty('ambiguous-or-missing-column-headers');
+  const ageHeader=headerAge[0],factorHeader=headerFactor[0];
+  if(ageHeader.bbox.x1>=factorHeader.bbox.x0 || !sameRow(ageHeader,factorHeader)){
+    return empty('ambiguous-or-missing-column-headers');
+  }
   const monthly=words.filter(word=>word.text.toUpperCase()==='MONTHLY' &&
     sameRow(word,factorHeader) && word.bbox.x0<factorHeader.bbox.x0);
   if(monthly.length>1)return empty('ambiguous-factor-header');
@@ -84,6 +85,7 @@ export function assessSpatialOcrRows(
     word.bbox.y0>headerBottom && Math.abs(word.bbox.x0-factorX)<=tolerance &&
     anchors.get(word.text)!=null);
   if(ages.length<2||factors.length<2)return empty('insufficient-unique-column-values');
+  if(ages.length>256||factors.length>256)return empty('excessive-table-complexity');
   const provisional=ages.flatMap(age=>{
     const same=factors.filter(factor=>factor.bbox.x0>age.bbox.x1+w*0.1 && sameRow(age,factor));
     return same.length===1?[{age,factor:same[0]}]:[];
