@@ -2,6 +2,8 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Harden OOXML source-location fidelity against namespace spoofing: reject non-spreadsheet elements masquerading as Excel cells, values or relationship metadata; do not treat foreign XML blocks as Word paragraphs, and disclose omitted foreign content for review. Reject orphaned Excel cells and row/cell-address discrepancies.
+
 - Reject duplicate ZIP part names and ambiguous XLSX identities (duplicate sheet names/IDs, worksheet relationships/parts, repeated cell references). Reject column/row addresses outside Excel's official 16,384 by 1,048,576 worksheet grid. These are provenance-integrity checks; they do not validate actuarial correctness.
 
 - Prevent DOCX drawing/textbox/OLE text and foreign-namespace text runs from being silently presented as ordinary paragraph evidence. Detect unprocessed graphics across document, header/footer and notes; require original-file acknowledgement.
