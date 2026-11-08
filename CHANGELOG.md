@@ -2,6 +2,8 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Extend the conservative source-instruction warning to detect multiline AI-directed overrides, zero-width-character obfuscation, model role delimiters and role-spoofing headings. Normalize a temporary scan view only: original source text, offsets, fingerprints and extracted evidence are never rewritten. Add adversarial positives, benign pension-rule negatives and a fail-closed export regression. Detection still does not prove model resistance to prompt injection.
+
 - Add a three-page, image-only fictional PDF OCR validation matrix in the offline browser, recording parser-derived page attribution, per-page exact literals, same-row age/factor pairing, wrong-page conflicts, and three independent original-page review requirements. Add a PDF.js source fixture that tests real /Rotate 90 metadata, native-versus-raster content and failure on missing OCR. Measured offline Chromium results: **11/12** page-local exact literals, **5/6** same-line age/factor pairs, zero wrong-page matches and zero network requests (CI 42488253190). The skewed page missed age **58**. Source/build **259/259**, full Playwright and accessibility passed; separate real Qwen 0.5B model output remained **93.75%** strict micro F1 (7/8 exact, 360.637 seconds). See archived JSON diagnostic; none of these results certify spatial cell accuracy or production readiness. See [benchmark method](docs/MULTIPAGE_SCANNED_PDF_QA.md).
 
 
