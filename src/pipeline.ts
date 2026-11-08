@@ -3,6 +3,7 @@ import { parsePdf } from './pdfText.ts';
 import { parseCsv } from './csv.ts';
 import { sha256Bytes } from './fingerprint.ts';
 import { ocrReviewIssue } from './ocrReview.ts';
+import { countAmbiguousOcrNumericTokens } from './ocrNumericReview.ts';
 export type SourceTextSpan = {
   start: number;
   end: number;
@@ -150,7 +151,7 @@ export async function importFile(file: File): Promise<ImportResult> {
       id:file.name,name:file.name,text,mimeType:file.type,sizeBytes:file.size,
       provenance:{source:'image-ocr',precision:'document',fileName:file.name},
       records:[{start:0,end:text.length,label:'Image OCR',location:{kind:'image',confidence:Math.round(data.confidence)}}],
-      reviewIssues:[ocrReviewIssue('image',data.confidence)],
+      reviewIssues:[ocrReviewIssue('image',data.confidence,undefined,countAmbiguousOcrNumericTokens(data.text))],
       imageBytes:Uint8Array.from(bytes),
       warnings:['OCR is probabilistic and can misread names, numbers, dates and plan formulas.',
         'OCR confidence: '+Math.round(data.confidence)+'%. Inspect the original image for every extracted field.']
