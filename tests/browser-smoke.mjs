@@ -371,7 +371,10 @@ try {
       {title:'FICTIONAL PLAN GAMMA',rows:[['58','0.9063'],['64','0.9813']]},
       {title:'FICTIONAL PLAN DELTA',rows:[['57','0.8234'],['63','0.9471']],rotation:90},
       {title:'FICTIONAL PLAN EPSILON',rows:[['54','0.7791'],['66','1.0245']],rotation:180},
-      {title:'FICTIONAL PLAN ZETA',rows:[['56','0.8461'],['68','1.0691']],rotation:270}
+      {title:'FICTIONAL PLAN ZETA',rows:[['56','0.8461'],['68','1.0691']],rotation:270},
+      {title:'FICTIONAL PLAN ETA',rows:[['53','0.7346'],['67','1.0432']]},
+      {title:'FICTIONAL PLAN THETA',rows:[['59','0.9218'],['69','1.0837']]},
+      {title:'FICTIONAL PLAN IOTA',rows:[['52','0.7124'],['70','1.1179']]}
     ];
     return plans.map((plan,i)=>{
       const canvas=document.createElement('canvas');
@@ -385,26 +388,40 @@ try {
         ctx.translate(-500,-270);
       }
       ctx.fillStyle=i===1?'#686868':'#111';
-      ctx.font='bold 41px Arial';
+      // Three adversarial variants: very small typography, soft focus,
+      // and a compact ruled table with clutter. No invented OCR ground truth.
+      ctx.font=i===6?'bold 21px Arial':'bold 41px Arial';
       ctx.fillText(plan.title,52,78);
-      ctx.font='bold 34px Arial';
+      ctx.font=i===6?'bold 19px Arial':'bold 34px Arial';
       ctx.fillText('AGE',80,164);
       ctx.fillText('MONTHLY FACTOR',440,164);
-      if(i===1){
-        ctx.strokeStyle='#b9b9b9';ctx.lineWidth=2;
+      if(i===1||i===8){
+        ctx.strokeStyle=i===8?'#777':'#b9b9b9';ctx.lineWidth=2;
         for(const y of [188,287,384]){
           ctx.beginPath();ctx.moveTo(52,y);ctx.lineTo(835,y);ctx.stroke();
         }
         ctx.beginPath();ctx.moveTo(385,184);ctx.lineTo(385,388);ctx.stroke();
       }
-      ctx.font='36px Arial';
+      ctx.font=i===6?'18px Arial':'36px Arial';
       for(let r=0;r<plan.rows.length;r++){
         const y=248+r*97;
         ctx.fillText(plan.rows[r][0],80,y);
         ctx.fillText(plan.rows[r][1],440,y);
       }
-      ctx.font='25px Arial';
+      ctx.font=i===6?'15px Arial':'25px Arial';
       ctx.fillText('SYNTHETIC TEST ONLY',52,474);
+      if(i===8){
+        ctx.fillStyle='#999';ctx.font='16px Arial';
+        ctx.fillText('Schedule reference: 2025 7A — not a row value',52,420);
+      }
+      if(i===7){
+        const blurred=document.createElement('canvas');
+        blurred.width=1000;blurred.height=540;
+        const bctx=blurred.getContext('2d');
+        bctx.filter='blur(1.1px)';
+        bctx.drawImage(canvas,0,0);
+        return blurred.toDataURL('image/jpeg',0.48).split(',')[1];
+      }
       // Pages 4–6 store sideways/upside-down pixels corrected by actual
       // PDF /Rotate metadata. OCR must see the parser's displayed page,
       // not fabricate upright text or cell coordinates.
@@ -426,14 +443,14 @@ try {
       return canvas.toDataURL('image/jpeg',i===1?0.58:0.88).split(',')[1];
     });
   });
-  const rotations=[0,0,0,90,180,270];
+  const rotations=[0,0,0,90,180,270,0,0,0];
   const multiScanPdf=createMultiPageScannedPdf(multiScanJpegs.map((jpeg64,i)=>({
     jpeg:Buffer.from(jpeg64,'base64'),
     width:rotations[i]===90||rotations[i]===270?540:1000,
     height:rotations[i]===90||rotations[i]===270?1000:540,
     rotation:rotations[i]
   })));
-  const multiScanName='fictional-six-page-rotated-scanned-schedules.pdf';
+  const multiScanName='fictional-nine-page-rotated-and-degraded-scans.pdf';
   await filePicker.setInputFiles({
     name:multiScanName,mimeType:'application/pdf',buffer:multiScanPdf
   });
@@ -441,11 +458,11 @@ try {
     .filter({hasText:multiScanName}).waitFor({state:'attached',timeout:180000});
   await page.locator('.card select').first().selectOption({label:multiScanName});
   const multiReview=page.locator('.source-completeness');
-  await multiReview.getByText(/PDF page 6 before export/i).waitFor({timeout:180000});
+  await multiReview.getByText(/PDF page 9 before export/i).waitFor({timeout:180000});
   const multipageText=await page.locator('.preview').innerText();
   const pageMatches=[...multipageText.matchAll(/(?:^|\n)Page (\d+):\n([\s\S]*?)(?=\nPage \d+:\n|$)/g)];
-  assert.deepEqual(pageMatches.map(match=>Number(match[1])),[1,2,3,4,5,6],
-    'OCR text must keep all three parser-derived page labels in order');
+  assert.deepEqual(pageMatches.map(match=>Number(match[1])),[1,2,3,4,5,6,7,8,9],
+    'OCR must retain all nine parser-derived page labels in order');
   const bodyByPage=Object.fromEntries(pageMatches.map(match=>[Number(match[1]),match[2]]));
   const expectedPages=[
     {page:1,rotation:0,rows:[['55','0.8750'],['65','1.0000']]},
@@ -453,19 +470,22 @@ try {
     {page:3,rotation:0,rows:[['58','0.9063'],['64','0.9813']]},
     {page:4,rotation:90,rows:[['57','0.8234'],['63','0.9471']]},
     {page:5,rotation:180,rows:[['54','0.7791'],['66','1.0245']]},
-    {page:6,rotation:270,rows:[['56','0.8461'],['68','1.0691']]}
+    {page:6,rotation:270,rows:[['56','0.8461'],['68','1.0691']]},
+    {page:7,rotation:0,rows:[['53','0.7346'],['67','1.0432']]},
+    {page:8,rotation:0,rows:[['59','0.9218'],['69','1.0837']]},
+    {page:9,rotation:0,rows:[['52','0.7124'],['70','1.1179']]}
   ];
   const pageResults=scoreFictionalScannedPages(bodyByPage,expectedPages);
   assert.ok(pageResults.every(result=>result.wrongPageLiterals.length===0),
     'a unique fictional numeric fact must not be attributed to another PDF page');
-  assert.equal(await multiReview.locator('input[type="checkbox"]').count(),6,
-    'all six OCR pages independently require original-page review');
-  await page.getByRole('button',{name:'View original page 6'}).click();
-  await page.getByText(/Original PDF — page 6 of 6/).waitFor({timeout:20000});
+  assert.equal(await multiReview.locator('input[type="checkbox"]').count(),9,
+    'all nine OCR pages independently require original-page review');
+  await page.getByRole('button',{name:'View original page 9'}).click();
+  await page.getByText(/Original PDF — page 9 of 9/).waitFor({timeout:20000});
   await page.getByRole('button',{name:'Close PDF view'}).click();
   assert.equal(external.length,0,'multipage OCR must not make network requests');
   writeFileSync('tmp/fictional-multipage-scanned-pdf-ocr.json',JSON.stringify({
-    cohort:'six-page fictional raster PDF (0/90/180/270 degree rotations)',
+    cohort:'nine-page fictional raster PDF (rotations, small fonts, blur, table clutter)',
     source:'image-only JPEG XObjects in one real multi-page PDF',
     evidenceStatus:'unverified_ocr_transcription',
     citationPrecision:'parser-derived pdf-page-ocr; no cell or glyph boxes',
@@ -478,7 +498,7 @@ try {
     pageResults.map(item=>item.literalsRecognized+'/'+item.literalDenominator+
       ' literals, '+item.rowPairsRecognized+'/'+item.rowPairDenominator+
       ' exact adjacent row pairs on page '+item.page).join('; ')+
-    '; six mandatory source reviews; zero wrong-page matches.');
+    '; nine mandatory source reviews; zero wrong-page matches.');
 
   // Mixed-content PDFs can hide provisions in images despite a valid text
   // layer. Require the user's explicit original-page review before export.

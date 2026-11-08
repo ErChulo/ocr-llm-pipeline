@@ -51,9 +51,41 @@ and accessibility jobs passed. These runs do not certify real-world OCR,
 numeric fidelity, model factual correctness, workstation suitability,
 or agency production authorization.
 
-## Corpus and provenance
+## Nine-page difficult-scan follow-up — observed November 8, 2026
 
-The offline Chromium smoke test generates one entirely fictional, three-page PDF containing three independent JPEG image XObjects and **no selectable text layer**. No real plan, case, participant, or employee data is included. It exercises:
+[PR #65](https://github.com/ErChulo/ocr-llm-pipeline/pull/65)
+extends the *same fictional image-only PDF* with three independent raster
+pages: **small 18–21 px type**, **1.1 px blur with lower-quality JPEG**, and
+**denser ruled table with unrelated footnote text**. These are deterministic
+stress cases rather than representative real-world OCR prevalence estimates.
+
+The [offline browser run 42501326436](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42501326436)
+passed, and its archived `fictional-multipage-scanned-pdf-ocr.json` reports:
+
+| Page(s) | Scan condition | Exact tokens | Same-line pair proxy |
+| --- | --- | ---: | ---: |
+| 1–6 | Clear, contrast, skew, and 90°/180°/270° rotations | 22/24 | 10/12 |
+| 7 | Small typography | 4/4 | 2/2 |
+| 8 | Mild blur and JPEG degradation | 4/4 | 2/2 |
+| 9 | Ruled table with unrelated note | 4/4 | 2/2 |
+| **All nine** | **One fully fictional PDF** | **34/36 (94.44%)** | **16/18 (88.89%)** |
+
+The missed literals **58** (skew) and **57** (90° rotation) remain
+unrecognized on pages 3 and 4; they were not reconstructed, guessed or
+silently corrected. Exactly **zero** other-page target literal matches,
+**nine** original-page review requirements and **zero** outbound Chromium
+requests were observed. The original page 9 was openable. Numeric OCR
+ambiguity warnings and reviewer acknowledgements do not prove factual
+correctness. All table-pair scores are still **text-line proxies**, not
+spatially verified cells or field-level evidence precision.
+
+Do not interpret the rise from 22/24 to 34/36 as an accuracy improvement:
+three additional, different fictional pages changed the denominator.
+Actual small/blurred type can perform much worse, and the sample is tiny.
+
+## Original three-page corpus and provenance
+
+The original offline Chromium smoke test generated one entirely fictional, three-page PDF containing three independent JPEG image XObjects and **no selectable text layer**. No real plan, case, participant, or employee data is included. It exercises:
 
 | PDF page | Fictional contents | Image condition |
 | --- | --- | --- |
@@ -65,15 +97,15 @@ A separate Node/PDF.js source test verifies the same fixture format with real PD
 
 ## Exact metrics
 
-The browser runs from the final single-file `file://` HTML and blocks external HTTP(S)/WebSocket requests. The workflow uploads `tmp/fictional-multipage-scanned-pdf-ocr.json`. For each page, the artifact records:
+All cohorts run from the final single-file `file://` HTML and blocks external HTTP(S)/WebSocket requests. The workflow uploads `tmp/fictional-multipage-scanned-pdf-ocr.json`. For each page, the artifact records:
 
-- **Literal recognition**: count of exact expected age and factor tokens within that page's OCR text; denominator **4/page**, **12 total**. No inference or numeric normalization.
-- **Adjacent row pairing**: count of expected age/factor pairs that appear in the same recognized line, separated only by whitespace; denominator **2/page**, **6 total**. This is an intentionally strict proxy, **not evidence of true spatial cell association**.
+- **Literal recognition**: count of exact expected age and factor tokens within that page's OCR text; denominator **4/page** (**12** in the original cohort; **36** in the nine-page extension). No inference or numeric normalization.
+- **Adjacent row pairing**: count of expected age/factor pairs that appear in the same recognized line, separated only by whitespace; denominator **2/page** (**6** original; **18** nine-page). This is an intentionally strict proxy, **not evidence of true spatial cell association**.
 - **Wrong-page literals**: exact unique target values appearing under a different parser-derived page label; mandatory assertion of zero. Omitted tokens are not counted as correct.
-- **Review/completeness**: require an original-page review issue **for each of the 3 pages**; original page 3 must be openable. Page citations remain `pdf-page-ocr`, with **no invented glyph/cell bounding boxes**.
+- **Review/completeness**: require an original-page review issue **for every OCR page**; in the current nine-page extension, original page 9 must be openable. Page citations remain `pdf-page-ocr`, with **no invented glyph/cell bounding boxes**.
 - **Privacy/offline**: external request count must remain zero. The JSON diagnostic stores counts and matches only, not PDF bytes or unrestricted document content.
 
-Metrics must be copied from the **actual CI artifact** after the run. A green test proves structural checks passed; it does not imply 12/12 literal matches or 6/6 row matches. Record low values rather than silently correcting OCR.
+Metrics must be copied from the **actual CI artifact** after the run. A green test proves structural checks passed; it does not imply perfect literal matches or row association. Record low values rather than silently correcting OCR.
 
 ## Open production gates
 
