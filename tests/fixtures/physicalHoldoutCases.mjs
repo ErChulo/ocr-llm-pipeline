@@ -55,7 +55,7 @@ export const physicalHoldoutCases=Object.freeze([
   sample('pdf-two-column-eligibility','layout','pdf',
     createSyntheticPdf([[
       {text:'FICTIONAL PLAN Normal retirement age 65',x:72,y:720},
-      {text:'Early retirement age 55',x:405,y:720},
+      {text:'Early retirement age 55',x:430,y:720},
       {text:'Vesting service 10 years',x:72,y:680}
     ]]),
     {normal_age:65,early_age:55,service_years:10},
