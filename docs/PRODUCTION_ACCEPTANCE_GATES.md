@@ -96,3 +96,7 @@ No real PBGC participants, cases, or identifying data may be used.
 - Pin corpora and maintain clean development-versus-holdout separation; no post-test tuning followed by calling the same holdout independent.
 - A PASS requires linked results, versioned fixture annotations, clear numerators/denominators, failure inspection, and reviewer authorization.
 - Current highest-priority unresolved release blockers are **adversarial authoritative-source selection** and **unseen independently annotated spatial evidence validation**.
+
+
+### Pending safety regression — PR #101 (2026-11-08)
+- The measured-word spatial candidate matcher now has a proposed leading-decimal intervening-column abstention rule and eight fictional regression checks. This is a narrow defect fix. Gate 2 remains **BLOCKED** until independent source-authentic raster measurement meets its existing precision, recall, zero-wrong-page and source-coordinate requirements. The change neither improves the established 16/22 original-JPEG recall measurement nor changes release classification.
