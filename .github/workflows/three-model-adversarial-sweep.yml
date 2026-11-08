@@ -6,6 +6,9 @@ on:
     paths:
       - '.github/workflows/three-model-adversarial-sweep.yml'
       - 'tests/real-physical-holdout-benchmark.mjs'
+      - 'src/sourceAttribution.ts'
+      - 'src/disclaimedEvidence.ts'
+      - 'tests/sourceAttribution.test.mjs'
       - 'tests/fixtures/holdoutSelection.mjs'
       - 'tests/holdoutSelection.test.mjs'
 
