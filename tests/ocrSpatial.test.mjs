@@ -75,3 +75,52 @@ test('numeric notes fully outside observed row corridor do not invent ambiguity'
     assert.equal(v.pairs.length,2);
   }
 });
+
+test('actual fictional skewed header rectangles permit collinear AGE-MONTHLY-FACTOR rows',()=>{
+ const variants=[
+  [word('AGE',76,138,67,23),word('MONTHLY',449,146,153,25),
+   word('FACTOR',614,149,127,25),[238,245],[336,343]],
+  [word('AGE',71,157,67,24),word('MONTHLY',444,147,153,25),
+   word('FACTOR',608,144,129,25),[245,238],[343,336]]
+ ];
+ for(const [age,month,factor,first,second] of variants){
+  const observed=[age,month,factor,
+   word('58',80,first[0],42,27),word('0.9063',450,first[1],118,27),
+   word('64',80,second[0],42,27),word('0.9813',450,second[1],118,27)];
+  const v=assessSpatialOcrRows({...args,words:observed});
+  assert.equal(v.status,'candidates','three actually measured sloped headers must align');
+  assert.deepEqual(v.pairs.map(p=>[p.age.text,p.factor.text]),
+   [['58','0.9063'],['64','0.9813']]);
+ }
+});
+test('skew tolerance requires unique collinear measured MONTHLY corroboration',()=>{
+ const a=word('AGE',76,138,67,23),
+  m=word('MONTHLY',449,146,153,25),f=word('FACTOR',614,149,127,25);
+ const data=original.slice(3);
+ const input=[a,m,f,...data];
+ assert.equal(assessSpatialOcrRows({...args,words:input}).status,'candidates');
+ const tests=[
+  [a,f,...data], // no middle header: cannot justify nonparallel alignment
+  [a,word('MONTHLY',449,139,153,25),f,...data], // off collinear line
+  [word('AGE',76,122,67,23),m,f,...data], // >2-degree header slope
+  [a,m,word('MONTHLY',440,147,153,25),f,...data] // duplicated header
+ ];
+ for(const words of tests){
+  const v=assessSpatialOcrRows({...args,words});
+  assert.equal(v.status,'abstain','unsafe header geometry must not be normalized');
+  assert.deepEqual(v.pairs,[]);
+ }
+});
+test('measured skewed headers never bypass intervening numeric-column abstention',()=>{
+ const words=[
+  word('AGE',76,138,67,23),word('MONTHLY',449,146,153,25),
+  word('FACTOR',614,149,127,25),
+  word('58',80,238,42,27),word('0.9063',450,245,118,27),
+  word('64',80,336,42,27),word('0.9813',450,343,118,27),
+  word('20',290,241,42,27),word('30',290,339,42,27)
+ ];
+ const v=assessSpatialOcrRows({...args,words,
+  text:'AGE SERVICE MONTHLY FACTOR\n58 20 0.9063\n64 30 0.9813'});
+ assert.equal(v.status,'abstain');
+ assert.equal(v.reason,'intervening-numeric-column');
+});
