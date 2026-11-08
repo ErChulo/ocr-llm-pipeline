@@ -5,6 +5,14 @@ This document records proposed exit criteria and measured evidence separately.
 Passing CI, or an exact result on a small fictional fixture, is not production certification.
 No real PBGC participants, cases, or identifying data may be used.
 
+### November 8 supplementary evidence — PR #102 (no gate closure)
+
+- Source/build **349/349** successful; offline browser/Playwright/accessibility successful, actual Qwen2.5 0.5B still **7/8 exact cases / 93.75% micro F1** ([CI](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42526704751)).
+- Original JPEG **raw** spatial cohort remains **16 TP / 0 FP / 6 FN = 72.73% recall** over 22 annotated eligible pairs. The deployed pure orientation selector, *measured separately* on its three rotated pages, selected **3/3** correct turns and **6 TP / 0 FP / 0 wrong-page / 0 FN**, with 12/12 corrected literal tokens ([CI](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42526704773)). Do not pool the two readings or infer a population 99.5% precision from six observations.
+- An authentic standalone `file://` browser import of a fictional sideways-original-pixels JPEG-PDF with **no PDF `/Rotate`** recovered **4/4** referenced numeric literals, retained actual page 1 and original-page review, and made **zero HTTP(S) requests** ([CI](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42526704771)). Mapped rectangles are inverse-transformed **measured OCR pixel envelopes from an actual PDF.js render**, not inferred original-JPEG/PDF content coordinates; renderer-to-source image geometry remains unverified for all page layouts.
+- Gates 1/2/3/4/5/6/7/8 remain **BLOCKED or FAIL**, not PASS. This is a fixed developer fixture, not the mandatory independent 100-document/500-page/5,000-numeral holdout, source-authority review or authorized workplace evaluation. Release stays `0.3.0-beta.1`.
+
+
 ## Decision policy
 
 - **PASS** — all thresholds independently verified on the required population and signed off.
