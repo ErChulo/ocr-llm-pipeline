@@ -2,6 +2,8 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Expand the scanned-PDF Playwright OCR benchmark with deterministic fictional low-contrast and skewed-speckled JPEG conditions. Preserve the original page-review requirement and log all measured exact-token counts, not assumed accuracy; publish dated beta status and outstanding release gates.
+
 - Recognize aligned compact PDF table rows that wide-gap detection missed; preserve exact text and page/citation provenance, require original-page review and add adversarial geometry tests. Record a separate entirely fictional raster-table OCR diagnostic in offline Playwright (unverified transcript; not an accuracy certification). Rebase older PR #51 on current PDF annotation and export gates.
 
 - Flag omitted PDF annotations and form widgets for mandatory original-file inspection, excluding their values from native page text citations. Synthetic FreeText/AcroForm/link fixtures and offline Playwright checks cover this source completeness hazard; rebase a previously passing but outdated PR on current source safety gates.
