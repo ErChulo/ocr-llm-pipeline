@@ -138,3 +138,7 @@
 - Pure-black/pure-white PBGC-logo theme pairing, theme switch and printable Guide.
 
 **Release status:** Beta. Protected case-data use, factual actuarial accuracy, broader model performance and managed-workstation compatibility have not passed production acceptance.
+
+
+### Unreleased — spatial leading-decimal ambiguity (PR #101)
+- Added a fail-closed measured-word guard for intervening leading-decimal table cells (`.75`, signed, currency, accounting, percentage, and exponent formats). No OCR source words or coordinates are modified. Eight fictional regression variants exercise the guard. Acceptance remains beta pending CI and independent raster validation.
