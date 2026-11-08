@@ -8,6 +8,8 @@ on:
       - 'tests/real-spatial-raster-benchmark.mjs'
       - 'src/ocrWords.ts'
       - 'src/ocrSpatial.ts'
+      - 'src/ocrGeometryRotation.ts'
+      - 'tests/ocrGeometryRotation.test.mjs'
 
 permissions:
   contents: read
