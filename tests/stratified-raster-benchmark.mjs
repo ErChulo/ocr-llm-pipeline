@@ -200,6 +200,12 @@ const orientationMetrics={
  acceptedPairs:0,wrongPage:0,abstainedPages:0,
  correctedLiteralHits:0,expectedLiterals:0
 };
+const blindMetrics={
+ attemptedPages:0,acceptedPairs:0,truePositive:0,falsePositive:0,
+ falseNegative:0,abstainedPages:0,wrongPage:0,
+ selectedCorrectOrientations:0,selectedWrongOrientations:0,
+ recognizedLiterals:0,expectedLiterals:0
+};
 const rows=[];
 try{
  for(let i=0;i<cases.length;i++){
@@ -299,8 +305,75 @@ try{
     falseNegative:missedAfterProbe,candidates
    };
   }
+  let blindOrientationSweep=null;
+  if(correctedImages[i]){
+   blindMetrics.attemptedPages++;
+   blindMetrics.expectedLiterals+=fixture.rows.flat().length;
+   const options=[{turn:0,page,confidence:data.confidence??0,
+    assessment,text:ocrText}];
+   // Every possible quarter-turn is independently recognized. The selector
+   // has NO access to fixture.rotation or source-authored expected values.
+   for(const turn of [90,180,270]){
+    const w=turn===180?source.width:source.height;
+    const h=turn===180?source.height:source.width;
+    const measuredPass=await worker.recognize(sweepImages[i][turn],{},
+      {text:true,blocks:true});
+    const measuredText=measuredPass.data.text||'';
+    const measuredWords=measuredTesseractWords(measuredPass.data.blocks,w,h);
+    options.push({turn,page,confidence:measuredPass.data.confidence??0,
+      assessment:assessSpatialOcrRows({page,imageWidth:w,imageHeight:h,
+       text:measuredText,words:measuredWords}),text:measuredText});
+   }
+   const selection=selectMeasuredOrientationCandidates(
+    source.width,source.height,page,options);
+   const matchedBlind=new Set();
+   let selectedTP=0,selectedFP=0,selectedFN=reference.rows.length,
+    selectedHits=0;
+   if(selection.status==='candidate-for-human-review'){
+    const chosen=options.find(option=>option.turn===selection.selectedTurn);
+    if(selection.selectedTurn===fixture.rotation)
+      blindMetrics.selectedCorrectOrientations++;
+    else blindMetrics.selectedWrongOrientations++;
+    selectedHits=fixture.rows.flat().filter(token=>
+      literalPresent(chosen.text,token)).length;
+    for(const pair of chosen.assessment.pairs){
+     blindMetrics.acceptedPairs++;
+     if(pair.page!==page){blindMetrics.wrongPage++;selectedFP++;
+       blindMetrics.falsePositive++;continue;}
+     const ageBox=reorientedBoxToOriginalPixels(pair.age.bbox,
+      source.width,source.height,selection.selectedTurn);
+     const factorBox=reorientedBoxToOriginalPixels(pair.factor.bbox,
+      source.width,source.height,selection.selectedTurn);
+     const at=reference.rows.findIndex((r,j)=>!matchedBlind.has(j)&&
+      r.age===pair.age.text&&r.factor===pair.factor.text&&
+      insideGold(ageBox,r.ageRect,source.width,source.height)&&
+      insideGold(factorBox,r.factorRect,source.width,source.height));
+     if(at>=0){matchedBlind.add(at);selectedTP++;blindMetrics.truePositive++;}
+     else{selectedFP++;blindMetrics.falsePositive++;}
+    }
+    selectedFN=reference.rows.length-matchedBlind.size;
+   }else blindMetrics.abstainedPages++;
+   blindMetrics.falseNegative+=selectedFN;
+   blindMetrics.recognizedLiterals+=selectedHits;
+   blindOrientationSweep={
+    status:selection.status,reason:selection.reason,
+    suggestedTurnForReview:selection.selectedTurn,
+    selectedCorrectOnThisFictionalFixture:
+      selection.status==='candidate-for-human-review'?
+      selection.selectedTurn===fixture.rotation:null,
+    acceptedPairs:selection.pairs,truePositive:selectedTP,
+    falsePositive:selectedFP,falseNegative:selectedFN,
+    selectedLiteralHits:selectedHits,
+    observedCandidates:options.map(option=>({
+     turn:option.turn,confidence:option.confidence,
+     status:option.assessment.status,
+     count:option.assessment.pairs.length
+    })),
+    caveat:'Orientation is a test-only unverified suggestion, not an app-selected transcription'
+   };
+  }
   rows.push({page,condition:fixture.kind,rotation:fixture.rotation||0,
-   orientationProbe,
+   orientationProbe,blindOrientationSweep,
    rasterWidth:source.width,rasterHeight:source.height,
    confidence:data.confidence??null,wordCount:words.length,
    // Diagnostic only: actually measured OCR header words on fictional pages.
