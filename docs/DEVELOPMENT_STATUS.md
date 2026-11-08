@@ -6,11 +6,11 @@
 
 - The reviewed baseline for this follow-up is main commit `3d1e84a03787cf4ccbd3554dcb7a9aa6a33dbccc`. Merged PR #54 added an independent three-page image-only fictional PDF matrix. [Measured offline `file://` results](MULTIPAGE_SCANNED_PDF_QA.md): **11/12** exact page-local literals, **5/6** same-line age/factor pairs, zero wrong-page target matches, three required page reviews, and zero external requests (CI 42488253190). The skewed third page missed age **58**. Row proximity is not verified spatial cell association.
 
-
-- Current verified main baseline: `e9775e74568621f92435f34f3ca7d08502b7ecf9` (merged PR #54).
-- After PR #54, **259/259** source tests passed, TypeScript compile and standalone HTML build passed (CI run 42488253166).
+- Latest verified main baseline: `0284329c16cc803aed28ccbac8fa7f04bec3fb7c` (PRs #54, #55 and #56 merged).
+- After PR #56, **262/262** source tests passed, TypeScript compile and standalone HTML build passed ([CI run 42489238115](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42489238115)).
 - Offline Chromium file URL smoke and full Playwright acceptance passed on the integrated PDF feature branch, with external browser requests blocked.
 - Accessibility suite passed; this does not replace testing on the actual approved managed workstation.
+- [PR #56](https://github.com/ErChulo/ocr-llm-pipeline/pull/56) extended conservative untrusted-source instruction warnings to multiline directives, invisible-character obfuscation and forged model roles; source tests, [offline browser smoke](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42489238111), and [accessibility](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42489238219) passed. This is a **review warning**, not a prompt-injection sanitizer or proof of resistance.
 - Single high-contrast fictional scanned PDF table: 5/5 exact numeric literals recognized by local English OCR. An exact literal does not validate table-cell pairing, interpretations, or legal applicability. Every OCR page requires original-file review.
 - Three deterministic single-page fictional physical scans (baseline, low contrast, skew/speckling) each measured **5/5** exact numeric literals in offline Chromium, separately from the new multi-page cohort. Browser artifacts preserve the observed counts; none certify table-cell pairing.
 
