@@ -7,7 +7,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { statSync, mkdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
-import { createSyntheticPdf, createScannedPdf } from './pdf-fixture.mjs';
+import { createSyntheticPdf, createScannedPdf, createAnnotatedPdf } from './pdf-fixture.mjs';
 import { zipSync, strToU8 } from 'fflate';
 
 mkdirSync('tmp', { recursive: true });
@@ -139,6 +139,22 @@ try {
   await page.getByRole('button',{name:'Close PDF view'}).click();
   await page.locator('.card select').first().selectOption({label:'synthetic.pdf'});
   console.log('REAL BROWSER: multi-column PDF text geometry requires original-source review.');
+
+  // FreeText and form widgets can contain material information omitted from
+  // the selectable text layer; the UI must demand original-file review.
+  await filePicker.setInputFiles({name:'fictional-annotated.pdf',
+    mimeType:'application/pdf',buffer:createAnnotatedPdf('FreeText')});
+  const annotationReview=page.locator('.source-completeness');
+  await annotationReview.getByText(/annotations or interactive form fields/i).waitFor({timeout:30000});
+  assert.equal(await annotationReview.locator('input[type="checkbox"]').count(),1);
+  assert.doesNotMatch(await page.locator('.preview').innerText(),/Unverified retirement exception/);
+  await filePicker.setInputFiles({name:'fictional-widget.pdf',
+    mimeType:'application/pdf',buffer:createAnnotatedPdf('Widget')});
+  await annotationReview.getByText(/annotations or interactive form fields/i).waitFor({timeout:30000});
+  assert.equal(await annotationReview.locator('input[type="checkbox"]').count(),1);
+  assert.doesNotMatch(await page.locator('.preview').innerText(),/AgeOverride/);
+  await page.locator('.card select').first().selectOption({label:'synthetic.pdf'});
+  console.log('REAL BROWSER: omitted PDF annotation and widget values require source review.');
 
 
 
