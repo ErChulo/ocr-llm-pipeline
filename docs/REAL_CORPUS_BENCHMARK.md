@@ -79,3 +79,17 @@ The full `file://` browser evaluation with checksum-verified GGUF weights and bl
 | Qwen2.5-1.5B-Instruct Q4_K_M | 87.5%, 6/8 | **100%, 8/8** | 400.6 seconds |
 
 Sources: [actual 0.5B workflow](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42422220985), [actual 1.5B workflow](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42422221025). The restored dates required unique exact source strings and human review remains mandatory. The improved scores measure the **combined pipeline's output**; they do **not** show that the GGUF itself became more accurate. Eight fictional cases cannot certify reliability on actual actuarial documents.
+
+
+## Rejected condition-prompt experiment — November 8, 2026
+
+A controlled [eligibility-condition prompt experiment](https://github.com/ErChulo/ocr-llm-pipeline/pull/43) explicitly instructed the local GGUF to preserve source conjunctions and exceptions. The prompt was **not merged** because the same eight-case fictional benchmark showed a smaller-model accuracy regression. Source-date and percentage repairs, source evidence requirements and zero-network file URL operation were unchanged.
+
+| Model | Prior measured strict F1 / exact cases | Experimental prompt | Outcome |
+|---|---|---|---|
+| Qwen2.5-0.5B-Instruct Q4_K_M | 93.75%, 7/8 | **87.5%, 6/8** | Regressed; reject |
+| Qwen2.5-1.5B-Instruct Q4_K_M | 100%, 8/8 | **100%, 8/8** | No score gain |
+
+Baseline evidence: [0.5B run 42432479733](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42432479733), [1.5B run 42432479871](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42432479871). Experimental evidence: [0.5B run 42434731846](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42434731846), [1.5B run 42434731866](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42434731866). Experiment elapsed 375.6 seconds (0.5B) and 298.0 seconds (1.5B); timings vary by CI runner.
+
+**Decision:** Retain the previous prompt and require controlled per-model comparisons before changing it again. A small fictional corpus cannot establish statistical confidence or actuarial production accuracy. The next evaluation should add harder, independent, realistically structured source documents, measuring both factual precision and source-provenance correctness.
