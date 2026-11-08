@@ -2,6 +2,8 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Benchmarked and **rejected** an eligibility-condition prompt expansion: 0.5B real offline eight-case accuracy fell from 93.75% to 87.5% strict micro F1. 1.5B remained at 100% without a gain. The previous prompt remains unchanged; see the documented measured regression.
+
 - Harden OOXML source-location fidelity against namespace spoofing: reject non-spreadsheet elements masquerading as Excel cells, values or relationship metadata; do not treat foreign XML blocks as Word paragraphs, and disclose omitted foreign content for review. Reject orphaned Excel cells and row/cell-address discrepancies.
 
 - Reject duplicate ZIP part names and ambiguous XLSX identities (duplicate sheet names/IDs, worksheet relationships/parts, repeated cell references). Reject column/row addresses outside Excel's official 16,384 by 1,048,576 worksheet grid. These are provenance-integrity checks; they do not validate actuarial correctness.

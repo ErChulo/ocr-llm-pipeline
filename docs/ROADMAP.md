@@ -32,6 +32,8 @@
 
 ## Remaining production gates — not yet accepted
 
+- [x] Controlled eligibility-prompt trial rejected: 0.5B regressed from 93.75% to 87.5% strict micro F1 (7/8 to 6/8 exact); 1.5B remained 100%. Previous prompt preserved in main. See [decision record](REAL_CORPUS_BENCHMARK.md) and [closed PR #43](https://github.com/ErChulo/ocr-llm-pipeline/pull/43).
+
 - [x] Real eight-case official Qwen2.5-1.5B-Instruct Q4_K_M: **87.5% strict micro F1, 6/8 exact**, 286.1 s, no network requests; both incorrect fields were reworded dates ([CI run 42420311141](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42420311141)). This does not meet unattended release acceptance.
 - [x] Official Qwen2.5-1.5B-Instruct Q4_K_M: successful local file URL inference and full JSON export; **3/4** known-answer score ([CI run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42281102968)).
 - [x] Five-case synthetic pension corpus, real 0.5B GGUF: **90% micro exact precision/recall/F1**, 4/5 entirely exact; sole discrepancy was equivalent date notation ([CI 42371798989](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42371798989)).
