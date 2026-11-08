@@ -1,5 +1,7 @@
 # Roadmap — beta validation
 
+- [x] **Measured spatial cell metric baseline (PR #82):** actual standalone `file://` Tesseract word boxes versus separately authored nine-page fictional visual cell regions yielded **18/18 TP, 0 FP/FN, 0 abstentions**, with no promotion to factual citations. [Browser CI](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42514886112). **Still open:** unseen blinded corpus, rotated raw raster recovery, independent row/column generalization, target-workstation review. A separate raw-JPEG three-page experiment measured **2 TP, 0 FP, 2 FN, two abstentions** ([CI](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42515759732)); do not pool these denominators.
+
 - [x] **Spatial OCR ambiguity hardening (PR #78):** fail closed when measured numeric cells intervene between candidate AGE and FACTOR words; preserve all original measured boxes and page labels. Added focused fictional tests and full Playwright CI triggers for spatial-source changes. [Verified full Playwright](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42512646195). **Still open:** independent cell-level ground truth, complex multi-column/rotated layouts, calibration and false-positive abstention rates.
 
 **Version:** 0.3.0-beta.1. CI verification is not security certification or workplace approval.
