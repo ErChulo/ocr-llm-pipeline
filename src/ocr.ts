@@ -4,6 +4,9 @@
  */
 import { createWorker, OEM } from 'tesseract.js';
 import { measuredTesseractWords } from './ocrWords.ts';
+import { assessSpatialOcrRows } from './ocrSpatial.ts';
+import { selectMeasuredRasterOrientation, type MeasuredOrientationPass } from './ocrOrientation.ts';
+import type { RasterQuarterTurn } from './ocrGeometryRotation.ts';
 import type {MeasuredOcrWord} from './ocrSpatial.ts';
 import tesseractWorker from 'virtual:ocr-worker';
 import tesseractCore from 'virtual:ocr-core';
@@ -11,7 +14,9 @@ import englishDataUri from 'virtual:ocr-eng';
 
 export type OcrResult = { text:string; confidence:number; width:number; height:number;
   /** Actual Tesseract pixel-space word envelopes; never inferred text offsets. */
-  words?:MeasuredOcrWord[] };
+  words?:MeasuredOcrWord[];
+  /** Exact correction applied to a real source canvas; still unverified OCR. */
+  orientationCorrection?:{sourceClockwiseTurn:RasterQuarterTurn;originalWidth:number;originalHeight:number} };
 
 let pendingWorker:Promise<Awaited<ReturnType<typeof createWorker>>>|null=null;
 let activeUrls:string[]=[];
@@ -82,14 +87,57 @@ function sizeOk(width:number,height:number){
     throw new Error('OCR image is too large. Maximum 3,600 pixels per side and 5 million pixels.');
   }
 }
-export async function recognizeCanvas(canvas:HTMLCanvasElement):Promise<OcrResult>{
-  sizeOk(canvas.width,canvas.height);
+const MAX_ORIENTATION_PIXELS=2_500_000;
+async function recognizeOneCanvas(canvas:HTMLCanvasElement):Promise<OcrResult>{
   const worker=await getWorker();
   const {data}=await worker.recognize(canvas,{}, {text:true,blocks:true});
   const text=(data.text||'').trim();
   const confidence=Number.isFinite(data.confidence)?Math.max(0,Math.min(100,data.confidence)):0;
   const words=measuredTesseractWords(data.blocks,canvas.width,canvas.height);
   return {text,confidence,width:canvas.width,height:canvas.height,words};
+}
+function counterRotateCanvas(source:HTMLCanvasElement,turn:90|180|270):HTMLCanvasElement{
+  const canvas=document.createElement('canvas');
+  canvas.width=turn===180?source.width:source.height;
+  canvas.height=turn===180?source.height:source.width;
+  const ctx=canvas.getContext('2d',{willReadFrequently:true});
+  if(!ctx)throw new Error('Canvas rotation is unavailable for offline OCR.');
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+  if(turn===90){ctx.translate(0,canvas.height);ctx.rotate(-Math.PI/2);}
+  else if(turn===180){ctx.translate(canvas.width,canvas.height);ctx.rotate(Math.PI);}
+  else{ctx.translate(canvas.width,0);ctx.rotate(Math.PI/2);}
+  ctx.drawImage(source,0,0);
+  return canvas;
+}
+export async function recognizeCanvas(canvas:HTMLCanvasElement):Promise<OcrResult>{
+  sizeOk(canvas.width,canvas.height);
+  const primary=await recognizeOneCanvas(canvas);
+  // Do not override a readable transcription or an already observed table.
+  // Limit four actual OCR passes to smaller low-confidence pages; no external
+  // service, EXIF guess, numeric correction or ground-truth value is used.
+  if(primary.confidence>=75||canvas.width*canvas.height>MAX_ORIENTATION_PIXELS||
+     assessSpatialOcrRows({page:1,imageWidth:primary.width,imageHeight:primary.height,
+       text:primary.text,words:primary.words??[]}).status==='candidates')return primary;
+  const passes:MeasuredOrientationPass[]=[{turn:0,...primary,words:primary.words??[]}];
+  try{
+    for(const turn of [90,180,270] as const){
+      const rotated=counterRotateCanvas(canvas,turn);
+      const observed=await recognizeOneCanvas(rotated);
+      passes.push({turn,...observed,words:observed.words??[]});
+    }
+    const chosen=selectMeasuredRasterOrientation(canvas.width,canvas.height,passes);
+    if(chosen.status!=='candidate-for-human-review'||!chosen.selected||
+       chosen.selected.turn===0)return primary;
+    const selected=chosen.selected;
+    return {text:selected.text,confidence:selected.confidence,
+      width:selected.width,height:selected.height,words:selected.words,
+      orientationCorrection:{sourceClockwiseTurn:selected.turn,
+        originalWidth:canvas.width,originalHeight:canvas.height}};
+  }catch{
+    // A failed alternate OCR or rotation is never allowed to replace the
+    // original observed transcription or counterfeit provenance.
+    return primary;
+  }
 }
 export async function recognizeImage(file:File):Promise<OcrResult>{
   if(file.size===0||file.size>20*1024*1024)throw new Error('Image must be between 1 byte and 20 MB.');

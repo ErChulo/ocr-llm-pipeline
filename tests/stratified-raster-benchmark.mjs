@@ -14,7 +14,7 @@ import {createMultiPageScannedPdf} from './pdf-fixture.mjs';
 import {measuredTesseractWords} from '../src/ocrWords.ts';
 import {assessSpatialOcrRows} from '../src/ocrSpatial.ts';
 import {reorientedBoxToOriginalPixels} from '../src/ocrGeometryRotation.ts';
-import {selectMeasuredOrientationCandidates} from './fixtures/orientationCandidateSelection.mjs';
+import {selectMeasuredRasterOrientation} from '../src/ocrOrientation.ts';
 import {measuredWordInsideCell,MIN_WORD_REGION_COVERAGE} from './fixtures/spatialCellMetrics.mjs';
 
 const cases=[
@@ -310,7 +310,7 @@ try{
    blindMetrics.attemptedPages++;
    blindMetrics.expectedLiterals+=fixture.rows.flat().length;
    const options=[{turn:0,page,confidence:data.confidence??0,
-    assessment,text:ocrText}];
+    assessment,text:ocrText,words}];
    // Every possible quarter-turn is independently recognized. The selector
    // has NO access to fixture.rotation or source-authored expected values.
    for(const turn of [90,180,270]){
@@ -322,10 +322,23 @@ try{
     const measuredWords=measuredTesseractWords(measuredPass.data.blocks,w,h);
     options.push({turn,page,confidence:measuredPass.data.confidence??0,
       assessment:assessSpatialOcrRows({page,imageWidth:w,imageHeight:h,
-       text:measuredText,words:measuredWords}),text:measuredText});
+       text:measuredText,words:measuredWords}),text:measuredText,words:measuredWords});
    }
-   const selection=selectMeasuredOrientationCandidates(
-    source.width,source.height,page,options);
+   // Exercise the SAME fail-closed pure selector used by the application.
+   // Only measured OCR text, confidence and word boxes enter this decision;
+   // the fixture's authored rotation/values are used below only to SCORE it.
+   const actualChoice=selectMeasuredRasterOrientation(source.width,source.height,
+    options.map(option=>({
+      turn:option.turn,confidence:option.confidence,
+      text:option.text,words:option.words,
+      width:option.turn===90||option.turn===270?source.height:source.width,
+      height:option.turn===90||option.turn===270?source.width:source.height
+    })));
+   const selection={
+    status:actualChoice.status,reason:actualChoice.reason,
+    selectedTurn:actualChoice.selected?.turn??null,
+    pairs:actualChoice.assessment?.pairs.length??0
+   };
    const matchedBlind=new Set();
    let selectedTP=0,selectedFP=0,selectedFN=reference.rows.length,
     selectedHits=0;
@@ -369,7 +382,9 @@ try{
      status:option.assessment.status,
      count:option.assessment.pairs.length
     })),
-    caveat:'Orientation is a test-only unverified suggestion, not an app-selected transcription'
+    runtimeFallbackEligible:(data.confidence??0)<75 &&
+      source.width*source.height<=2_500_000 && assessment.status!=='candidates',
+    caveat:'Pure deployed selector evaluated on real raster OCR; app fallback eligibility and actual browser canvas rotation are separate. No factual approval.'
    };
   }
   rows.push({page,condition:fixture.kind,rotation:fixture.rotation||0,
@@ -424,7 +439,7 @@ const report={
     blindMetrics.expectedLiterals),
   selectedOrientationAccuracy:ratio(blindMetrics.selectedCorrectOrientations,
     blindMetrics.selectedCorrectOrientations+blindMetrics.selectedWrongOrientations),
-  status:'experimental-unique-measured-orientation-for-review-only'
+  status:'measured-production-selector-on-real-raster-not-workstation-certified'
  },
  abstentionRate:metric.abstainedPages/metric.pageCount,
  numericLiteralRecall:ratio(metric.recognizedNumericLiterals,metric.expectedNumericLiterals),

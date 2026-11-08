@@ -12,6 +12,7 @@ import { countAmbiguousOcrNumericTokens } from './ocrNumericReview.ts';
 import { hasMalformedNumericTableRow, preferFallbackForMalformedRows } from './ocrResolutionChoice.ts';
 import { detectPdfLayoutRisks } from './pdfLayout.ts';
 import { assessSpatialOcrRows, type SpatialAssessment } from './ocrSpatial.ts';
+import { restoredOriginalRasterSpatial } from './ocrOrientation.ts';
 
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
 const MAX_PAGES = 300;
@@ -175,6 +176,26 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
           return ocr(canvas);
         };
         const primary=await renderAndRecognize(2.8,2800);
+        // Large PDF.js page rasters are intentionally NOT quarter-turn swept
+        // at full resolution. When that OCR is weak, a smaller, independently
+        // rendered canvas may support bounded four-way measured orientation
+        // recovery. Retain the initial pass unless the alternate is uniquely
+        // geometrically corroborated; never manufacture pixels or page IDs.
+        if(primary.confidence<75 && primary.width*primary.height>2_500_000){
+          try {
+            const bounded=await renderAndRecognize(1.5,1600);
+            if(bounded.orientationCorrection){
+              warnings.push('PDF page '+pageNo+
+                ' selected a bounded lower-resolution orientation OCR pass. '+
+                'The original higher-resolution transcription was not edited; '+
+                'all selected values and transformed OCR pixel regions remain unverified.');
+              return bounded;
+            }
+          }catch{
+            warnings.push('PDF page '+pageNo+
+              ' bounded orientation OCR pass failed; the initial unverified OCR was retained.');
+          }
+        }
         // Malformed multi-decimal numeric rows may come from rasterization.
         // A bounded second OCR pass is used ONLY when it independently reads
         // a valid alternative while preserving all already observed pairs.
@@ -201,8 +222,19 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
         // Diagnostic ONLY: retain the actual page number and Tesseract pixel
         // envelopes from the OCR pass selected for this page. No inferred boxes,
         // automatic field approval, or promotion to source citations.
-        spatial=assessSpatialOcrRows({page:pageNo,imageWidth:result.width,
+        const measuredSpatial=assessSpatialOcrRows({page:pageNo,imageWidth:result.width,
           imageHeight:result.height,text,words:result.words??[]});
+        spatial=result.orientationCorrection
+          ? restoredOriginalRasterSpatial(measuredSpatial,pageNo,
+            result.orientationCorrection.originalWidth,
+            result.orientationCorrection.originalHeight,
+            result.orientationCorrection.sourceClockwiseTurn)
+          : measuredSpatial;
+        if(result.orientationCorrection)warnings.push('PDF page '+pageNo+
+          ' used a uniquely measured quarter-turn OCR orientation ('+
+          result.orientationCorrection.sourceClockwiseTurn+
+          ' degrees clockwise in source raster). All transcribed values remain unverified. '+
+          'Spatial diagnostic rectangles are inverse-transformed from observed OCR pixels; review the original page.');
         scanned=true;
         ocrPages++;
         if(!text)throw new Error('OCR found no readable text on PDF page '+pageNo+'. Import was stopped.');
