@@ -4,6 +4,8 @@
 
 ## Implemented and source-tested
 
+- [x] OOXML namespace-confusion tests: foreign XML elements cannot impersonate Word paragraphs, worksheet cells, cell content, or workbook relationships. Excel cells require authentic worksheet data-row ancestry and consistent explicit row coordinates; malformed source locations are rejected.
+
 - [x] Fail closed on adversarial Office ZIP duplicate member names, Excel worksheet-name/ID/part/relationship collisions, duplicated cell references, and out-of-bounds cell addresses. Synthetic ZIP/OOXML regressions protect source-coordinate uniqueness and prevent conflicting values appearing under one citation.
 
 - [x] Adversarial DOCX and XLSX fixtures now distinguish native paragraph/cell text from omitted drawing/textbox and phonetic annotation content, including header-origin material. Source review remains mandatory for omitted content.

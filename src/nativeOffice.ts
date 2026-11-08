@@ -11,6 +11,8 @@ const MAX_XML_DEPTH = 128;
 const MAX_XML_VISITS = 500_000;
 const decoder = new TextDecoder('utf-8', { fatal: true });
 const WORD_NS='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+const SHEET_NS='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+const REL_NS='http://schemas.openxmlformats.org/package/2006/relationships';
 function hasAncestor(node:XmlNode,localName:string):boolean {
   for(let current:XmlNode|null=node.parentNode;current;current=current.parentNode){
     if(current.nodeType===1&&current.localName===localName)return true;
@@ -19,8 +21,8 @@ function hasAncestor(node:XmlNode,localName:string):boolean {
 }
 function spreadsheetDisplayText(node:XmlNode):string {
   // Excel phonetic guides are not part of the visible underlying cell value.
-  // Do not merge those annotations into plan facts.
-  return descendants(node,'t').filter(t=>!hasAncestor(t,'rPh'))
+  // Foreign-namespace text must not be mislabeled as an Excel cell fact.
+  return officeDescendants(node,'t',SHEET_NS).filter(t=>!hasAncestor(t,'rPh'))
     .map(t=>t.textContent||'').join('');
 }
 type FileParts = Record<string, Uint8Array>;
@@ -100,6 +102,20 @@ function descendants(node: XmlNode, localName: string): XmlElement[] {
   }
   return all;
 }
+function officeDescendants(node:XmlNode,name:string,expectedNs:string):XmlElement[]{
+  const found=descendants(node,name);
+  if(found.some(item=>item.namespaceURI!==expectedNs)){
+    throw new Error('Office XML contains a source element in an unexpected namespace: '+name+'.');
+  }
+  return found;
+}
+function officeChildren(node:XmlNode,name:string,expectedNs:string):XmlElement[]{
+  const found=children(node,name);
+  if(found.some(item=>item.namespaceURI!==expectedNs)){
+    throw new Error('Office XML contains a source element in an unexpected namespace: '+name+'.');
+  }
+  return found;
+}
 // The source importer models the displayed final revision, not Word's
 // "original" markup. Deleted/moved-from text must never support a citation.
 function removedRevision(node: XmlNode): boolean {
@@ -129,6 +145,9 @@ function textOf(node: XmlNode): string {
     if(depth>MAX_XML_DEPTH)throw new Error('Office XML exceeds supported nesting depth.');
     if(++visits>MAX_XML_VISITS)throw new Error('Office XML contains too many nodes to inspect safely.');
     if(n.nodeType===1){
+      // Unsupported foreign XML wrappers may enclose apparent Word runs.
+      // Do not promote their text to an ordinary Word source paragraph.
+      if(n.namespaceURI!==WORD_NS)continue;
       if(n.localName==='del'||n.localName==='moveFrom'||n.localName==='delText'||
          hiddenRun(n))continue;
       // Embedded Word drawings, text boxes and OLE objects have different
@@ -180,7 +199,7 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
     throw new Error('DOCX content-type manifest is invalid.');
   }
   const doc=xmlDoc(getPart(files,'word/document.xml'));
-  const body=descendants(doc,'body')[0];
+  const body=officeDescendants(doc,'body',WORD_NS)[0];
   if (!body) throw new Error('DOCX does not contain a document body.');
   const entries:Entry[]=[];
   let paragraph=0,table=0;
@@ -188,7 +207,7 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
   // the displayed content, retaining reading order and parser-derived labels.
   function appendBlock(node: XmlNode,depth=0):void {
     if(depth>MAX_XML_DEPTH)throw new Error('Office XML exceeds supported nesting depth.');
-    if(node.nodeType!==1)return;
+    if(node.nodeType!==1||node.namespaceURI!==WORD_NS)return;
     if(node.localName==='del'||node.localName==='moveFrom')return;
     if(node.localName==='p'){
       paragraph++;
@@ -198,10 +217,10 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
     }else if(node.localName==='tbl'){
       table++;
       let row=0;
-      for(const tr of children(node,'tr')){
+      for(const tr of officeChildren(node,'tr',WORD_NS)){
         row++;
         let col=0;
-        for(const tc of children(tr,'tc')){
+        for(const tc of officeChildren(tr,'tc',WORD_NS)){
           col++;
           const value=textOf(tc);
           if(value)entries.push({label:'Table '+table+' row '+row+' column '+col,
@@ -209,7 +228,7 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
         }
       }
     }else if(node.localName==='sdt'){
-      for(const content of children(node,'sdtContent'))
+      for(const content of officeChildren(node,'sdtContent',WORD_NS))
         for(const child of Array.from({length:content.childNodes.length},(_,i)=>content.childNodes.item(i)))
           if(child)appendBlock(child,depth+1);
     }else if(['customXml','ins','moveTo'].includes(node.localName||'')){
@@ -276,9 +295,10 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
     .filter(([name])=>name==='word/document.xml'||/^word\/(?:header|footer)\d+\.xml$/.test(name)||
       name==='word/footnotes.xml'||name==='word/endnotes.xml')
     .map(([,bytes])=>xmlDoc(decoder.decode(bytes)));
-  const hasForeignText=inspectedParts.some(part=>descendants(part,'t').some(node=>
-    node.namespaceURI!==WORD_NS && !!node.textContent?.trim() &&
-    !['drawing','pict','object','txbxContent'].some(kind=>hasAncestor(node,kind))));
+  const hasForeignText=inspectedParts.some(part=>
+    ['t','r','p','tbl','tc'].some(name=>descendants(part,name).some(node=>
+      node.namespaceURI!==WORD_NS &&
+      !['drawing','pict','object','txbxContent'].some(kind=>hasAncestor(node,kind)))));
   if(hasForeignText)warnings.push(
     'Non-Word XML text was excluded from paragraphs. Inspect embedded/custom content in the original Word file.');
   const hasUninspectedVisuals=omitted.some(n=>/^word\/(?:media|embeddings)\//i.test(n))||
@@ -341,15 +361,15 @@ function excelDateStyles(files:FileParts):Set<number>{
   if(!bytes)return new Set();
   const xml=xmlDoc(decoder.decode(bytes));
   const custom=new Map<number,string>();
-  for(const nf of descendants(xml,'numFmt')){
+  for(const nf of officeDescendants(xml,'numFmt',SHEET_NS)){
     const id=Number(nf.getAttribute('numFmtId'));
     const format=nf.getAttribute('formatCode');
     if(Number.isInteger(id)&&format)custom.set(id,format);
   }
-  const styleBlock=descendants(xml,'cellXfs')[0];
+  const styleBlock=officeDescendants(xml,'cellXfs',SHEET_NS)[0];
   const styles=new Set<number>();
   if(!styleBlock)return styles;
-  children(styleBlock,'xf').forEach((xf,index)=>{
+  officeChildren(styleBlock,'xf',SHEET_NS).forEach((xf,index)=>{
     const formatId=Number(xf.getAttribute('numFmtId')||'0');
     const fmt=custom.get(formatId)||'';
     // Strip escaped, quoted and locale-labeled literals. Detect only
@@ -370,7 +390,7 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
   const workbook=xmlDoc(getPart(files,'xl/workbook.xml'));
   const rel=xmlDoc(getPart(files,'xl/_rels/workbook.xml.rels'));
   const relationships=new Map<string,{target:string;mode:string;type:string}>();
-  for(const element of descendants(rel,'Relationship')){
+  for(const element of officeDescendants(rel,'Relationship',REL_NS)){
     const id=element.getAttribute('Id')||'';
     if(!id||relationships.has(id)){
       throw new Error('Excel workbook contains empty or duplicate worksheet relationship IDs.');
@@ -382,9 +402,9 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
   }
   const sharedStringsXml=files['xl/sharedStrings.xml']
     ? xmlDoc(strFromU8(files['xl/sharedStrings.xml'])) : null;
-  const ss=sharedStringsXml ? descendants(sharedStringsXml,'si')
+  const ss=sharedStringsXml ? officeDescendants(sharedStringsXml,'si',SHEET_NS)
     .map(item=>spreadsheetDisplayText(item)) : [];
-  let phoneticAnnotations=sharedStringsXml ? descendants(sharedStringsXml,'rPh').length : 0;
+  let phoneticAnnotations=sharedStringsXml ? officeDescendants(sharedStringsXml,'rPh',SHEET_NS).length : 0;
   const entries:Entry[]=[];
   const warnings:string[]=[];
   const dateStyles=excelDateStyles(files);
@@ -399,7 +419,7 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
   const seenSheetNames=new Set<string>();
   const seenSheetIds=new Set<string>();
   const seenWorksheetParts=new Set<string>();
-  for(const sheet of descendants(workbook,'sheet')) {
+  for(const sheet of officeDescendants(workbook,'sheet',SHEET_NS)) {
     const sheetName=sheet.getAttribute('name')||'Unnamed';
     const nameKey=sheetName.normalize('NFC').toLowerCase();
     const sheetId=sheet.getAttribute('sheetId')||'';
@@ -434,10 +454,20 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
     const mergeCount=descendants(xml,'mergeCell').length;
     if(mergeCount)mergedCells.push(sheetName+' ('+mergeCount+' merged ranges)');
     const seenCellAddresses=new Set<string>();
-    for(const c of descendants(xml,'c')) {
+    for(const c of officeDescendants(xml,'c',SHEET_NS)) {
+      const rowNode=c.parentNode;
+      if(rowNode?.nodeType!==1||rowNode.localName!=='row'||rowNode.namespaceURI!==SHEET_NS||
+        rowNode.parentNode?.localName!=='sheetData'||rowNode.parentNode.namespaceURI!==SHEET_NS){
+        throw new Error('Excel source cell is not in a worksheet data row; citation is invalid.');
+      }
       const cell=c.getAttribute('r')||'';
       if(!/^[A-Z]{1,3}[1-9]\d{0,6}$/.test(cell))throw new Error('Invalid cell reference: '+cell);
       const address=/^([A-Z]+)([0-9]+)$/.exec(cell)!;
+      const declaredRow=(rowNode as XmlElement).getAttribute('r');
+      if(declaredRow!==null && (!/^[1-9]\d*$/.test(declaredRow)||
+          Number(declaredRow)!==Number(address[2]))){
+        throw new Error('Excel cell and declared row coordinates disagree: '+sheetName+'!'+cell);
+      }
       const col=[...address[1]].reduce((value,ch)=>value*26+ch.charCodeAt(0)-64,0);
       if(col>16384||Number(address[2])>1048576){
         throw new Error('Excel cell reference is outside worksheet limits: '+sheetName+'!'+cell);
@@ -447,16 +477,16 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
       }
       seenCellAddresses.add(cell);
       const type=c.getAttribute('t')||'';
-      const f=children(c,'f')[0];
-      const v=children(c,'v')[0]?.textContent||'';
+      const f=officeChildren(c,'f',SHEET_NS)[0];
+      const v=officeChildren(c,'v',SHEET_NS)[0]?.textContent||'';
       let value='';
       if(type==='s'){
         const idx=Number(v);
         if(!Number.isInteger(idx)||idx<0||idx>=ss.length)throw new Error('Invalid shared-string index at '+sheetName+'!'+cell);
         value=ss[idx];
       } else if(type==='inlineStr') {
-        const inline=children(c,'is')[0];
-        if(inline)phoneticAnnotations+=descendants(inline,'rPh').length;
+        const inline=officeChildren(c,'is',SHEET_NS)[0];
+        if(inline)phoneticAnnotations+=officeDescendants(inline,'rPh',SHEET_NS).length;
         value=inline ? spreadsheetDisplayText(inline) : '';
       } else if(type==='b') value=v==='1'?'TRUE':v==='0'?'FALSE':v;
       else if(type==='str'||type==='n'||type===''||type==='e'||type==='d') value=v;
@@ -472,7 +502,7 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
       }
       if(f){
         formulas++;
-        if(!children(c,'v').length || !v.trim()){
+        if(!officeChildren(c,'v',SHEET_NS).length || !v.trim()){
           throw new Error('Excel formula at '+sheetName+'!'+cell+
             ' has no cached calculation result. Recalculate and save the original workbook before importing; no incomplete values were accepted.');
         }
