@@ -176,6 +176,26 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
           return ocr(canvas);
         };
         const primary=await renderAndRecognize(2.8,2800);
+        // Large PDF.js page rasters are intentionally NOT quarter-turn swept
+        // at full resolution. When that OCR is weak, a smaller, independently
+        // rendered canvas may support bounded four-way measured orientation
+        // recovery. Retain the initial pass unless the alternate is uniquely
+        // geometrically corroborated; never manufacture pixels or page IDs.
+        if(primary.confidence<75 && primary.width*primary.height>2_500_000){
+          try {
+            const bounded=await renderAndRecognize(1.5,1600);
+            if(bounded.orientationCorrection){
+              warnings.push('PDF page '+pageNo+
+                ' selected a bounded lower-resolution orientation OCR pass. '+
+                'The original higher-resolution transcription was not edited; '+
+                'all selected values and transformed OCR pixel regions remain unverified.');
+              return bounded;
+            }
+          }catch{
+            warnings.push('PDF page '+pageNo+
+              ' bounded orientation OCR pass failed; the initial unverified OCR was retained.');
+          }
+        }
         // Malformed multi-decimal numeric rows may come from rasterization.
         // A bounded second OCR pass is used ONLY when it independently reads
         // a valid alternative while preserving all already observed pairs.
