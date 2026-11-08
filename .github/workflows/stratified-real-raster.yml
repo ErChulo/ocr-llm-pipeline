@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/stratified-real-raster.yml'
       - 'tests/stratified-raster-benchmark.mjs'
+      - 'tests/fixtures/orientationCandidateSelection.mjs'
+      - 'tests/orientationCandidateSelection.test.mjs'
       - 'tests/fixtures/spatialCellMetrics.mjs'
       - 'src/ocrWords.ts'
       - 'src/ocrSpatial.ts'
