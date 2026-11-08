@@ -2,6 +2,8 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Measure the independent eight-case physical PDF/DOCX/XLSX/CSV corpus with official offline GGUFs: Qwen 0.5B 88.89% strict F1, 6/8 exact; Qwen 1.5B 94.44%, 7/8 exact. Both models incorrectly followed an embedded CSV instruction-like appendix for normal age 99; separate source-location diagnostics revealed the wrong citation. Document a source-warning mitigation, model limitations, and zero browser network requests. Add Playwright verification that instruction acknowledgements are per-document.
+
 - Add an offline untrusted-source instruction warning after document imports and OCR revisions. A fictional real-GGUF holdout chose age 99 from an instruction-like CSV appendix instead of the authentic plan age 65; a literal match was not a factual match. The app now requires the reviewer to inspect instruction-like source passages before export, without silently changing or deleting document text, evidence, or model output. This is a conservative heuristic, not prompt-injection prevention or actuarial verification.
 
 - Add a separate eight-case **physical-document** fictional holdout and a checksum-verified offline 0.5B GGUF CI workflow. Cases exercise actual PDF/DOCX/XLSX/CSV import, numeric and date accuracy, conflicting amendments, two columns, hidden spreadsheet rows, survivor clauses and prompt injection. Report exact-field scores independently of parser-authentic source-location diagnostics; original text-only corpus and production acceptance remain unchanged.

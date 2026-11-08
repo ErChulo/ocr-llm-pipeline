@@ -36,6 +36,8 @@
 
 ## Remaining production gates — not yet accepted
 
+- [x] Independent real-GGUF physical-document holdout completed: 0.5B strict F1 **88.89%** (16/18, 6/8 exact), 1.5B **94.44%** (17/18, 7/8 exact), zero Chromium network requests. Both models incorrectly selected age 99 from a malicious CSV appendix rather than governing age 65; 0.5B also omitted a survivor condition. See [measured physical holdout](PHYSICAL_HOLDOUT_BENCHMARK.md). This is a separate cohort from the original eight text-only cases and **not** production acceptance.
+
 - [x] Controlled eligibility-prompt trial rejected: 0.5B regressed from 93.75% to 87.5% strict micro F1 (7/8 to 6/8 exact); 1.5B remained 100%. Previous prompt preserved in main. See [decision record](REAL_CORPUS_BENCHMARK.md) and [closed PR #43](https://github.com/ErChulo/ocr-llm-pipeline/pull/43).
 
 - [x] Real eight-case official Qwen2.5-1.5B-Instruct Q4_K_M: **87.5% strict micro F1, 6/8 exact**, 286.1 s, no network requests; both incorrect fields were reworded dates ([CI run 42420311141](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42420311141)). This does not meet unattended release acceptance.
