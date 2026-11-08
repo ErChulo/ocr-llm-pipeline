@@ -3,11 +3,15 @@
  * All object URLs are created from code/data embedded in the HTML bundle.
  */
 import { createWorker, OEM } from 'tesseract.js';
+import { measuredTesseractWords } from './ocrWords.ts';
+import type {MeasuredOcrWord} from './ocrSpatial.ts';
 import tesseractWorker from 'virtual:ocr-worker';
 import tesseractCore from 'virtual:ocr-core';
 import englishDataUri from 'virtual:ocr-eng';
 
-export type OcrResult = { text:string; confidence:number; width:number; height:number };
+export type OcrResult = { text:string; confidence:number; width:number; height:number;
+  /** Actual Tesseract pixel-space word envelopes; never inferred text offsets. */
+  words?:MeasuredOcrWord[] };
 
 let pendingWorker:Promise<Awaited<ReturnType<typeof createWorker>>>|null=null;
 let activeUrls:string[]=[];
@@ -84,7 +88,8 @@ export async function recognizeCanvas(canvas:HTMLCanvasElement):Promise<OcrResul
   const {data}=await worker.recognize(canvas,{}, {text:true,blocks:true});
   const text=(data.text||'').trim();
   const confidence=Number.isFinite(data.confidence)?Math.max(0,Math.min(100,data.confidence)):0;
-  return {text,confidence,width:canvas.width,height:canvas.height};
+  const words=measuredTesseractWords(data.blocks,canvas.width,canvas.height);
+  return {text,confidence,width:canvas.width,height:canvas.height,words};
 }
 export async function recognizeImage(file:File):Promise<OcrResult>{
   if(file.size===0||file.size>20*1024*1024)throw new Error('Image must be between 1 byte and 20 MB.');
