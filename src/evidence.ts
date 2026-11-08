@@ -206,6 +206,35 @@ export function auditLiteralEvidence(doc: SourceDocument, extraction: unknown,
       ...(sourceScope?{sourceScope}:{})};
   });
 }
+/**
+ * Bind reviewer confirmations to the EXACT current JSON leaf set and values.
+ * Schema-valid JSON can still change after a previous evidence review; an
+ * unrelated or stale list of confirmations must never authorize its export.
+ * Null and absent fields need no citations, but old citations cannot survive
+ * their removal. JSON-pointer paths preserve array indices and escaped keys.
+ */
+export function evidenceMatchesCurrentValue(value:unknown,checks:EvidenceCheck[]):boolean {
+  if(!object(value)||!Array.isArray(checks))return false;
+  try {
+    const leaves=fields(value);
+    if(!leaves.length||leaves.length!==checks.length)return false;
+    const expected=new Map(leaves.map(leaf=>[leaf.path,leaf.value]));
+    if(expected.size!==leaves.length)return false;
+    const visited=new Set<string>();
+    for(const check of checks){
+      if(!check||typeof check.path!=='string'||visited.has(check.path)||
+         !expected.has(check.path)||!Object.is(expected.get(check.path),check.value)){
+        return false;
+      }
+      visited.add(check.path);
+    }
+    return true;
+  } catch {
+    // Malformed or overly large edited JSON must fail closed at export.
+    return false;
+  }
+}
+
 export function evidenceReviewComplete(
   checks: EvidenceCheck[],
   selections: Record<string,number>,

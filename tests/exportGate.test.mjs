@@ -92,3 +92,38 @@ test('all multi-section candidate source spans must match an audited section exa
  const bad={...good,candidates:{'/age':[{value:65,spans:[{chunk:2,start:9,end:20}]}]}};
  assert.equal(evaluateExportGate({...safe,document,audit:bad}).allowed,false);
 });
+
+test('previously confirmed evidence cannot authorize modified JSON',()=>{
+  for(const changed of [
+    {age:66}, {age:'65'}, {age:65,service:10},
+    {}, {age:null}, {age:65,qualification:false}
+  ]){
+    const result=evaluateExportGate({...safe,value:changed});
+    assert.equal(result.allowed,false,JSON.stringify(changed));
+    assert.ok(result.reasons.some(r=>r.includes('no longer matches')));
+  }
+  assert.equal(evaluateExportGate({...safe,value:{age:65}}).allowed,true);
+});
+test('duplicate or substituted evidence checks cannot authorize export',()=>{
+  const wrong={...evidence[0],value:66};
+  const extra={...evidence[0],path:'/service',value:10};
+  for(const checks of [[wrong],[...evidence,...evidence],[...evidence,extra],[]]){
+    assert.equal(evaluateExportGate({...safe,evidence:checks}).allowed,false);
+  }
+});
+test('reviewed nested arrays and JSON-pointer-escaped keys are bound exactly',()=>{
+  const value={forms:['SLA','JS50'], 'age/normal':65,'qualification':false};
+  const checks=[
+    {path:'/forms/0',value:'SLA',status:'match',matches:evidence[0].matches},
+    {path:'/forms/1',value:'JS50',status:'match',matches:evidence[0].matches},
+    {path:'/age~1normal',value:65,status:'match',matches:evidence[0].matches},
+    {path:'/qualification',value:false,status:'match',matches:evidence[0].matches}
+  ];
+  const selected=Object.fromEntries(checks.map(c=>[c.path,0]));
+  const confirmed=Object.fromEntries(checks.map(c=>[c.path,true]));
+  const input={...safe,value,evidence:checks,selectedEvidence:selected,confirmedEvidence:confirmed};
+  assert.equal(evaluateExportGate(input).allowed,true);
+  assert.equal(evaluateExportGate({...input,value:{...value,forms:['JS50','SLA']}}).allowed,false);
+  assert.equal(evaluateExportGate({...input,value:{...value,qualification:null}}).allowed,false);
+  assert.equal(evaluateExportGate({...input,value:{...value,'age/normal':66}}).allowed,false);
+});
