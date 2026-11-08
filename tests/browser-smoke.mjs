@@ -508,6 +508,12 @@ try {
   assert.equal(spatialPairCounts.length+spatialAbstentions,9,
     'all nine fictional pages must report measured OCR row geometry or explicit abstention');
   const spatialPairCandidates=spatialPairCounts.reduce((sum,n)=>sum+n,0);
+  // This assertion scores only the fixed entirely fictional rendered corpus.
+  // It does NOT certify original-image semantics or arbitrary table layouts.
+  assert.deepEqual(spatialPairCounts,expectedPages.map(item=>item.rows.length),
+    'measured Tesseract word boxes must support both source-row pairs on each fictional page');
+  assert.equal(spatialAbstentions,0,
+    'the verified nine-page fictional spatial geometry baseline cannot silently regress');
   console.log('REAL BROWSER: fictional OCR measured word-box row candidates '+
     spatialPairCandidates+'; spatial abstentions '+spatialAbstentions+
     '; region-level evidence remains unverified and requires PDF review.');
