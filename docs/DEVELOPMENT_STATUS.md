@@ -1,5 +1,7 @@
 # Development verification status — 2026-11-08
 
+- **Merged PR #78 (`46aaf50`, November 8):** measured-word spatial OCR matcher now abstains on an intervening numeric column rather than claiming an ambiguous age-to-factor association. Added two fictional regression cases and full Playwright workflow triggers on changes to `src/ocrSpatial.ts` and its tests. [Source/build CI](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42512645996), [offline browser](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42512646032), [accessibility](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42512646099) and [full Playwright/real Qwen 0.5B](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42512646195) all passed. This prevents one structural false association; it does not demonstrate spatial precision/recall, source semantic correctness, or production readiness.
+
 **Release:** 0.3.0-beta.1. **Not production-ready.** This is a dated, inspectable validation snapshot, not certification or an agency deployment authorization.
 
 ## Verified source and browser acceptance
