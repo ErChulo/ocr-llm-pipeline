@@ -92,7 +92,11 @@ test('prompt-risk issue blocks JSON export until original source is explicitly a
  assert.ok(blocked.reasons.some(s=>/Source completeness issues/i.test(s)));
  // Human acknowledgement is NOT proof the selected number is correct.
  // The guard never rewrites 99 to 65 or claims automatic factual validation.
- assert.equal(evaluateExportGate({...input,sourceIssuesUnreviewed:0}).allowed,true);
+ assert.equal(evaluateExportGate({...input,sourceIssuesUnreviewed:0}).allowed,false,
+   'a zero UI count does not replace explicit approvals');
+ const acknowledgements=Object.fromEntries(guarded.reviewIssues.map(issue=>[issue.id,true]));
+ assert.equal(evaluateExportGate({...input,sourceIssuesUnreviewed:0,
+   sourceIssuesReviewed:acknowledgements}).allowed,true);
 });
 
 test('correcting OCR rescans its complete text and invalidates stale injection warnings',()=>{
