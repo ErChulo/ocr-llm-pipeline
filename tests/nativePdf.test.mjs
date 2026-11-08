@@ -64,3 +64,48 @@ test('text-bearing PDF with image content requires source-completeness acknowled
  const parsed=await parsePdf('synthetic.pdf',createScannedPdf(jpeg,360,160,'PLAN HEADER'));
  assert.ok(parsed.reviewIssues?.some(x=>x.id==='pdf:mixed:1'&&x.page===1));
 });
+
+
+test('compact three-row PDF table gets mandatory visual review without fabricated cell coordinates',async()=>{
+ const pdf=createSyntheticPdf([[
+  {text:'Age',x:72,y:720},{text:'Benefit',x:145,y:720},
+  {text:'55',x:72,y:690},{text:'0.8750',x:145,y:690},
+  {text:'65',x:72,y:660},{text:'1.0000',x:145,y:660}
+ ]]);
+ const parsed=await parsePdf('fictional-compact-table.pdf',new Uint8Array(pdf));
+ assert.equal(parsed.records.length,1);
+ assert.equal(parsed.records[0].location.kind,'pdf-page');
+ assert.ok(parsed.reviewIssues?.some(x=>x.id==='pdf:layout:1'&&x.page===1));
+ assert.ok(parsed.warnings.some(x=>x.includes('aligned_tabular_cells')));
+ assert.match(parsed.text,/0\.8750/);
+ assert.match(parsed.text,/1\.0000/);
+ const spans=parsed.records[0].textSpans;
+ assert.ok(spans.every(s=>s.precision==='pdf-text-item-envelope'));
+ assert.ok(spans.some(s=>parsed.text.slice(s.start,s.end)==='0.8750'));
+ assert.ok(spans.every(s=>s.start>=0&&s.end<=parsed.text.length));
+});
+
+test('multi-page scanned OCR keeps page identity and leaves image-only evidence unboxed',async()=>{
+ const pdf=createSyntheticPdf([
+  ['Fictional plan amendment notice'],[],
+  ['Fictional schedule; see scanned page 2']
+ ]);
+ let calls=0;
+ const parsed=await parsePdf('fictional-scanned-insert.pdf',new Uint8Array(pdf),async canvas=>{
+  calls++;
+  assert.ok(canvas.width>0&&canvas.height>0);
+  return {text:'EARLY RETIREMENT AGE 55; SERVICE 10',confidence:63,
+    width:canvas.width,height:canvas.height};
+ });
+ assert.equal(calls,1);
+ assert.deepEqual(parsed.records.map(x=>x.location.kind),
+  ['pdf-page','pdf-page-ocr','pdf-page']);
+ assert.equal(parsed.records[1].location.page,2);
+ assert.equal(parsed.records[1].location.confidence,63);
+ assert.equal(parsed.records[1].textSpans,undefined,
+  'scanned page must not inherit selectable-text glyph coordinates');
+ assert.equal(parsed.provenance.source,'pdf-ocr');
+ assert.ok(parsed.reviewIssues.some(x=>x.page===2&&x.category==='ocr_page'));
+ assert.match(parsed.text,/Page 2:\nEARLY RETIREMENT AGE 55; SERVICE 10/);
+ assert.ok(parsed.warnings.some(x=>x.includes('confidence on page 2')));
+});
