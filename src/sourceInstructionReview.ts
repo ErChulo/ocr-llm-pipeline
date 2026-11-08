@@ -46,6 +46,38 @@ export function containsSourceInstructionRisk(text:string):boolean {
     impersonateRole.test(screening)||modelRoleEnvelope.test(screening);
 }
 
+/**
+ * Export-only, conservative screening of a SELECTED literal citation.
+ *
+ * Source-wide warnings are not enough: a model can return a number from an
+ * instruction-like appendix, and a reviewer may acknowledge the warning while
+ * accidentally confirming that number's literal presence. Screen the line
+ * containing the value and up to three immediately preceding lines (role
+ * headings and split commands). This never rewrites source or computes legal
+ * authority. It does not imply that passing citations are factually correct.
+ *
+ * Excerpt bounds prevent untrusted giant source lines from creating unbounded
+ * work. Overlong/invalid excerpts are not accepted as citation evidence.
+ */
+export function selectedCitationIsInstructionRisk(
+  sourceText:string,start:number,end:number
+):boolean {
+  if(typeof sourceText!=='string'||
+     !Number.isSafeInteger(start)||!Number.isSafeInteger(end)||
+     start<0||end<=start||end>sourceText.length)return true;
+  const lineStart=sourceText.lastIndexOf('\n',start-1)+1;
+  const nextNewline=sourceText.indexOf('\n',end);
+  const lineEnd=nextNewline<0?sourceText.length:nextNewline;
+  // A text match may include whitespace/newlines, but must remain bounded.
+  let excerptStart=lineStart;
+  for(let i=0;i<3&&excerptStart>0;i++){
+    const previous=sourceText.lastIndexOf('\n',excerptStart-2);
+    excerptStart=previous+1;
+  }
+  if(lineEnd-excerptStart>4096)return true;
+  return containsSourceInstructionRisk(sourceText.slice(excerptStart,lineEnd));
+}
+
 export function withSourceInstructionReview(doc:SourceDocument):SourceDocument {
   const risky=containsSourceInstructionRisk(doc.text);
   const issues=(doc.reviewIssues||[]).filter(issue=>issue.id!==ISSUE_ID);
