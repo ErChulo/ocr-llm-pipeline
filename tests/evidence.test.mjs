@@ -201,6 +201,34 @@ test('Positive numeric evidence is not borrowed from negative, signed, or accoun
  assert.equal(negative[0].status,'match','negative numeric value keeps its sign');
 });
 
+test('unsigned currency may not cite signed or accounting-negative amounts',()=>{
+ const source='Debit -$1,000.50. Accounting ($1,000.50). Credit +$1,000.50. '+
+   'Euro adjustment −€500.00 and liability (€500.00).';
+ const docSource={...doc,text:source,records:undefined};
+ for(const value of ['$1,000.50','€500.00']){
+   const check=auditLiteralEvidence(docSource,{amount:value});
+   assert.equal(check[0].status,'missing',value+' must not borrow negative/sign-qualified evidence');
+ }
+ const signed=auditLiteralEvidence(docSource,{amount:'-$1,000.50'});
+ assert.equal(signed[0].status,'match','actual signed original literal remains reviewable');
+ assert.equal(signed[0].matches.length,1);
+ const approved={...docSource,text:source+' Verified unsigned $1,000.50 and €500.00.'};
+ for(const value of ['$1,000.50','€500.00']){
+   const check=auditLiteralEvidence(approved,{amount:value});
+   assert.equal(check[0].status,'match');
+   assert.equal(check[0].matches.length,1,
+     'only the authentic standalone unsigned amount may support review');
+   assert.ok(check[0].matches[0].start>=source.length);
+ }
+});
+test('positive percentages refuse nearby signs and accounting notation, not benign source values',()=>{
+ const source='Offset -12.50%. Pension (12.50%). Other +12.50%.';
+ const d={...doc,text:source,records:undefined};
+ assert.equal(auditLiteralEvidence(d,{rate:'12.50%'})[0].status,'missing');
+ assert.equal(auditLiteralEvidence({...d,text:source+' Governing rate 12.50%.'},
+   {rate:'12.50%'})[0].matches.length,1);
+});
+
 test('Numeric strings do not match grouped, decimal, exponential, or coded quantities',()=>{
  const text='Case A65 uses 1,650 units. Scale 65e3. Reference 1e65. Age 65.5.';
  const d={...doc,text,records:undefined};
