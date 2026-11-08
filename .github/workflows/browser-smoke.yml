@@ -73,4 +73,5 @@ jobs:
             tmp/guide-print.pdf
             tmp/fictional-scanned-pdf-ocr.json
             tmp/fictional-multipage-scanned-pdf-ocr.json
+            tmp/fictional-spatial-ocr-cells.json
           if-no-files-found: ignore
