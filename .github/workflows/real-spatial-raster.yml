@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/real-spatial-raster.yml'
       - 'tests/real-spatial-raster-benchmark.mjs'
+      - 'tests/fixtures/spatialCellMetrics.mjs'
+      - 'tests/spatialCellMetrics.test.mjs'
       - 'src/ocrWords.ts'
       - 'src/ocrSpatial.ts'
       - 'src/ocrGeometryRotation.ts'
