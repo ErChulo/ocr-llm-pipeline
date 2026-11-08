@@ -14,6 +14,7 @@ import {createMultiPageScannedPdf} from './pdf-fixture.mjs';
 import {measuredTesseractWords} from '../src/ocrWords.ts';
 import {assessSpatialOcrRows} from '../src/ocrSpatial.ts';
 import {reorientedBoxToOriginalPixels} from '../src/ocrGeometryRotation.ts';
+import {selectMeasuredOrientationCandidates} from './fixtures/orientationCandidateSelection.mjs';
 import {measuredWordInsideCell,MIN_WORD_REGION_COVERAGE} from './fixtures/spatialCellMetrics.mjs';
 
 const cases=[
@@ -130,25 +131,31 @@ try{
   }
   const quality=s.kind==='blur-jpeg'?0.56:low?0.55:0.92;
   const jpeg=drawn.toDataURL('image/jpeg',quality).split(',')[1];
-  let correctedJpeg=null;
+  let correctedJpeg=null,sweepJpegs=null;
   if(s.rotation){
-   // A test-only probe: decode the ACTUAL JPEG encoded for this PDF page,
-   // undo its authored quarter-turn, then independently measure OCR again.
-   // Neither raster nor its geometry is selected by the deployed application.
+   // Decode ORIGINAL JPEG bytes and prepare every possible quarter-turn.
+   // The blind selector below receives all measured OCR candidates; it does
+   // NOT receive the authored correct orientation or reference cell values.
    const decoded=new Image();
    decoded.src='data:image/jpeg;base64,'+jpeg;
    await decoded.decode();
-   const corrected=document.createElement('canvas');
-   corrected.width=1100;corrected.height=550;
-   const cc=corrected.getContext('2d');
-   cc.fillStyle='#fff';cc.fillRect(0,0,1100,550);
-   if(s.rotation===90){cc.translate(0,550);cc.rotate(-Math.PI/2);}
-   else if(s.rotation===180){cc.translate(1100,550);cc.rotate(Math.PI);}
-   else{cc.translate(1100,0);cc.rotate(Math.PI/2);}
-   cc.drawImage(decoded,0,0);
-   correctedJpeg=corrected.toDataURL('image/jpeg',0.96).split(',')[1];
+   sweepJpegs={};
+   for(const turn of [90,180,270]){
+    const corrected=document.createElement('canvas');
+    corrected.width=turn===180?drawn.width:drawn.height;
+    corrected.height=turn===180?drawn.height:drawn.width;
+    const cc=corrected.getContext('2d');
+    cc.fillStyle='#fff';
+    cc.fillRect(0,0,corrected.width,corrected.height);
+    if(turn===90){cc.translate(0,corrected.height);cc.rotate(-Math.PI/2);}
+    else if(turn===180){cc.translate(corrected.width,corrected.height);cc.rotate(Math.PI);}
+    else{cc.translate(corrected.width,0);cc.rotate(Math.PI/2);}
+    cc.drawImage(decoded,0,0);
+    sweepJpegs[turn]=corrected.toDataURL('image/jpeg',0.96).split(',')[1];
+   }
+   correctedJpeg=sweepJpegs[s.rotation];
   }
-  return {jpeg,correctedJpeg,width:drawn.width,height:drawn.height};
+  return {jpeg,correctedJpeg,sweepJpegs,width:drawn.width,height:drawn.height};
  })),cases);
  await page.close();
 }finally{await browser.close();}
@@ -158,6 +165,9 @@ const images=rasters.map(x=>({
 }));
 const correctedImages=rasters.map(r=>r.correctedJpeg?
  Buffer.from(r.correctedJpeg,'base64'):null);
+const sweepImages=rasters.map(r=>Object.fromEntries(
+ Object.entries(r.sweepJpegs||{}).map(([turn,jpeg])=>[turn,Buffer.from(jpeg,'base64')])
+));
 const pdf=createMultiPageScannedPdf(images);
 assert.equal(pdf.subarray(0,5).toString(),'%PDF-');
 const task=getDocument({data:Uint8Array.from(pdf),useWasm:false,disableFontFace:true});
@@ -189,6 +199,12 @@ const orientationMetrics={
  attemptedPages:0,truePositive:0,falsePositive:0,falseNegative:0,
  acceptedPairs:0,wrongPage:0,abstainedPages:0,
  correctedLiteralHits:0,expectedLiterals:0
+};
+const blindMetrics={
+ attemptedPages:0,acceptedPairs:0,truePositive:0,falsePositive:0,
+ falseNegative:0,abstainedPages:0,wrongPage:0,
+ selectedCorrectOrientations:0,selectedWrongOrientations:0,
+ recognizedLiterals:0,expectedLiterals:0
 };
 const rows=[];
 try{
@@ -289,8 +305,75 @@ try{
     falseNegative:missedAfterProbe,candidates
    };
   }
+  let blindOrientationSweep=null;
+  if(correctedImages[i]){
+   blindMetrics.attemptedPages++;
+   blindMetrics.expectedLiterals+=fixture.rows.flat().length;
+   const options=[{turn:0,page,confidence:data.confidence??0,
+    assessment,text:ocrText}];
+   // Every possible quarter-turn is independently recognized. The selector
+   // has NO access to fixture.rotation or source-authored expected values.
+   for(const turn of [90,180,270]){
+    const w=turn===180?source.width:source.height;
+    const h=turn===180?source.height:source.width;
+    const measuredPass=await worker.recognize(sweepImages[i][turn],{},
+      {text:true,blocks:true});
+    const measuredText=measuredPass.data.text||'';
+    const measuredWords=measuredTesseractWords(measuredPass.data.blocks,w,h);
+    options.push({turn,page,confidence:measuredPass.data.confidence??0,
+      assessment:assessSpatialOcrRows({page,imageWidth:w,imageHeight:h,
+       text:measuredText,words:measuredWords}),text:measuredText});
+   }
+   const selection=selectMeasuredOrientationCandidates(
+    source.width,source.height,page,options);
+   const matchedBlind=new Set();
+   let selectedTP=0,selectedFP=0,selectedFN=reference.rows.length,
+    selectedHits=0;
+   if(selection.status==='candidate-for-human-review'){
+    const chosen=options.find(option=>option.turn===selection.selectedTurn);
+    if(selection.selectedTurn===fixture.rotation)
+      blindMetrics.selectedCorrectOrientations++;
+    else blindMetrics.selectedWrongOrientations++;
+    selectedHits=fixture.rows.flat().filter(token=>
+      literalPresent(chosen.text,token)).length;
+    for(const pair of chosen.assessment.pairs){
+     blindMetrics.acceptedPairs++;
+     if(pair.page!==page){blindMetrics.wrongPage++;selectedFP++;
+       blindMetrics.falsePositive++;continue;}
+     const ageBox=reorientedBoxToOriginalPixels(pair.age.bbox,
+      source.width,source.height,selection.selectedTurn);
+     const factorBox=reorientedBoxToOriginalPixels(pair.factor.bbox,
+      source.width,source.height,selection.selectedTurn);
+     const at=reference.rows.findIndex((r,j)=>!matchedBlind.has(j)&&
+      r.age===pair.age.text&&r.factor===pair.factor.text&&
+      insideGold(ageBox,r.ageRect,source.width,source.height)&&
+      insideGold(factorBox,r.factorRect,source.width,source.height));
+     if(at>=0){matchedBlind.add(at);selectedTP++;blindMetrics.truePositive++;}
+     else{selectedFP++;blindMetrics.falsePositive++;}
+    }
+    selectedFN=reference.rows.length-matchedBlind.size;
+   }else blindMetrics.abstainedPages++;
+   blindMetrics.falseNegative+=selectedFN;
+   blindMetrics.recognizedLiterals+=selectedHits;
+   blindOrientationSweep={
+    status:selection.status,reason:selection.reason,
+    suggestedTurnForReview:selection.selectedTurn,
+    selectedCorrectOnThisFictionalFixture:
+      selection.status==='candidate-for-human-review'?
+      selection.selectedTurn===fixture.rotation:null,
+    acceptedPairs:selection.pairs,truePositive:selectedTP,
+    falsePositive:selectedFP,falseNegative:selectedFN,
+    selectedLiteralHits:selectedHits,
+    observedCandidates:options.map(option=>({
+     turn:option.turn,confidence:option.confidence,
+     status:option.assessment.status,
+     count:option.assessment.pairs.length
+    })),
+    caveat:'Orientation is a test-only unverified suggestion, not an app-selected transcription'
+   };
+  }
   rows.push({page,condition:fixture.kind,rotation:fixture.rotation||0,
-   orientationProbe,
+   orientationProbe,blindOrientationSweep,
    rasterWidth:source.width,rasterHeight:source.height,
    confidence:data.confidence??null,wordCount:words.length,
    // Diagnostic only: actually measured OCR header words on fictional pages.
@@ -329,6 +412,20 @@ const report={
    orientationMetrics.expectedLiterals),
   status:'experimental-manual-known-orientation-not-deployed'
  },
+ // Unlike the known-angle probe, this test-only selector sees ALL four
+ // candidate passes and abstains on ambiguity. It never sees ground truth.
+ blindOrientationSweep:{
+  ...blindMetrics,
+  acceptedPrecision:ratio(blindMetrics.truePositive,
+    blindMetrics.truePositive+blindMetrics.falsePositive),
+  recall:ratio(blindMetrics.truePositive,
+    blindMetrics.truePositive+blindMetrics.falseNegative),
+  numericLiteralRecall:ratio(blindMetrics.recognizedLiterals,
+    blindMetrics.expectedLiterals),
+  selectedOrientationAccuracy:ratio(blindMetrics.selectedCorrectOrientations,
+    blindMetrics.selectedCorrectOrientations+blindMetrics.selectedWrongOrientations),
+  status:'experimental-unique-measured-orientation-for-review-only'
+ },
  abstentionRate:metric.abstainedPages/metric.pageCount,
  numericLiteralRecall:ratio(metric.recognizedNumericLiterals,metric.expectedNumericLiterals),
  externalRequests:external.length,cases:rows,status:'measured_not_certified',
@@ -343,5 +440,9 @@ assert.equal(orientationMetrics.falsePositive,0,
  'Experimental inverse-rotated OCR source envelope was wrongly associated');
 assert.equal(orientationMetrics.wrongPage,0,
  'Experimental inverse-rotated OCR must retain original parser PDF page');
+assert.equal(blindMetrics.falsePositive,0,
+ 'Measured orientation selection accepted an incorrect original-image cell');
+assert.equal(blindMetrics.wrongPage,0,
+ 'Measured orientation selection must never invent a different PDF page');
 assert.equal(metric.requiredAmbiguousAbstentions,1);
 assert.equal(external.length,0);
