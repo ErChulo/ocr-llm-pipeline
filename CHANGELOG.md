@@ -2,6 +2,9 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Bind export-time evidence review to current JSON leaf paths and values; reject stale, substituted, added, removed, or duplicate confirmations.
+- Screen both the imported source and the current JSON for possible identifiers, fail closed if output-only identifiers are discovered at export, and expire privacy acknowledgement whenever candidate JSON is edited or revalidated. This remains a limited local warning, not comprehensive PII detection or redaction.
+
 - Measured the source-date restoration pipeline under real offline Chromium with verified GGUFs: 0.5B strict F1 **93.75%** (7/8 exact) and 1.5B **100%** (8/8 exact), zero browser network requests, on the eight fictional cases. Results describe the pipeline after source-based corrections, not raw model quality or production actuarial acceptance.
 
 - Add narrow, auditable source-date presentation restoration: a model ISO or punctuated date may be replaced by the unique exact unambiguous date literal from the same source section, with the original model value retained and original-document review still mandatory. Conflicting wording, ambiguous formats, mismatched dates and cross-section dates never rewrite facts.

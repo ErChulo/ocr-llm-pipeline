@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { screenLocalPrivacy, safePrivacySummary } from '../src/privacy.ts';
+import { screenLocalPrivacy, screenPrivacySurfaces, safePrivacySummary } from '../src/privacy.ts';
 test('privacy screen flags possible SSN and email without returning the identifiers',()=>{
  const input='Synthetic only: 123-45-6789 and example@invalid.example';
  const result=screenLocalPrivacy(input);
@@ -22,4 +22,23 @@ test('ordinary plan prose produces no privacy warning',()=>{
  const s=screenLocalPrivacy('Normal retirement age 65. Early retirement requires age 55 and 10 service years.');
  assert.deepEqual(s.categories,{});
  assert.equal(s.requiresReview,false);
+});
+
+test('candidate-only identifiers trigger review when imported source is clean',()=>{
+ const {categories,requiresReview}=screenPrivacySurfaces(
+   'Normal retirement age 65. No participant identifiers.',
+   {normal_age:65,contact:'fictional.test@example.org'}
+ );
+ assert.equal(requiresReview,true);
+ assert.equal(categories.email,1);
+ assert.equal(JSON.stringify(categories).includes('fictional.test@'),false);
+});
+test('identifiers repeated in JSON do not double-count the source',()=>{
+ const result=screenPrivacySurfaces('Synthetic SSN 123-45-6789.',{reference:'123-45-6789'});
+ assert.equal(result.categories.possible_ssn,1);
+ assert.equal(result.requiresReview,true);
+});
+test('both input and output without identifiers cause no warning',()=>{
+ assert.deepEqual(screenPrivacySurfaces('Normal retirement at 65.',{age:65}),
+   {categories:{},requiresReview:false});
 });

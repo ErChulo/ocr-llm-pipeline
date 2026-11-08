@@ -6,6 +6,7 @@ import type { SourceDocument } from './pipeline.ts';
 import type { ExtractionAudit } from './chunkExtraction.ts';
 import type { EvidenceCheck } from './evidence.ts';
 import { evidenceReviewComplete, evidenceMatchesCurrentValue } from './evidence.ts';
+import { screenPrivacySurfaces } from './privacy.ts';
 
 export type ExportGateInputs = {
   document: SourceDocument | null;
@@ -79,7 +80,15 @@ export function evaluateExportGate(input:ExportGateInputs):ExportGate{
   if((input.sourceIssuesUnreviewed??0)>0){
     reasons.push('Source completeness issues must be reviewed in Documents before export.');
   }
-  if(input.privacyRequired&&!input.privacyReviewed){
+  // A reviewer may add identifiers absent from the source. Re-screen the
+  // actual output at the final export boundary, not only the UI summary.
+  let privacyRequired=input.privacyRequired;
+  try{
+    if(document)privacyRequired ||= screenPrivacySurfaces(document.text,value).requiresReview;
+  }catch{
+    reasons.push('The local privacy screen could not inspect the current JSON.');
+  }
+  if(privacyRequired&&!input.privacyReviewed){
     reasons.push('Possible private data still needs review.');
   }
   return {allowed:reasons.length===0,reasons};
