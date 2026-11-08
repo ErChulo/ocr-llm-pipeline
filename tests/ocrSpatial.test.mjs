@@ -37,4 +37,5 @@ test('reject invalid positions, bad confidence, or untrusted complexity',()=>{
   assert.equal(assessSpatialOcrRows({...args,words:[...original,word('x',2000,50)]}).status,'abstain');
   assert.equal(assessSpatialOcrRows({...args,words:[...original,{...original[3],confidence:NaN}]}).status,'abstain');
   assert.equal(assessSpatialOcrRows({...args,words:new Array(10001).fill(original[0])}).status,'abstain');
+  assert.equal(assessSpatialOcrRows({...args,text:'x'.repeat(250001)}).status,'abstain');
 });
