@@ -75,3 +75,33 @@ test('mixed-PDF supplemental OCR remains an independently editable source record
  assert.equal(fixed.records[0].location.kind,'pdf-page');
  assert.equal(fixed.sourceSha256,d.sourceSha256);
 });
+
+test('OCR correction clears stale measured regions and shifts other page source offsets',()=>{
+ const before=doc();
+ const page2=before.records[1],page3=before.records[2];
+ const ageAt=before.text.indexOf('5S');
+ const otherAt=before.text.indexOf('10',page3.start);
+ const box={x:10,y:20,width:30,height:12};
+ const unverified=(page,start)=>({page,precision:'pdf-ocr-word-envelope',
+   status:'unverified-geometry',
+   age:{start,end:start+2,box},factor:{start,end:start+2,box}});
+ page2.textSpans=[{start:ageAt,end:ageAt+2,box,precision:'pdf-ocr-word-envelope'}];
+ page2.ocrSpatialRows=[unverified(2,ageAt)];
+ page3.location.kind='pdf-page-ocr';
+ page3.textSpans=[{start:otherAt,end:otherAt+2,box,precision:'pdf-ocr-word-envelope'}];
+ page3.ocrSpatialRows=[unverified(3,otherAt)];
+ const after=correctOcrText(before,1,'OCR confirmed age 55 instead of 5S');
+ assert.equal(after.records[1].location.kind,'pdf-page-ocr-reviewed');
+ assert.equal(after.records[1].textSpans,undefined);
+ assert.equal(after.records[1].ocrSpatialRows,undefined,
+   'a reviewer edit cannot inherit measured raster rectangles from earlier OCR');
+ const shifted=after.records[2].start-page3.start;
+ assert.notEqual(shifted,0);
+ assert.equal(after.records[2].textSpans[0].start,otherAt+shifted);
+ assert.equal(after.records[2].ocrSpatialRows[0].age.start,otherAt+shifted);
+ assert.equal(after.records[2].ocrSpatialRows[0].factor.end,otherAt+shifted+2);
+ assert.deepEqual(after.records[2].ocrSpatialRows[0].age.box,box);
+ assert.equal(after.sourceSha256,before.sourceSha256);
+ assert.equal(before.records[1].ocrSpatialRows.length,1,
+   'original source metadata must remain unchanged');
+});
