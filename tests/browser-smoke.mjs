@@ -277,18 +277,86 @@ try {
     token,new RegExp('(^|[^0-9.])'+token.replace('.','\\.')+'($|[^0-9.])').test(scannedTableText)
   ]));
   const exactTableFields=Object.values(tableHits).filter(Boolean).length;
-  writeFileSync('tmp/fictional-scanned-pdf-ocr.json',JSON.stringify({
-    fixture:'fictional-scanned-table.pdf',kind:'physical-raster-pdf',
-    evidenceStatus:'unverified_ocr_transcription',expectedTable,
-    literalMatches:tableHits,exactFieldCount:exactTableFields,
-    denominator:expectedTable.length,networkRequests:external.length,
-    citationPrecision:'pdf-page-ocr (no fabricated cell or glyph boxes)'
-  },null,2)+'\n');
   assert.equal(external.length,0,'scanned PDF OCR must stay offline');
   assert.equal(await page.locator('.source-completeness input[type="checkbox"]').count(),1);
   console.log('REAL BROWSER: fictional scanned-table OCR literal exact fields '+
     exactTableFields+'/'+expectedTable.length+'; diagnostic only, requires source review.');
 
+  const fictionalScans=[{
+    fixture:'fictional-scanned-table.pdf',variation:'high-contrast-baseline',
+    exactFieldCount:exactTableFields,literalMatches:tableHits
+  }];
+  // Adversarial but entirely fictional scan conditions. These are measured
+  // holdouts, never a fixed pass threshold or silent source correction.
+  for(const variation of ['low-contrast-jpeg','slightly-skewed-speckled-jpeg']){
+    const jpegBase64=await page.evaluate((variation)=>{
+      const canvas=document.createElement('canvas');
+      canvas.width=1100;canvas.height=550;
+      const ctx=canvas.getContext('2d');
+      const isLow=variation==='low-contrast-jpeg';
+      ctx.fillStyle=isLow?'#eee':'#f8f8f8';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      if(!isLow){
+        ctx.translate(550,275);
+        ctx.rotate(1.3*Math.PI/180);
+        ctx.translate(-550,-275);
+      }
+      ctx.fillStyle=isLow?'#777':'#252525';
+      ctx.font='bold 44px Arial';
+      ctx.fillText('FICTIONAL BENEFIT SCHEDULE',46,78);
+      ctx.font='bold 32px Arial';
+      ctx.fillText('AGE',72,170);
+      ctx.fillText('MONTHLY FACTOR',445,170);
+      ctx.font='34px Arial';
+      ctx.fillText('55',72,247);ctx.fillText('0.8750',445,247);
+      ctx.fillText('65',72,324);ctx.fillText('1.0000',445,324);
+      ctx.fillText('SERVICE 10 YEARS',72,433);
+      if(!isLow){
+        // Deterministic photocopy speckling: no Math.random, no remote data.
+        let seed=48903;
+        ctx.fillStyle='#777';
+        for(let i=0;i<450;i++){
+          seed=(1664525*seed+1013904223)>>>0;
+          const x=seed%canvas.width;
+          seed=(1664525*seed+1013904223)>>>0;
+          const y=seed%canvas.height;
+          ctx.fillRect(x,y,1,1);
+        }
+      }
+      return canvas.toDataURL('image/jpeg',isLow?0.52:0.65).split(',')[1];
+    },variation);
+    const name='fictional-scan-'+variation+'.pdf';
+    const pdf=createScannedPdf(Buffer.from(jpegBase64,'base64'),1100,550);
+    await page.locator('input[type="file"][accept*=".pdf"]').setInputFiles({
+      name,mimeType:'application/pdf',buffer:pdf
+    });
+    await page.locator('.card select').first().locator('option')
+      .filter({hasText:name}).waitFor({state:'attached',timeout:150000});
+    await page.locator('.card select').first().selectOption({label:name});
+    await page.locator('.source-completeness').getByText(/PDF page 1 before export/i)
+      .waitFor({timeout:150000});
+    const actual=await page.locator('.preview').innerText();
+    assert.match(actual,/^Page 1:/,'scanned provenance must remain page derived');
+    const literalMatches=Object.fromEntries(expectedTable.map(token=>[
+      token,new RegExp('(^|[^0-9.])'+token.replace('.','\\.')+'($|[^0-9.])').test(actual)
+    ]));
+    const exactFieldCount=Object.values(literalMatches).filter(Boolean).length;
+    fictionalScans.push({fixture:name,variation,exactFieldCount,literalMatches});
+    assert.equal(await page.locator('.source-completeness input[type="checkbox"]').count(),1,
+      'all scanned text must remain unverified pending original-page review');
+    assert.equal(external.length,0,'degraded scanned PDF must remain offline');
+    console.log('REAL BROWSER: '+variation+' fictional raster OCR '+exactFieldCount+
+      '/'+expectedTable.length+' exact literals; requires source review.');
+  }
+  writeFileSync('tmp/fictional-scanned-pdf-ocr.json',JSON.stringify({
+    cohort:'fictional scanned PDF visual-condition matrix',
+    status:'measured_not_certified',kind:'physical-raster-pdf',
+    evidenceStatus:'unverified_ocr_transcription',
+    expectedTable,denominatorPerFixture:expectedTable.length,
+    cases:fictionalScans,networkRequests:external.length,
+    citationPrecision:'pdf-page-ocr (no fabricated cell or glyph boxes)',
+    limitations:'Exact token occurrence is not cell association, reading order or factual support.'
+  },null,2)+'\n');
 
 
 
