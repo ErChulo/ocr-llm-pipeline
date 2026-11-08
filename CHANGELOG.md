@@ -2,6 +2,8 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Add a separate eight-case **physical-document** fictional holdout and a checksum-verified offline 0.5B GGUF CI workflow. Cases exercise actual PDF/DOCX/XLSX/CSV import, numeric and date accuracy, conflicting amendments, two columns, hidden spreadsheet rows, survivor clauses and prompt injection. Report exact-field scores independently of parser-authentic source-location diagnostics; original text-only corpus and production acceptance remain unchanged.
+
 - Benchmarked and **rejected** an eligibility-condition prompt expansion: 0.5B real offline eight-case accuracy fell from 93.75% to 87.5% strict micro F1. 1.5B remained at 100% without a gain. The previous prompt remains unchanged; see the documented measured regression.
 
 - Harden OOXML source-location fidelity against namespace spoofing: reject non-spreadsheet elements masquerading as Excel cells, values or relationship metadata; do not treat foreign XML blocks as Word paragraphs, and disclose omitted foreign content for review. Reject orphaned Excel cells and row/cell-address discrepancies.
