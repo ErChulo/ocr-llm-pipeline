@@ -8,12 +8,22 @@ export type SourceTextSpan = {
   start: number;
   end: number;
   box: { x: number; y: number; width: number; height: number };
-  precision: 'pdf-text-item-envelope';
+  precision: 'pdf-text-item-envelope'|'pdf-ocr-word-envelope';
+};
+/** Unverified spatial OCR row: each box is a measured word envelope,
+ * mapped into original PDF user space by the actual PDF.js viewport inverse. */
+export type SourceOcrSpatialRow={
+  page:number;
+  precision:'pdf-ocr-word-envelope';
+  status:'unverified-geometry';
+  age:{start:number;end:number;box:SourceTextSpan['box']};
+  factor:{start:number;end:number;box:SourceTextSpan['box']};
 };
 export type SourceRecord = {
   start: number; end: number; label: string;
   location: Record<string, string | number>;
   textSpans?: SourceTextSpan[];
+  ocrSpatialRows?: SourceOcrSpatialRow[];
 };
 export type SourceReviewIssue = {
   id:string;

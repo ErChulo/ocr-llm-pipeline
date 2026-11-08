@@ -330,3 +330,32 @@ test('non-PDF citations cannot invent PDF highlight rectangles',async()=>{
    ...checks[0],matches:[forged]
  }],{'/age':0}),false);
 });
+
+test('reviewer OCR word highlights must exactly match parser-measured PDF envelopes',async()=>{
+ const {evidenceSelectionsAnchoredToDocument}=await import('../src/evidence.ts');
+ const source='Page 3:\nAGE MONTHLY FACTOR\n58 0.9063\n64 0.9813\n\n';
+ const start=source.indexOf('58'),end=start+2;
+ const box={x:40,y:390,width:20,height:10};
+ const sourceDoc={...doc,text:source,records:[{
+   start:0,end:source.length,label:'Page 3',
+   location:{kind:'pdf-page-ocr',page:3,confidence:91},
+   textSpans:[{start,end,box,precision:'pdf-ocr-word-envelope'}]
+ }]};
+ const checks=auditLiteralEvidence(sourceDoc,{age:58});
+ assert.equal(checks[0].status,'match');
+ const original=checks[0].matches[0];
+ assert.equal(original.location.page,3);
+ assert.deepEqual(original.textItemBoxes,[{...box,precision:'pdf-ocr-word-envelope'}]);
+ assert.equal(evidenceSelectionsAnchoredToDocument(sourceDoc,checks,{'/age':0}),true);
+ for(const forged of [
+   {...original,textItemBoxes:[{...box,precision:'pdf-text-item-envelope'}]},
+   {...original,textItemBoxes:[{...box,x:box.x+1,precision:'pdf-ocr-word-envelope'}]},
+   {...original,textItemBoxes:[]},
+   {...original,location:{kind:'pdf-page-ocr',page:4,confidence:91}},
+   {...original,start:start+1}
+ ]){
+   assert.equal(evidenceSelectionsAnchoredToDocument(sourceDoc,[
+     {...checks[0],matches:[forged]}
+   ],{'/age':0}),false);
+ }
+});

@@ -12,7 +12,7 @@ export type EvidenceMatch = {
   quote: string;
   label: string;
   location: Record<string, string | number>;
-  textItemBoxes?: Array<{ x:number; y:number; width:number; height:number; precision:'pdf-text-item-envelope' }>;
+  textItemBoxes?: Array<{ x:number; y:number; width:number; height:number; precision:'pdf-text-item-envelope'|'pdf-ocr-word-envelope' }>;
   sourceScope?: 'model_sections' | 'reviewer_edited';
   evidenceMethod?: 'literal_value' | 'reviewer_quoted_passage';
 };

@@ -497,6 +497,27 @@ try {
     'a unique fictional numeric fact must not be attributed to another PDF page');
   assert.equal(await multiReview.locator('input[type="checkbox"]').count(),9,
     'all nine OCR pages independently require original-page review');
+
+  // Actual Tesseract v7 word rectangles, NOT inferred from same-line text:
+  // record candidate count and abstentions separately from numeric OCR recall.
+  const spatialReviewText=await multiReview.innerText();
+  const spatialPairCounts=[...spatialReviewText.matchAll(
+    /(\d+) unverified age\/factor row candidate\(s\)/g)].map(match=>Number(match[1]));
+  const spatialAbstentions=(spatialReviewText.match(
+    /No authenticated OCR word-region row pairing is available/g)||[]).length;
+  assert.equal(spatialPairCounts.length+spatialAbstentions,9,
+    'all nine fictional pages must report measured OCR row geometry or explicit abstention');
+  const spatialPairCandidates=spatialPairCounts.reduce((sum,n)=>sum+n,0);
+  // This assertion scores only the fixed entirely fictional rendered corpus.
+  // It does NOT certify original-image semantics or arbitrary table layouts.
+  assert.deepEqual(spatialPairCounts,expectedPages.map(item=>item.rows.length),
+    'measured Tesseract word boxes must support both source-row pairs on each fictional page');
+  assert.equal(spatialAbstentions,0,
+    'the verified nine-page fictional spatial geometry baseline cannot silently regress');
+  console.log('REAL BROWSER: fictional OCR measured word-box row candidates '+
+    spatialPairCandidates+'; spatial abstentions '+spatialAbstentions+
+    '; region-level evidence remains unverified and requires PDF review.');
+
   await page.getByRole('button',{name:'View original page 9'}).click();
   await page.getByText(/Original PDF — page 9 of 9/).waitFor({timeout:20000});
   await page.getByRole('button',{name:'Close PDF view'}).click();
@@ -505,7 +526,8 @@ try {
     cohort:'nine-page fictional raster PDF (rotations, small fonts, blur, table clutter)',
     source:'image-only JPEG XObjects in one real multi-page PDF',
     evidenceStatus:'unverified_ocr_transcription',
-    citationPrecision:'parser-derived pdf-page-ocr; no cell or glyph boxes',
+    citationPrecision:'parser PDF page; measured OCR raster word envelopes only where unambiguous; no exact cells or glyphs',
+    spatialPairCandidates,spatialAbstentions,
     pageResults,wrongPageCitationErrors:pageResults.reduce(
       (sum,item)=>sum+item.wrongPageLiterals.length,0),
     networkRequests:external.length,

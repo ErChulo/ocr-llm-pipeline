@@ -10,6 +10,7 @@ import type { SourceDocument, SourceRecord, SourceTextSpan, SourceReviewIssue } 
 import { ocrReviewIssue } from './ocrReview.ts';
 import { countAmbiguousOcrNumericTokens } from './ocrNumericReview.ts';
 import { hasMalformedNumericTableRow, preferFallbackForMalformedRows } from './ocrResolutionChoice.ts';
+import { measuredPdfOcrTableSpans } from './pdfOcrWordSpans.ts';
 import { detectPdfLayoutRisks } from './pdfLayout.ts';
 
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
@@ -29,6 +30,20 @@ type TextItem = {
 };
 
 type TextSpan = { start:number; end:number; box:SourceTextSpan['box']; precision:SourceTextSpan['precision'] };
+type PdfOcrRead=OcrResult&{rasterViewportTransform:number[]};
+/** Shift only measured, unique OCR word offsets into the parser's full source text. */
+function absoluteOcrSpans(
+  result:ReturnType<typeof measuredPdfOcrTableSpans>|undefined,offset:number
+):Pick<SourceRecord,'textSpans'|'ocrSpatialRows'>{
+  if(!result||result.status!=='candidates'||!Number.isSafeInteger(offset)||offset<0)return {};
+  return {
+    textSpans:result.spans.map(s=>({...s,start:offset+s.start,end:offset+s.end})),
+    ocrSpatialRows:result.rows.map(r=>({...r,
+      age:{...r.age,start:offset+r.age.start,end:offset+r.age.end},
+      factor:{...r.factor,start:offset+r.factor.start,end:offset+r.factor.end}
+    }))
+  };
+}
 function pdfPageTextWithSpans(items: TextItem[]): { text:string; spans:TextSpan[] } {
   const parts:string[]=[];
   const spans:TextSpan[]=[];
@@ -149,7 +164,9 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
       let confidence=0;
       let supplementalText='';
       let supplementalConfidence=0;
-      const runLocalPageOcr=async():Promise<OcrResult>=>{
+      let scannedGeometry:ReturnType<typeof measuredPdfOcrTableSpans>|undefined;
+      let supplementalGeometry:ReturnType<typeof measuredPdfOcrTableSpans>|undefined;
+      const runLocalPageOcr=async():Promise<PdfOcrRead>=>{
         if(!ocr)throw new Error('OCR is required to process PDF page '+pageNo+'. No partial extraction was saved.');
         const original=page.getViewport({scale:1});
         if(!Number.isFinite(original.width)||!Number.isFinite(original.height)||
@@ -158,7 +175,7 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
         }
         // Render variants are obtained from the SAME PDF.js page. Neither
         // pass may infer page numbers or glyph/cell source coordinates.
-        const renderAndRecognize=async(cap:number,maxSide:number):Promise<OcrResult>=>{
+        const renderAndRecognize=async(cap:number,maxSide:number):Promise<PdfOcrRead>=>{
           const scale=Math.min(cap,maxSide/Math.max(original.width,original.height),
             Math.sqrt(MAX_OCR_CANVAS_PIXELS/(original.width*original.height)));
           const viewport=page.getViewport({scale});
@@ -170,7 +187,12 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
           const context=canvas.getContext('2d',{willReadFrequently:true});
           if(!context)throw new Error('Canvas rendering is unavailable for OCR.');
           await page.render({canvas,canvasContext:context,viewport}).promise;
-          return ocr(canvas);
+          const result=await ocr(canvas);
+          // Provenance may only be attached to boxes from THIS exact canvas.
+          // Stubbed or mismatched image dimensions never acquire a PDF transform.
+          return {...result,rasterViewportTransform:
+            result.width===canvas.width&&result.height===canvas.height
+              ? [...viewport.transform]:[]};
         };
         const primary=await renderAndRecognize(2.8,2800);
         // Malformed multi-decimal numeric rows may come from rasterization.
@@ -199,13 +221,23 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
         scanned=true;
         ocrPages++;
         if(!text)throw new Error('OCR found no readable text on PDF page '+pageNo+'. Import was stopped.');
+        scannedGeometry=measuredPdfOcrTableSpans({
+          page:pageNo,text,words:result.words??[],
+          imageWidth:result.width,imageHeight:result.height,
+          viewportTransform:result.rasterViewportTransform
+        });
         if(confidence<75){
           warnings.push('OCR confidence on page '+pageNo+' is '+Math.round(confidence)+'%. Verify the page against its original image.');
         }
         // A count-only hint never rewrites the uncertain OCR transcription,
         // changes the authentic PDF page citation or invents cell coordinates.
         const ambiguousCount=countAmbiguousOcrNumericTokens(text);
-        reviewIssues.push(ocrReviewIssue('pdf',confidence,pageNo,ambiguousCount));
+        const issue=ocrReviewIssue('pdf',confidence,pageNo,ambiguousCount);
+        issue.message+=scannedGeometry.status==='candidates'
+          ? ' '+scannedGeometry.rows.length+
+            ' unverified age/factor row candidate(s) have measured Tesseract word regions on this PDF page; verify cell alignment against the original.'
+          : ' No authenticated OCR word-region row pairing is available; treat citations as page-level and verify the original.';
+        reviewIssues.push(issue);
       }
       if(!scanned && containsImages){
         if(options.ocrMixedPages){
@@ -215,7 +247,14 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
           const result=await runLocalPageOcr();
           supplementalText=result.text.trim();
           supplementalConfidence=result.confidence;
-          if(supplementalText)supplementalOcrPages++;
+          if(supplementalText){
+            supplementalOcrPages++;
+            supplementalGeometry=measuredPdfOcrTableSpans({
+              page:pageNo,text:supplementalText,words:result.words??[],
+              imageWidth:result.width,imageHeight:result.height,
+              viewportTransform:result.rasterViewportTransform
+            });
+          }
           const possibleNumericErrors=countAmbiguousOcrNumericTokens(supplementalText);
           if(possibleNumericErrors)warnings.push('Page '+pageNo+
             ' supplemental OCR has '+(possibleNumericErrors===100?'at least 100':possibleNumericErrors)+
@@ -244,7 +283,8 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
         location: scanned
           ? { kind:'pdf-page-ocr',page:pageNo,confidence:Math.round(confidence) }
           : { kind:'pdf-page',page:pageNo },
-        ...(scanned ? {} : {
+        ...(scanned ? absoluteOcrSpans(scannedGeometry,
+          start+('Page '+pageNo+':\n').length) : {
           // The prefix "Page N:\n" is generated by our parser. Character
           // offsets and geometry are tied to actual PDF.js text items.
           textSpans:extracted.spans.map(s=>({
@@ -265,7 +305,9 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
         records.push({
           start:supplementStart,end:chars,label:supplementLabel,
           location:{kind:'pdf-page-ocr-mixed',page:pageNo,
-            confidence:Math.round(supplementalConfidence)}
+            confidence:Math.round(supplementalConfidence)},
+          ...absoluteOcrSpans(supplementalGeometry,
+            supplementStart+(supplementLabel+':\n').length)
         });
       }
       page.cleanup();
@@ -280,7 +322,7 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
       warnings: [
         ...warnings,
         'PDF page numbers come from the document parser, not from the language model.',
-        'PDF text-item boxes are approximate item envelopes, not exact word highlights. Verify against the PDF.',
+        'PDF.js native text-item and Tesseract OCR word highlights are approximate envelopes, not exact glyphs or validated table cells. Verify against the PDF.',
         'Text reading order and tables may differ from the page layout. Verify important values against the PDF.',
         'Pages with no text are OCR processed. Images within pages that already contain text might still be missed unless supplemental OCR is explicitly requested. Supplemental full-page OCR may repeat native text.'
       ]
