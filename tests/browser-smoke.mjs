@@ -291,9 +291,9 @@ try {
   // actual image pixels, Tesseract words and parser-derived page numbers.
   const actualPixelRotationCases=[];
   const fictionalCellRegions=[
-    {age:'55',factor:'0.8750',age:{x0:65,x1:150,y0:212,y1:260},
+    {ageValue:'55',factorValue:'0.8750',ageBox:{x0:65,x1:150,y0:212,y1:260},
       factorBox:{x0:435,x1:590,y0:212,y1:260}},
-    {age:'65',factor:'1.0000',age:{x0:65,x1:150,y0:290,y1:340},
+    {ageValue:'65',factorValue:'1.0000',ageBox:{x0:65,x1:150,y0:290,y1:340},
       factorBox:{x0:435,x1:590,y0:290,y1:340}}
   ];
   // These fixture-authored visual cell regions were not derived from OCR and
@@ -366,8 +366,8 @@ try {
           'measured inverse pixel boxes remain bounded inside actual rendered source');
       }
       const at=fictionalCellRegions.findIndex((row,index)=>!matchedRows.has(index)&&
-        pair.age.text===row.age&&pair.factor.text===row.factor&&
-        isInside(toUpright(pair.age.bbox,pair.imageWidth,pair.imageHeight),row.age)&&
+        pair.age.text===row.ageValue&&pair.factor.text===row.factorValue&&
+        isInside(toUpright(pair.age.bbox,pair.imageWidth,pair.imageHeight),row.ageBox)&&
         isInside(toUpright(pair.factor.bbox,pair.imageWidth,pair.imageHeight),row.factorBox));
       if(at>=0){matchedRows.add(at);correctCells++;}
     }
