@@ -89,6 +89,18 @@ test('PDF literal match contains actual PDF text-item envelopes for review', asy
  assert.equal(matched.location.page,1);
  assert.ok(matched.textItemBoxes?.length>0);
  assert.equal(matched.textItemBoxes[0].precision,'pdf-text-item-envelope');
+ const {evidenceSelectionsAnchoredToDocument}=await import('../src/evidence.ts');
+ assert.equal(evidenceSelectionsAnchoredToDocument(parsed,checked,{'/age':0}),true);
+ for(const forged of [
+   {...matched,textItemBoxes:undefined},
+   {...matched,textItemBoxes:[]},
+   {...matched,textItemBoxes:matched.textItemBoxes.map(x=>({...x,x:x.x+10}))},
+   {...matched,textItemBoxes:matched.textItemBoxes.map(x=>({...x,precision:'exact-word-box'}))}
+ ]){
+   assert.equal(evidenceSelectionsAnchoredToDocument(parsed,[
+     {...checked[0],matches:[forged]}
+   ],{'/age':0}),false);
+ }
 });
 
 test('GGUF candidate matches must be within the model source section, not elsewhere',()=>{
@@ -303,4 +315,18 @@ test('reviewer quotes and parser-added labels are checked against real cells',as
  assert.equal(evidenceSelectionsAnchoredToDocument(current,[{
    ...checks[0],matches:[labelMatch]
  }],{'/continues':0}),false);
+});
+
+test('non-PDF citations cannot invent PDF highlight rectangles',async()=>{
+ const {evidenceSelectionsAnchoredToDocument}=await import('../src/evidence.ts');
+ const source='Normal retirement at age 65.';
+ const sourceDoc={...doc,text:source,records:undefined};
+ const checks=auditLiteralEvidence(sourceDoc,{age:65});
+ assert.equal(evidenceSelectionsAnchoredToDocument(sourceDoc,checks,{'/age':0}),true);
+ const forged={...checks[0].matches[0],textItemBoxes:[{
+   x:0,y:0,width:80,height:10,precision:'pdf-text-item-envelope'
+ }]};
+ assert.equal(evidenceSelectionsAnchoredToDocument(sourceDoc,[{
+   ...checks[0],matches:[forged]
+ }],{'/age':0}),false);
 });

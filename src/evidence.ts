@@ -269,6 +269,26 @@ export function evidenceSelectionsAnchoredToDocument(
       const location=Object.entries(record.location);
       if(Object.keys(match.location).length!==location.length||
          location.some(([key,value])=>match.location[key]!==value))return false;
+      // PDF.js evidence boxes are approximate text-item envelopes, not
+      // exact glyph coordinates. Never permit an exported review to supply
+      // different boxes than the PDF parser recorded for the selected text.
+      const expectedBoxes=record.textSpans?.filter(s=>
+        s.start<match.end&&s.end>match.start
+      ).map(s=>({...s.box,precision:s.precision}));
+      if(expectedBoxes){
+        if(!Array.isArray(match.textItemBoxes)||
+           match.textItemBoxes.length!==expectedBoxes.length)return false;
+        for(let i=0;i<expectedBoxes.length;i++){
+          const expected=expectedBoxes[i],actual=match.textItemBoxes[i];
+          if(!actual || Object.keys(actual).length!==5||
+             (['x','y','width','height'] as const).some(k=>
+               !Number.isFinite(actual[k])||actual[k]!==expected[k])||
+             actual.precision!==expected.precision)return false;
+        }
+      }else if(match.textItemBoxes!==undefined){
+        // A non-PDF source may not claim PDF coordinates.
+        return false;
+      }
       const contentStart=bodyStart(doc.text,record);
       if(match.start<contentStart)return false;
       const excerpt=doc.text.slice(

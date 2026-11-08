@@ -2,6 +2,8 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Verify PDF text-item evidence boxes at final JSON export against the parser's overlapping text spans; reject shifted/forged rectangles, missing overlays, and invented PDF geometry for plain-text/CSV sources. Boxes remain approximate PDF.js text-item envelopes, not precise character highlights.
+
 - Revalidate selected field citations against the current source record, actual character offsets, exact excerpt, parser-derived location and full-token value at every export. Reject stale or fabricated citation metadata, including incorrectly cited CSV cell labels. Human source verification remains required.
 
 - Bind export-time evidence review to current JSON leaf paths and values; reject stale, substituted, added, removed, or duplicate confirmations.
