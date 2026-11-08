@@ -266,6 +266,11 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
     .filter(([name])=>name==='word/document.xml'||/^word\/(?:header|footer)\d+\.xml$/.test(name)||
       name==='word/footnotes.xml'||name==='word/endnotes.xml')
     .map(([,bytes])=>xmlDoc(decoder.decode(bytes)));
+  const hasForeignText=inspectedParts.some(part=>descendants(part,'t').some(node=>
+    node.namespaceURI!==WORD_NS && !!node.textContent?.trim() &&
+    !['drawing','pict','object','txbxContent'].some(kind=>hasAncestor(node,kind))));
+  if(hasForeignText)warnings.push(
+    'Non-Word XML text was excluded from paragraphs. Inspect embedded/custom content in the original Word file.');
   const hasUninspectedVisuals=omitted.some(n=>/^word\/(?:media|embeddings)\//i.test(n))||
     inspectedParts.some(part=>['drawing','pict','object','txbxContent']
       .some(name=>descendants(part,name).length>0));
@@ -282,6 +287,9 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
   if(hasHiddenText)warnings.push(
     'Directly hidden Word text was excluded. Inspect visibility and any style-based hiding in the original document.');
   const reviewIssues:SourceReviewIssue[]=[];
+  if(hasForeignText)reviewIssues.push({
+    id:'docx:foreign-text',category:'office_unreviewed_content',
+    message:'Foreign-namespace XML text was excluded from Word paragraph citations. Inspect embedded/custom content before export.'});
   if(omitted.some(n=>/^word\/(?:comments|commentsExtended)/i.test(n))){
     reviewIssues.push({id:'docx:comments',category:'office_unreviewed_content',
       message:'Word comments were omitted; inspect the original document for important qualifications.'});
