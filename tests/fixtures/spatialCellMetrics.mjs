@@ -10,8 +10,8 @@ const validRegion=r=>r && [r.x0,r.y0,r.x1,r.y1].every(Number.isFinite) &&
 // Minimum proportion of each ACTUALLY MEASURED OCR word rectangle that
 // must lie in the independently authored ground-truth cell. Center-only
 // scoring can accept large rectangles that straddle adjacent cells.
-const MIN_WORD_REGION_COVERAGE=0.95;
-const measuredWordInsideCell=(word,region,w,h)=>{
+export const MIN_WORD_REGION_COVERAGE=0.95;
+export const measuredWordInsideCell=(word,region,w,h)=>{
   const b=word?.bbox;
   if(!b||![b.x0,b.y0,b.x1,b.y1,w,h].every(Number.isFinite)||
     w<=0||h<=0||b.x0<0||b.y0<0||b.x1<=b.x0||b.y1<=b.y0||
