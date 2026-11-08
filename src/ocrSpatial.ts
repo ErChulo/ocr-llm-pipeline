@@ -39,6 +39,35 @@ function sameRow(a:MeasuredOcrWord,b:MeasuredOcrWord):boolean{
   return overlap>0 && overlap>=minHeight*0.45 &&
     Math.abs(centerY(a)-centerY(b))<=Math.max(a.bbox.y1-a.bbox.y0,b.bbox.y1-b.bbox.y0)*0.45;
 }
+/**
+ * A small photographed-page skew can shift AGE and FACTOR header centers by
+ * a dozen measured pixels even when both are genuinely on the same sloped row.
+ * Permit a bounded skew ONLY when a third measured MONTHLY header lies on the
+ * same straight baseline, and the AGE/FACTOR envelopes actually overlap.
+ * Never relax the data-row association or infer/edit any source coordinates.
+ */
+function skewCorroboratedHeaderRow(
+  age:MeasuredOcrWord,monthly:MeasuredOcrWord,factor:MeasuredOcrWord
+):boolean {
+  const centerX=(word:MeasuredOcrWord)=>(word.bbox.x0+word.bbox.x1)/2;
+  if(age.bbox.x1>=monthly.bbox.x0 || monthly.bbox.x1>=factor.bbox.x0 ||
+     !sameRow(monthly,factor))return false;
+  const xSpan=centerX(factor)-centerX(age);
+  if(xSpan<=0)return false;
+  const slope=(centerY(factor)-centerY(age))/xSpan;
+  if(Math.abs(slope)>0.035)return false; // at most about two measured degrees
+  const ageHeight=age.bbox.y1-age.bbox.y0;
+  const factorHeight=factor.bbox.y1-factor.bbox.y0;
+  const middleHeight=monthly.bbox.y1-monthly.bbox.y0;
+  const overlap=Math.min(age.bbox.y1,factor.bbox.y1)-
+    Math.max(age.bbox.y0,factor.bbox.y0);
+  if(overlap<Math.min(ageHeight,factorHeight)*0.30)return false;
+  const expectedMiddleCenter=centerY(age)+
+    slope*(centerX(monthly)-centerX(age));
+  const middleError=Math.abs(centerY(monthly)-expectedMiddleCenter);
+  return middleError<=Math.max(3,Math.min(ageHeight,middleHeight,factorHeight)*0.20);
+}
+
 const NUMERIC_WORD=/(?:^|[^A-Za-z0-9_.+\-])(\d{1,3}|\d+\.\d{2,6})(?=$|[^A-Za-z0-9_.])/g;
 function indexedNumericRanges(text:string):Map<string,{start:number;end:number}|null>|null{
   // A single bounded scan prevents adversarial 10k words × 2M characters work.
@@ -69,12 +98,15 @@ export function assessSpatialOcrRows(
   // Refuse repeated headers before any cross-product can exhaust memory.
   if(headerAge.length!==1||headerFactor.length!==1)return empty('ambiguous-or-missing-column-headers');
   const ageHeader=headerAge[0],factorHeader=headerFactor[0];
-  if(ageHeader.bbox.x1>=factorHeader.bbox.x0 || !sameRow(ageHeader,factorHeader)){
-    return empty('ambiguous-or-missing-column-headers');
-  }
   const monthly=words.filter(word=>word.text.toUpperCase()==='MONTHLY' &&
     sameRow(word,factorHeader) && word.bbox.x0<factorHeader.bbox.x0);
   if(monthly.length>1)return empty('ambiguous-factor-header');
+  const headerGeometryValid=sameRow(ageHeader,factorHeader) ||
+    (monthly.length===1 &&
+      skewCorroboratedHeaderRow(ageHeader,monthly[0],factorHeader));
+  if(ageHeader.bbox.x1>=factorHeader.bbox.x0 || !headerGeometryValid){
+    return empty('ambiguous-or-missing-column-headers');
+  }
   const factorX=monthly[0]?.bbox.x0??factorHeader.bbox.x0;
   const headerBottom=Math.max(ageHeader.bbox.y1,factorHeader.bbox.y1);
   const tolerance=Math.max(18,w*0.055);
