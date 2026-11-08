@@ -225,6 +225,11 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
     const content=xmlDoc(getPart(files,part));
     let paragraphNo=0;
     for(const p of descendants(content,'p')){
+      // Descendant paragraphs inside a textbox/drawing are not normal
+      // header/footer paragraphs and cannot be given their provenance.
+      if(p.namespaceURI!==WORD_NS||
+         ['drawing','pict','object','txbxContent']
+           .some(kind=>hasAncestor(p,kind)))continue;
       paragraphNo++;
       if(removedRevision(p))continue;
       const value=textOf(p);
@@ -249,7 +254,9 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
       if(rawId===null || !/^\d+$/.test(rawId))continue;
       const noteId=Number(rawId);
       if(!Number.isSafeInteger(noteId))throw new Error('Word note ID exceeds safe range.');
-      const value=descendants(note,'p').filter(p=>!removedRevision(p))
+      const value=descendants(note,'p').filter(p=>
+        p.namespaceURI===WORD_NS&&!removedRevision(p)&&
+        !['drawing','pict','object','txbxContent'].some(kind=>hasAncestor(p,kind)))
         .map(p=>textOf(p)).filter(Boolean).join('\n');
       if(value)entries.push({
         label:section+' '+noteId,
