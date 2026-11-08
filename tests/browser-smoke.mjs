@@ -9,6 +9,8 @@ import { statSync, mkdirSync, writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { createSyntheticPdf, createScannedPdf, createMultiPageScannedPdf, createAnnotatedPdf } from './pdf-fixture.mjs';
 import { scoreFictionalScannedPages } from './fixtures/scannedOcrMetrics.mjs';
+import { scoreSpatialCells } from './fixtures/spatialCellMetrics.mjs';
+import { ninePageSpatialTruth } from './fixtures/ninePageSpatialTruth.mjs';
 import { zipSync, strToU8 } from 'fflate';
 
 mkdirSync('tmp', { recursive: true });
@@ -476,6 +478,34 @@ try {
     {page:9,rotation:0,rows:[['52','0.7124'],['70','1.1179']]}
   ];
   const pageResults=scoreFictionalScannedPages(bodyByPage,expectedPages);
+  // Read real Tesseract word rectangles retained from the OCR pass the app
+  // actually selected. Independent fixture-authored visual ROIs, not generated
+  // from those envelopes, determine whether any table association is correct.
+  const spatialPanel=page.locator('.ocr-spatial-diagnostics');
+  await spatialPanel.waitFor({timeout:10000});
+  await spatialPanel.locator('summary').click();
+  const spatialObserved=JSON.parse(await spatialPanel.locator(
+    'pre[aria-label="Measured OCR spatial diagnostics"]').innerText());
+  const spatialMetrics=scoreSpatialCells(ninePageSpatialTruth,spatialObserved);
+  assert.equal(spatialMetrics.pages,9,'all nine parser pages need measured spatial assessment');
+  assert.equal(spatialMetrics.groundTruthRows,18);
+  assert.equal(spatialMetrics.wrongPage,0,
+    'spatial OCR may never accept a pair on the wrong parser-derived PDF page');
+  assert.equal(external.length,0,'measured OCR diagnostic cannot request a network resource');
+  writeFileSync('tmp/fictional-spatial-ocr-cells.json',JSON.stringify({
+    corpus:'nine-page fixed fictional raster PDF',
+    evidence:'Tesseract pixel-word boxes from selected local OCR pass',
+    groundTruth:'independent fixture-authored normalized visual cell regions',
+    status:'experimental-not-blinded-not-certified',
+    ...spatialMetrics,
+    limitations:'Candidate associations are not approved citations. A tiny fixture cannot establish target accuracy or generalize to unknown documents.'
+  },null,2)+'\n');
+  console.log('REAL BROWSER: measured OCR spatial cell evaluation '+JSON.stringify({
+    correct:spatialMetrics.correct,falseMatches:spatialMetrics.falseMatches,
+    missed:spatialMetrics.missed,abstainedPages:spatialMetrics.abstainedPages,
+    acceptedPairs:spatialMetrics.acceptedPairs,precision:spatialMetrics.precision,
+    recall:spatialMetrics.recall
+  }));
   // Stable, entirely fictional diagnostic corpus: a green browser run must
   // not conceal a regression below the verified 36/36 and 18/18 adaptive OCR baseline.
   const literalTotal=pageResults.reduce((sum,item)=>sum+item.literalsRecognized,0);
