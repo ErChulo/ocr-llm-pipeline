@@ -2,6 +2,21 @@
 
 **Status:** Experimental beta validation. This is not a production OCR accuracy certification.
 
+## Measured GitHub Actions results — 2026-11-08
+
+The [offline `file://` browser run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42488253190) **passed** its provenance and review assertions. Its archived diagnostic JSON reports:
+
+| Page | Exact page-local literals | Same-line age/factor pairs |
+| --- | ---: | ---: |
+| ALPHA — clear scan | 4/4 | 2/2 |
+| BETA — lower contrast, table ruling | 4/4 | 2/2 |
+| GAMMA — slightly skewed | 3/4 | 1/2 |
+| **Total** | **11/12 (91.67%)** | **5/6 (83.33%)** |
+
+On the skewed page, **age 58 was not recognized**; the corresponding first row-pair failed. There were **zero** detected wrong-page target literals, **three** mandatory original-page review requirements, and **zero** external browser requests. The missed value was *not* automatically reconstructed, corrected or fabricated. This cohort has three pages, not three independent real-world documents.
+
+The [verified source/build run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42488253166) passed **259/259** tests. The [full Playwright and accessibility run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42488253202) passed. In that separate **synthetic text-only real-GGUF** cohort, official Qwen2.5 0.5B again produced **7/8** exact cases, **93.75%** strict micro F1, with **360.637 seconds** elapsed on the model test. Do not combine the text-model and image-OCR denominators.
+
 ## Corpus and provenance
 
 The offline Chromium smoke test generates one entirely fictional, three-page PDF containing three independent JPEG image XObjects and **no selectable text layer**. No real plan, case, participant, or employee data is included. It exercises:
