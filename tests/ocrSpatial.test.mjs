@@ -45,7 +45,7 @@ test('abstain when an observed numeric service column separates age and factor',
   const service=word('20',290,239,40);
   const other=word('17',290,336,40);
   const v=assessSpatialOcrRows({...args,words:[...original,service,other],
-    text:'AGE SERVICE MONTHLY FACTOR\\n58 20 0.9063\\n64 17 0.9813'});
+    text:'AGE SERVICE MONTHLY FACTOR\n58 20 0.9063\n64 17 0.9813'});
   assert.equal(v.status,'abstain');
   assert.equal(v.reason,'intervening-numeric-column');
   assert.deepEqual(v.pairs,[]);
