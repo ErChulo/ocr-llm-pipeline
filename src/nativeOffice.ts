@@ -10,6 +10,19 @@ const MAX_XML_PART = 15 * 1024 * 1024;
 const MAX_XML_DEPTH = 128;
 const MAX_XML_VISITS = 500_000;
 const decoder = new TextDecoder('utf-8', { fatal: true });
+const WORD_NS='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+function hasAncestor(node:XmlNode,localName:string):boolean {
+  for(let current:XmlNode|null=node.parentNode;current;current=current.parentNode){
+    if(current.nodeType===1&&current.localName===localName)return true;
+  }
+  return false;
+}
+function spreadsheetDisplayText(node:XmlNode):string {
+  // Excel phonetic guides are not part of the visible underlying cell value.
+  // Do not merge those annotations into plan facts.
+  return descendants(node,'t').filter(t=>!hasAncestor(t,'rPh'))
+    .map(t=>t.textContent||'').join('');
+}
 type FileParts = Record<string, Uint8Array>;
 type Entry = { label: string; value: string; location: Record<string, string | number> };
 
@@ -115,9 +128,15 @@ function textOf(node: XmlNode): string {
     if(n.nodeType===1){
       if(n.localName==='del'||n.localName==='moveFrom'||n.localName==='delText'||
          hiddenRun(n))continue;
-      if(n.localName==='t'){result+=n.textContent??'';continue;}
-      if(n.localName==='tab'){result+='\t';continue;}
-      if(n.localName==='br'||n.localName==='cr'){result+='\n';continue;}
+      // Embedded Word drawings, text boxes and OLE objects have different
+      // geometry and visibility from the paragraph containing them.
+      // They are excluded here and explicitly flagged for source review.
+      if(['drawing','pict','object','txbxContent'].includes(n.localName||''))continue;
+      if(n.namespaceURI===WORD_NS){
+        if(n.localName==='t'){result+=n.textContent??'';continue;}
+        if(n.localName==='tab'){result+='\t';continue;}
+        if(n.localName==='br'||n.localName==='cr'){result+='\n';continue;}
+      }
     }
     for(let i=n.childNodes.length-1;i>=0;i--){
       const child=n.childNodes.item(i);
@@ -206,6 +225,11 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
     const content=xmlDoc(getPart(files,part));
     let paragraphNo=0;
     for(const p of descendants(content,'p')){
+      // Descendant paragraphs inside a textbox/drawing are not normal
+      // header/footer paragraphs and cannot be given their provenance.
+      if(p.namespaceURI!==WORD_NS||
+         ['drawing','pict','object','txbxContent']
+           .some(kind=>hasAncestor(p,kind)))continue;
       paragraphNo++;
       if(removedRevision(p))continue;
       const value=textOf(p);
@@ -230,7 +254,9 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
       if(rawId===null || !/^\d+$/.test(rawId))continue;
       const noteId=Number(rawId);
       if(!Number.isSafeInteger(noteId))throw new Error('Word note ID exceeds safe range.');
-      const value=descendants(note,'p').filter(p=>!removedRevision(p))
+      const value=descendants(note,'p').filter(p=>
+        p.namespaceURI===WORD_NS&&!removedRevision(p)&&
+        !['drawing','pict','object','txbxContent'].some(kind=>hasAncestor(p,kind)))
         .map(p=>textOf(p)).filter(Boolean).join('\n');
       if(value)entries.push({
         label:section+' '+noteId,
@@ -243,12 +269,20 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
   if (omitted.some(n=>/^word\/(?:comments|commentsExtended)/i.test(n)))
     warnings.push('Word comments are not included in the extracted source.');
   if(entries.length>MAX_RECORDS)throw new Error('DOCX exceeds the maximum record limit.');
-  if (omitted.some(n=>/^word\/media\//i.test(n)) || descendants(doc,'drawing').length ||
-      descendants(doc,'pict').length) warnings.push('Images and drawing text are not OCR processed.');
   const inspectedParts=Object.entries(files)
     .filter(([name])=>name==='word/document.xml'||/^word\/(?:header|footer)\d+\.xml$/.test(name)||
       name==='word/footnotes.xml'||name==='word/endnotes.xml')
     .map(([,bytes])=>xmlDoc(decoder.decode(bytes)));
+  const hasForeignText=inspectedParts.some(part=>descendants(part,'t').some(node=>
+    node.namespaceURI!==WORD_NS && !!node.textContent?.trim() &&
+    !['drawing','pict','object','txbxContent'].some(kind=>hasAncestor(node,kind))));
+  if(hasForeignText)warnings.push(
+    'Non-Word XML text was excluded from paragraphs. Inspect embedded/custom content in the original Word file.');
+  const hasUninspectedVisuals=omitted.some(n=>/^word\/(?:media|embeddings)\//i.test(n))||
+    inspectedParts.some(part=>['drawing','pict','object','txbxContent']
+      .some(name=>descendants(part,name).length>0));
+  if(hasUninspectedVisuals)warnings.push(
+    'Word drawings, text boxes, images, or embedded objects were excluded from paragraph text. Inspect the original document.');
   if(inspectedParts.some(part=>descendants(part,'altChunk').length)){
     throw new Error('DOCX contains embedded alternate content that this parser cannot inspect.');
   }
@@ -260,6 +294,9 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
   if(hasHiddenText)warnings.push(
     'Directly hidden Word text was excluded. Inspect visibility and any style-based hiding in the original document.');
   const reviewIssues:SourceReviewIssue[]=[];
+  if(hasForeignText)reviewIssues.push({
+    id:'docx:foreign-text',category:'office_unreviewed_content',
+    message:'Foreign-namespace XML text was excluded from Word paragraph citations. Inspect embedded/custom content before export.'});
   if(omitted.some(n=>/^word\/(?:comments|commentsExtended)/i.test(n))){
     reviewIssues.push({id:'docx:comments',category:'office_unreviewed_content',
       message:'Word comments were omitted; inspect the original document for important qualifications.'});
@@ -272,10 +309,9 @@ export function parseDocx(fileName: string, data: Uint8Array): SourceDocument {
     reviewIssues.push({id:'docx:hidden-text',category:'office_unreviewed_content',
       message:'Directly hidden Word runs were excluded. Review the original document for hidden provisions or text hidden through styles before export.'});
   }
-  if(omitted.some(n=>/^word\/media\//i.test(n))||
-    descendants(doc,'drawing').length||descendants(doc,'pict').length){
+  if(hasUninspectedVisuals){
     reviewIssues.push({id:'docx:drawings',category:'office_unreviewed_content',
-      message:'DOCX drawings or images may contain plan text that this parser did not read.'});
+      message:'DOCX drawings, text boxes, images, or embedded objects may contain material text excluded from paragraph evidence. Inspect all affected parts in the original Word file.'});
   }
   const parsed=appendRecords(fileName,'docx',entries,warnings);
   parsed.reviewIssues=reviewIssues;
@@ -334,8 +370,11 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
     target:x.getAttribute('Target')||'',mode:x.getAttribute('TargetMode')||'',
     type:x.getAttribute('Type')||''
   }]));
-  const ss=files['xl/sharedStrings.xml'] ? descendants(xmlDoc(strFromU8(files['xl/sharedStrings.xml'])),'si')
-    .map(item=>descendants(item,'t').map(x=>x.textContent||'').join('')) : [];
+  const sharedStringsXml=files['xl/sharedStrings.xml']
+    ? xmlDoc(strFromU8(files['xl/sharedStrings.xml'])) : null;
+  const ss=sharedStringsXml ? descendants(sharedStringsXml,'si')
+    .map(item=>spreadsheetDisplayText(item)) : [];
+  let phoneticAnnotations=sharedStringsXml ? descendants(sharedStringsXml,'rPh').length : 0;
   const entries:Entry[]=[];
   const warnings:string[]=[];
   const dateStyles=excelDateStyles(files);
@@ -383,7 +422,8 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
         value=ss[idx];
       } else if(type==='inlineStr') {
         const inline=children(c,'is')[0];
-        value=inline ? descendants(inline,'t').map(x=>x.textContent||'').join('') : '';
+        if(inline)phoneticAnnotations+=descendants(inline,'rPh').length;
+        value=inline ? spreadsheetDisplayText(inline) : '';
       } else if(type==='b') value=v==='1'?'TRUE':v==='0'?'FALSE':v;
       else if(type==='str'||type==='n'||type===''||type==='e'||type==='d') value=v;
       else throw new Error('Unsupported Excel cell type at '+sheetName+'!'+cell+': '+type);
@@ -414,6 +454,8 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
     }
   }
   if(formulas) warnings.push(formulas+' formula cells found. Cached values were read, not recalculated.');
+  if(phoneticAnnotations)warnings.push(
+    'Excel phonetic annotation text was excluded from cell values; inspect the original workbook display.');
   // These Office parts can contain information not represented by cells.
   // Never present a partial worksheet extraction as evidence-complete.
   const omittedVisuals=omitted.filter(n=>
@@ -441,6 +483,9 @@ export function parseXlsx(fileName: string, data: Uint8Array): SourceDocument {
     warnings.push('Excel date formats are not converted. Numeric date serials without recognizable styles may remain.');
   }
   const reviewIssues:SourceReviewIssue[]=[];
+  if(phoneticAnnotations)reviewIssues.push({
+    id:'xlsx:phonetic',category:'office_unreviewed_content',
+    message:'Excel phonetic annotations were excluded from underlying cell text. Verify the actual displayed cell content before export.'});
   if(dateCells>0)reviewIssues.push({id:'xlsx:date-styles',category:'office_unreviewed_content',
     message:dateCells+' numeric date/time-styled cells were read as raw Excel serials, including '+
       dateExamples.join(', ')+'. Verify the original spreadsheet date displays before export.'});

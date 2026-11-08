@@ -2,6 +2,9 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Prevent DOCX drawing/textbox/OLE text and foreign-namespace text runs from being silently presented as ordinary paragraph evidence. Detect unprocessed graphics across document, header/footer and notes; require original-file acknowledgement.
+- Exclude Excel phonetic annotations from visible shared-string and inline-string values and require original-workbook review. Synthetic OOXML tests cover ambiguous visual and cell-source content.
+
 - Reject conflicting or escaped duplicate keys in model-generated JSON rather than silently accepting the last value. Add deterministic adversarial tests.
 - Restore the exact original percentage spelling only from one unambiguous equivalent decimal percentage literal in the same model source section, retaining the model value in the audit and requiring manual source confirmation. No real-model quality improvement is claimed without measurement.
 

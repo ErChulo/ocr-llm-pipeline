@@ -4,6 +4,8 @@
 
 ## Implemented and source-tested
 
+- [x] Adversarial DOCX and XLSX fixtures now distinguish native paragraph/cell text from omitted drawing/textbox and phonetic annotation content, including header-origin material. Source review remains mandatory for omitted content.
+
 - [x] Source-level adversarial extraction tests for duplicate JSON members, percent-value ambiguity, conflicting amendments, injected instructions and citation boundaries. Percentage notation restoration is source-scoped and audited, not an actuarial inference or measured GGUF accuracy improvement.
 
 - [x] Standalone bundled HTML under `file://`, local GGUF and WebAssembly worker.
