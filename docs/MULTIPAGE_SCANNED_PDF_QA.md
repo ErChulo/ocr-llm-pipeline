@@ -107,6 +107,18 @@ All cohorts run from the final single-file `file://` HTML and blocks external HT
 
 Metrics must be copied from the **actual CI artifact** after the run. A green test proves structural checks passed; it does not imply perfect literal matches or row association. Record low values rather than silently correcting OCR.
 
+## Adaptive rendering experiment — verified November 8, 2026
+
+After the earlier nine-page **34/36** and **16/18** checkpoint:
+
+- [PR #67](https://github.com/ErChulo/ocr-llm-pipeline/pull/67) tested a second Tesseract segmentation pass. Although source/build, offline browser and accessibility passed, actual numeric accuracy **regressed to 32/36 and 14/18**, so it was **closed without merging**.
+- [PR #68](https://github.com/ErChulo/ocr-llm-pipeline/pull/68) merged the explicit fictional non-regression gate and bounded diagnostic logging. The actual missed OCR texts were **`o8`** for age 58 on skewed page 3 and **`oi`** for age 57 on rotated page 4.
+- [PR #69](https://github.com/ErChulo/ocr-llm-pipeline/pull/69) increased PDF raster scaling to 2.4× with the existing 2400 px side and 4.9 MP limits. The same nine-page cohort improved to **35/36 exact literals** and **17/18 same-line row proxies**, recovering age 57 without wrong-page values.
+- [PR #70](https://github.com/ErChulo/ocr-llm-pipeline/pull/70) tested unconditional 2.8×, recovering age 58 but turning page 9's correct factor `1.1179` into `1.11.79`. **35/36 and 17/18** hid this per-field regression; the experiment was **closed without merging**.
+- [PR #73](https://github.com/ErChulo/ocr-llm-pipeline/pull/73), which superseded conflicted #71, uses the actual 2.8× PDF raster OCR, with a narrowly scoped second 2.4× OCR pass when a table row contains malformed multiple decimal points. The fallback is accepted only when a second actual transcription preserves all previously observed valid age/factor pairs and independently observes the affected age with one unambiguous factor. **No digits, source positions, or table-cell coordinates are inferred.** In the [passing offline Chromium run](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42505286557), the unchanged nine-page fixture measured **36/36 exact numeric tokens**, **18/18 same-line row proxies**, **zero wrong-page targets**, **nine original-page reviews**, and **zero browser network requests**. [Source/build](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42505286434) passed **285/285** tests.
+
+**Limitations:** This is a deterministic, nine-page fictional benchmark, not independent test-population accuracy. A malformed numeric string may be genuine source content (such as a version number); both OCR passes are probabilistic and neither establishes factual or cell-level correctness. Human original-page review is still mandatory. Neither 36/36 literal recognition nor 18/18 line-pair matching proves spatial table-cell association. General document quality, broader fonts/rotations/degradation, scanned-region bounding boxes, latency/RAM, factual interpretation and managed-workstation sign-off remain **unpassed production gates**.
+
 ## Open production gates
 
 Increase independently generated fictional samples across fonts, skew, rotations, blur, multiple columns, marginal notes, low-contrast scans, and multilingual/handwritten data. Measure cell association against visually annotated ground truth, confidence calibration, error rates and false-positive table associations, page-specific OCR failures, memory consumption, and page-order stability. Compare on actual target offline Windows Chrome/Edge. Model extraction accuracy and actuarial interpretation remain separate benchmarks.
