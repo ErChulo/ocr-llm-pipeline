@@ -94,7 +94,7 @@ export function assessSpatialOcrRows(
   // A third numeric column between AGE and FACTOR makes the table layout
   // ambiguous: the nearest apparent factor is not proven to belong to AGE.
   // Refuse the *whole* table rather than selecting a convenient cell.
-  const anyNumeric=/^[-+]?\\d+(?:\\.\\d+)?%?$/;
+  const anyNumeric=/^[-+]?\d+(?:\.\d+)?%?$/;
   const intervening=provisional.some(({age,factor})=>words.some(word=>
     word!==age && word!==factor && anyNumeric.test(word.text) &&
     word.bbox.x0>=age.bbox.x1 && word.bbox.x1<=factor.bbox.x0 &&
