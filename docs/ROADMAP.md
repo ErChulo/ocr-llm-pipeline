@@ -4,6 +4,9 @@
 
 ## Implemented and source-tested
 
+- [x] Add a reproducible **three-page fictional scanned-PDF** fixture with page-derived OCR records, distinct age/factor facts, an image-only PDF text layer and mandatory per-page original review. CI measures both per-page literals and stricter same-line age/factor pairs; a wrong-page fact fails the browser check. A separate PDF.js unit fixture checks actual /Rotate 90 metadata and mixed native/raster pages; that does **not** certify OCR of 90-degree text. See [methodology](MULTIPAGE_SCANNED_PDF_QA.md); recorded scores must come from the completed browser artifact, not be assumed.
+
+
 - [x] Broaden purely fictional raster-PDF OCR measurements beyond the clean scan with deterministic low-contrast and skew/speckling conditions. Record per-fixture exact literal counts in an offline CI artifact, not as a factual or table-cell certification. See [dated development status](DEVELOPMENT_STATUS.md).
 
 - [x] Three aligned rows of compact PDF cells trigger original-page review without changing native source words, page identifiers, character offsets, or citation geometry. Synthetic negative and actual PDF parsing tests cover misleading table layouts. An experimental real offline scanned-table OCR probe records five fictional literal fields; this is not a measured model-quality gain or production acceptance.

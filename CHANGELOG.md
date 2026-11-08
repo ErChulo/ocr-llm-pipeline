@@ -2,6 +2,9 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Add a three-page, image-only fictional PDF OCR validation matrix in the offline browser, recording parser-derived page attribution, per-page exact literals, same-row age/factor pairing, wrong-page conflicts, and three independent original-page review requirements. Add a PDF.js source fixture that tests real /Rotate 90 metadata, native-versus-raster content and failure on missing OCR. JSON diagnostics are published as a CI artifact; they do not imply spatial cell accuracy, verified facts or a change in model quality. See [benchmark method](docs/MULTIPAGE_SCANNED_PDF_QA.md).
+
+
 - Expand the scanned-PDF Playwright OCR benchmark with deterministic fictional low-contrast and skewed-speckled JPEG conditions. Preserve the original page-review requirement and log all measured exact-token counts, not assumed accuracy; publish dated beta status and outstanding release gates.
 
 - Recognize aligned compact PDF table rows that wide-gap detection missed; preserve exact text and page/citation provenance, require original-page review and add adversarial geometry tests. Record a separate entirely fictional raster-table OCR diagnostic in offline Playwright (unverified transcript; not an accuracy certification). Rebase older PR #51 on current PDF annotation and export gates.
