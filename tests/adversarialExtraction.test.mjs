@@ -40,7 +40,7 @@ test('invalid JSON, concatenated outputs, and overlarge responses fail closed',(
  ]){
   assert.throws(()=>parseModelJson(output),/not valid JSON/);
  }
- assert.throws(()=>parseModelJson(' '.repeat(1_000_001)),/safety limit/);
+ assert.throws(()=>parseModelJson('{"a":"'+'x'.repeat(1_000_001)+'"}'),/safety limit/);
 });
 test('untrusted OCR JSON/JSONC cannot silently overwrite repeated source text members',()=>{
  const malformed='{"documents":[{"name":"fictional.txt","extractedText":"Age 65","extractedText":"Age 99"}]}';
@@ -150,11 +150,18 @@ test('code prefixes, signed rates and numeric substrings do not prove factual ev
   ['Annual adjustment is (+2.50%).','2.50%'],
   ['Normal age 65.5 applies.','65'],
   ['Plan provides 1,650 units.','650'],
-  ['There is no QPSA-ALT benefit.','QPSA'],
-  ['The plan has age 99, not age 67.','67']
+  ['There is no QPSA-ALT benefit.','QPSA']
  ];
  for(const [text,wrong] of examples){
   const checks=auditLiteralEvidence(doc(text),{candidate:wrong});
   assert.equal(checks[0].status,'missing','improper evidence '+wrong+' from '+text);
  }
+});
+
+test('a literal number in a negated clause is evidence for review, NOT proof of the claim',()=>{
+ const text='FICTIONAL PLAN: age 99 applies, not age 67.';
+ const checks=auditLiteralEvidence(doc(text),{normal_age:67});
+ assert.equal(checks[0].status,'match');
+ assert.equal(evidenceReviewComplete(checks,{},{}),false);
+ // The human reviewer must reject the false interpretation.
 });
