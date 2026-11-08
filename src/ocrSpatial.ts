@@ -39,12 +39,19 @@ function sameRow(a:MeasuredOcrWord,b:MeasuredOcrWord):boolean{
   return overlap>0 && overlap>=minHeight*0.45 &&
     Math.abs(centerY(a)-centerY(b))<=Math.max(a.bbox.y1-a.bbox.y0,b.bbox.y1-b.bbox.y0)*0.45;
 }
-function uniqueRange(source:string,token:string):{start:number;end:number}|null{
-  const p=source.indexOf(token);
-  if(p<0 || source.indexOf(token,p+token.length)>=0)return null;
-  const left=source[p-1]||'',right=source[p+token.length]||'';
-  return !/[A-Za-z0-9_.+\-]/.test(left)&&!/[A-Za-z0-9_.]/.test(right)
-    ? {start:p,end:p+token.length}:null;
+const NUMERIC_WORD=/(?:^|[^A-Za-z0-9_.+\-])(\d{1,3}|\d+\.\d{2,6})(?=$|[^A-Za-z0-9_.])/g;
+function indexedNumericRanges(text:string):Map<string,{start:number;end:number}|null>|null{
+  // A single bounded scan prevents adversarial 10k words × 2M characters work.
+  if(text.length>250_000)return null;
+  const result=new Map<string,{start:number;end:number}|null>();
+  let scanned=0;
+  for(const match of text.matchAll(NUMERIC_WORD)){
+    if(++scanned>20_000)return null;
+    const token=match[1],start=match.index+match[0].length-token.length;
+    if(result.has(token))result.set(token,null); // duplicate: no unique source range
+    else result.set(token,{start,end:start+token.length});
+  }
+  return result;
 }
 const empty=(reason:string):SpatialAssessment=>({status:'abstain',reason,pairs:[]});
 export function assessSpatialOcrRows(
@@ -55,6 +62,8 @@ export function assessSpatialOcrRows(
      w<1||h<1||w>3600||h>3600||w*h>5_000_000||typeof text!=='string'||
      !Array.isArray(words)||words.length>MAX_WORDS)return empty('invalid-source-geometry');
   if(words.some(word=>!inside(word,w,h)))return empty('untrusted-word-box');
+  const anchors=indexedNumericRanges(text);
+  if(!anchors)return empty('excessive-transcript-complexity');
   const headerAge=words.filter(word=>word.text.toUpperCase()==='AGE');
   const headerFactor=words.filter(word=>word.text.toUpperCase()==='FACTOR');
   const headers=headerAge.flatMap(age=>headerFactor.filter(factor=>
@@ -70,10 +79,10 @@ export function assessSpatialOcrRows(
   const tolerance=Math.max(18,w*0.055);
   const ages=words.filter(word=>AGE.test(word.text) &&
     word.bbox.y0>headerBottom && Math.abs(word.bbox.x0-ageHeader.bbox.x0)<=tolerance &&
-    uniqueRange(text,word.text)!==null);
+    anchors.get(word.text)!=null);
   const factors=words.filter(word=>FACTOR.test(word.text) &&
     word.bbox.y0>headerBottom && Math.abs(word.bbox.x0-factorX)<=tolerance &&
-    uniqueRange(text,word.text)!==null);
+    anchors.get(word.text)!=null);
   if(ages.length<2||factors.length<2)return empty('insufficient-unique-column-values');
   const provisional=ages.flatMap(age=>{
     const same=factors.filter(factor=>factor.bbox.x0>age.bbox.x1+w*0.1 && sameRow(age,factor));
@@ -95,6 +104,6 @@ export function assessSpatialOcrRows(
       x1:Math.max(row.age.bbox.x1,row.factor.bbox.x1),
       y1:Math.max(row.age.bbox.y1,row.factor.bbox.y1)},
     imageWidth:w,imageHeight:h,precision:'tesseract-raster-word-envelope',
-    transcriptRanges:{age:uniqueRange(text,row.age.text)!,factor:uniqueRange(text,row.factor.text)!}
+    transcriptRanges:{age:anchors.get(row.age.text)!,factor:anchors.get(row.factor.text)!}
   }))};
 }
