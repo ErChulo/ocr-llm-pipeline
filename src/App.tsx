@@ -556,7 +556,7 @@ export default function App() {
                     page:record.location.page,assessment:record.ocrSpatial
                   })),null,2
                 )}</pre>
-              </details>
+              </details>}
 
 
               {correctablePages.length > 0 && <section className="ocr-correction">
