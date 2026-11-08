@@ -4,6 +4,8 @@
 
 ## Implemented and source-tested
 
+- [x] At final export, match every parser-derived source-warning ID to an explicit reviewer acknowledgment; stale UI counts, forged/duplicate warning IDs and a missing AI-instruction warning fail closed.
+
 - [x] Prompt-like instructions embedded in PDF, Office, CSV, OCR or local text now add an explicit original-source review issue; import, supplemental OCR and corrected OCR paths invalidate previous review state. Text, citations and model answers are never silently rewritten. Detector is deliberately conservative, not comprehensive injection prevention.
 
 - [x] Independent eight-case **physical** fictional pension holdout includes PDF multi-page amendments and columns, DOCX tables/survivors, XLSX hidden rows/percentage fidelity and CSV dates/instruction injection. Each annotated fact and location is checked against the actual parser; diagnostic evidence is never treated as reviewer approval. [Methodology](PHYSICAL_HOLDOUT_BENCHMARK.md). A separate real-GGUF file:// benchmark is experimental; scores must not be inferred from previous text-only tests.
