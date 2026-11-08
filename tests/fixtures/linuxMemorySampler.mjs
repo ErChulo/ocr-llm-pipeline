@@ -13,6 +13,29 @@ export function parseChildPids(text){
     .filter(n=>Number.isSafeInteger(n)&&n>0))];
 }
 const read=path=>{try{return readFileSync(path,'utf8')}catch{return null}};
+/** Find the actual Chromium root launched as a descendant of this CI runner.
+ * Playwright's Browser does NOT expose Puppeteer's .process() API.
+ */
+export function findChromiumDescendantPid(parentPid=process.pid){
+  if(process.platform!=='linux'||!Number.isSafeInteger(parentPid)||parentPid<1)return null;
+  const visited=new Set(),queue=parseChildPids(
+    read('/proc/'+parentPid+'/task/'+parentPid+'/children')||''
+  );
+  let fallback=null;
+  while(queue.length&&visited.size<512){
+    const pid=queue.shift();
+    if(visited.has(pid))continue;
+    visited.add(pid);
+    const cmd=(read('/proc/'+pid+'/cmdline')||'').replace(/\0/g,' ');
+    const isChromium=/(?:chrome-headless-shell|chromium|\/chrome(?:\s|$))/i.test(cmd);
+    if(isChromium&&!cmd.includes('--type='))return pid;
+    if(isChromium&&!fallback)fallback=pid;
+    queue.push(...parseChildPids(
+      read('/proc/'+pid+'/task/'+pid+'/children')||''
+    ));
+  }
+  return fallback;
+}
 function processTreeRss(pid){
   if(!Number.isSafeInteger(pid)||pid<1)return null;
   const visited=new Set(),stack=[pid];
