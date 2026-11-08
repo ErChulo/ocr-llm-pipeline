@@ -4,6 +4,7 @@
  * Never call a corrected string "native PDF text" or fabricate a bounding box.
  */
 import type { SourceDocument, SourceRecord } from './pipeline.ts';
+import {withSourceInstructionReview} from './sourceInstructionReview.ts';
 
 const MAX_CORRECTED_CHARS=200_000;
 const MAX_DOCUMENT_CHARS=2_000_000;
@@ -79,11 +80,11 @@ export function correctOcrText(doc:SourceDocument,index:number,edited:string):So
   const marker='Human-corrected OCR text is a reviewed transcription, not native PDF text; verify against the original.';
   const warnings=[...(doc.warnings||[])];
   if(!warnings.includes(marker))warnings.push(marker);
-  return {
+  return withSourceInstructionReview({
     ...doc,text:output,records:updated,warnings,
     // Always retain the fingerprint of ORIGINAL FILE bytes; never hash
     // corrected text and misrepresent it as the imported file fingerprint.
     correctionCount:(doc.correctionCount||0)+1,
     processedTextSha256:undefined // invalidate digest until the edited text is hashed again
-  };
+  });
 }

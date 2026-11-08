@@ -11,6 +11,7 @@ import type { GgufProfile } from './ggufPreflight';
 import { formatGenerationTiming } from './generationTiming';
 import { importFile, type SourceDocument } from './pipeline';
 import { importDocumentBatch } from './importBatch';
+import {withSourceInstructionReview} from './sourceInstructionReview';
 import { terminateOcr } from './ocr';
 import { extractWholeDocument, resolveCandidateValues, type ExtractionAudit } from './chunkExtraction';
 import { auditLiteralEvidence, evidenceReviewComplete, exportReviewedEvidence } from './evidence';
@@ -271,8 +272,8 @@ export default function App() {
       const [{parsePdf},{recognizeCanvas}]=await Promise.all([
         import('./pdfText'),import('./ocr')
       ]);
-      const revised=await parsePdf(original.name,Uint8Array.from(original.pdfBytes),
-        recognizeCanvas,{ocrMixedPages:true});
+      const revised=withSourceInstructionReview(await parsePdf(original.name,Uint8Array.from(original.pdfBytes),
+        recognizeCanvas,{ocrMixedPages:true}));
       revised.pdfBytes=original.pdfBytes;
       revised.sourceSha256=original.sourceSha256;
       revised.processedTextSha256=await sha256Bytes(new TextEncoder().encode(revised.text));

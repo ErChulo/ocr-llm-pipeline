@@ -2,6 +2,8 @@
 
 ## Unreleased — Reliability and source-safety safeguards
 
+- Add an offline untrusted-source instruction warning after document imports and OCR revisions. A fictional real-GGUF holdout chose age 99 from an instruction-like CSV appendix instead of the authentic plan age 65; a literal match was not a factual match. The app now requires the reviewer to inspect instruction-like source passages before export, without silently changing or deleting document text, evidence, or model output. This is a conservative heuristic, not prompt-injection prevention or actuarial verification.
+
 - Add a separate eight-case **physical-document** fictional holdout and a checksum-verified offline 0.5B GGUF CI workflow. Cases exercise actual PDF/DOCX/XLSX/CSV import, numeric and date accuracy, conflicting amendments, two columns, hidden spreadsheet rows, survivor clauses and prompt injection. Report exact-field scores independently of parser-authentic source-location diagnostics; original text-only corpus and production acceptance remain unchanged.
 
 - Benchmarked and **rejected** an eligibility-condition prompt expansion: 0.5B real offline eight-case accuracy fell from 93.75% to 87.5% strict micro F1. 1.5B remained at 100% without a gain. The previous prompt remains unchanged; see the documented measured regression.
