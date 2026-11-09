@@ -20,7 +20,7 @@ export type NormalAgeConflict={
 const MAX_SCAN_CHARS=2_000_000;
 const MAX_CLAIMS=256;
 /** Intentionally narrow: age 55 for EARLY retirement does not conflict. */
-const labelledAge=/\bnormal(?:[ \t_-]+retirement)?[ \t_-]+age(?:[ \t]*\([ \t]*NRA[ \t]*\))?[ \t]*(?:(?:is|equals|of|at(?:[ \t]+age)?)\b|[:=])?[ \t]*(\d{1,3})(?![\d.])/gi;
+const labelledAge=/\bnormal(?:[ \t_-]+retirement)?[ \t_-]+age(?:[ \t]*\([ \t]*NRA[ \t]*\))?[ \t]*(?:(?:is|equals|of|at(?:[ \t]+age)?)\b|[:=])?[ \t]*(\d{1,3})(?!\d|\.\d)/gi;
 function isNormalAgeField(path:string):boolean {
   if(typeof path!=='string')return false;
   const field=path.split('/').at(-1)?.replace(/~1/g,'/').replace(/~0/g,'~')??'';
