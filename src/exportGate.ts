@@ -9,6 +9,7 @@ import { evidenceReviewComplete, evidenceMatchesCurrentValue, evidenceSelections
 import { screenPrivacySurfaces } from './privacy.ts';
 import { containsSourceInstructionRisk,selectedCitationIsInstructionRisk } from './sourceInstructionReview.ts';
 import {selectedCitationExpresslyDisclaimed} from './disclaimedEvidence.ts';
+import {inspectNormalAgeSourceConflict} from './normalAgeConflict.ts';
 
 export type ExportGateInputs = {
   document: SourceDocument | null;
@@ -100,6 +101,19 @@ export function evaluateExportGate(input:ExportGateInputs):ExportGate{
     return match&&selectedCitationExpresslyDisclaimed(document.text,match.start,match.end);
   })){
     reasons.push('A selected source citation is expressly disclaimed as an example, sample, or non-governing passage. Select authentic applicable evidence; literal presence alone is insufficient.');
+  }
+  // Independent, final-boundary source-authority preflight. Prior schema
+  // validation and an acknowledged source-warning cannot override a known
+  // contradiction between apparently applicable normal-age statements.
+  if(document&&input.evidence.some(check=>
+    inspectNormalAgeSourceConflict(document,check.path).state==='unresolved'
+  )){
+    reasons.push('Conflicting normal retirement ages appear in the original source. A documented effective-date and participant-applicability determination is required; current evidence is not sufficient for export.');
+  }
+  if(document&&input.evidence.some(check=>
+    inspectNormalAgeSourceConflict(document,check.path).state==='unscannable'
+  )){
+    reasons.push('Normal retirement age source-conflict review could not be completed. Export remains blocked.');
   }
   const issues=document?.reviewIssues??[];
   const issueIds=new Set<string>();
