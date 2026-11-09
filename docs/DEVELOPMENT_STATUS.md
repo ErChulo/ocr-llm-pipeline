@@ -1,5 +1,8 @@
 # Development verification status — 2026-11-08
 
+- **Offline office setup Guide (PR pending, 2026-11-08):** Added a six-screen, one-step-at-a-time Windows 11 preparation walkthrough to the actual file:// UI, with separate GitHub build artifact and verified Qwen 0.5B GGUF preparation, approved transfer and workplace restriction stop conditions, local model self-test, fictional-only extraction and complete printable directions. Added offline Playwright navigation/print and automated accessibility regression coverage. This changes usability/onboarding only; office authorization, security review and all production acceptance gates remain open. Release stays `0.3.0-beta.1`.
+
+
 - **PR #107 proposed measured punctuated-header recovery (2026-11-08; verification pending):** accept only literal OCR-measured AGE:, MONTHLY: and FACTOR: column headers alongside unpunctuated forms. Preserve original Tesseract word coordinates, source page, unique-header requirement and numeric-third-column abstention. Two fictional regression tests cover recovery and ambiguity. No independently measured change to the 16/22 original-JPEG baseline or adversarial GGUF scores has been established. Spatial gate remains BLOCKED; release remains `0.3.0-beta.1`.
 
 
