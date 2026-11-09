@@ -56,6 +56,9 @@ try{
   await page.getByRole('button',{name:'Guide',exact:true}).click();
   const modal=page.getByRole('dialog',{name:'User guide'});
   await modal.waitFor({timeout:10000});
+  assert.equal(await page.getByRole('button',{name:'Close guide'}).evaluate(
+    el=>el===document.activeElement),true,
+    'Guide dialog must initially focus its close button');
   // Office setup must be the first view and advance one actionable step
   // without requiring downloads or a model on the managed machine.
   const setup=modal.locator('.guide-office-wizard');
@@ -85,9 +88,8 @@ try{
   assert.equal(await modal.locator('.guide-office-wizard').isVisible(),false,
     'Print must not output only the currently selected screen');
   await page.emulateMedia({media:'screen'});
-  assert.equal(await page.getByRole('button',{name:'Close guide'}).evaluate(
-    el=>el===document.activeElement),true,
-    'Guide dialog must focus its close button');
+  assert.equal(await modal.evaluate(el=>el.contains(document.activeElement)),true,
+    'Keyboard focus must remain inside the open Guide after navigation');
   await page.keyboard.press('Escape');
   await modal.waitFor({state:'detached',timeout:10000});
   await page.waitForFunction(()=>document.activeElement instanceof HTMLButtonElement &&
