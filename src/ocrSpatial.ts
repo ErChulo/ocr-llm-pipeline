@@ -109,8 +109,7 @@ function repeatedRowSourceRanges(
       const ranges={age:{start:ageStart,end:ageStart+age.length},
         factor:{start:factorStart,end:factorStart+factor.length}};
       rows.set(key,rows.has(key)?null:ranges);
-      tokenCounts.set(age,(tokenCounts.get(age)??0)+1);
-      tokenCounts.set(factor,(tokenCounts.get(factor)??0)+1);
+
     }
     offset+=rawLine.length+1;
   }
@@ -123,6 +122,8 @@ function repeatedRowSourceRanges(
        text.slice(ranges.factor.start,ranges.factor.end)!==factor.text)return null;
     selected.set(key,ranges);
     usedTokens.add(age.text);usedTokens.add(factor.text);
+    tokenCounts.set(age.text,(tokenCounts.get(age.text)??0)+1);
+    tokenCounts.set(factor.text,(tokenCounts.get(factor.text)??0)+1);
   }
   // A repeated factor mentioned in a title, note or unpaired extra row
   // cannot silently be attached to one of the measured table cells.
