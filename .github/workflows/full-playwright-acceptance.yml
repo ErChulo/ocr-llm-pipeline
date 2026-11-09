@@ -20,6 +20,7 @@ on:
       - 'tests/ocrSpatial.test.mjs'
       - 'src/exportGate.ts'
       - 'src/evidence.ts'
+      - 'tests/unicodeSignedEvidence.test.mjs'
       - 'tests/evidence.test.mjs'
       - 'src/disclaimedEvidence.ts'
       - 'tests/disclaimedEvidence.test.mjs'
