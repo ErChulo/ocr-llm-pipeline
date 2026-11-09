@@ -12,7 +12,7 @@ function simulated(){
  return {
   corpusId:'SIMULATED-COUNTS-NOT-REAL-OCR',
   sourceType:'fictional',annotationsSha256:hash(320),
-  candidateCommitSha:hash(321),
+  candidateCommitSha:'a'.repeat(40),
   pages:Array.from({length:100},(_,d)=>Array.from({length:5},(_,p)=>{
     const mustAbstain=i===30;
     return {documentId:'fictional-document-'+(d+1),page:p+1,
@@ -129,4 +129,11 @@ test('report cannot self-certify independence or production by setting flags',()
  assert.equal(r.independentlyAdjudicated,false);
  assert.equal(r.mechanicalThresholdsMet,true);
  assert.match(r.independentReviewerVerification,/not-available/);
+});
+
+test('real Git SHA1 40-hex IDs work; malformed commit hashes never count',()=>{
+ const fixture=simulated();
+ assert.equal(scoreIndependentOcrAcceptance(fixture).candidateCommitSha,'a'.repeat(40));
+ fixture.candidateCommitSha='abc';
+ assert.throws(()=>scoreIndependentOcrAcceptance(fixture),/invalid fictional holdout manifest/);
 });
