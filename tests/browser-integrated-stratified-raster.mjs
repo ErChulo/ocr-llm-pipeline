@@ -126,7 +126,14 @@ try {
    truePositive:tp,falsePositive:fp,falseNegative:fn,
    numericLiteralHits:literalHits,numericLiteralExpected:entry.rows.length*2,
    originalPage:diagnostic.page,
-   coordinateFrame:assessment.pairs?.[0]?.precision??null});
+   coordinateFrame:assessment.pairs?.[0]?.precision??null,
+   observedTranscriptExcerpt:pageText.slice(0,350),
+   observedPairs:(assessment.pairs??[]).map(pair=>({
+     age:pair.age.text,factor:pair.factor.text,
+     ageBox:pair.age.bbox,factorBox:pair.factor.bbox,
+     imageWidth:pair.imageWidth,imageHeight:pair.imageHeight,
+     ageRange:pair.transcriptRanges.age,factorRange:pair.transcriptRanges.factor
+   }))});
  }
  report={
   cohort:'twelve-page-fictional-original-JPEG-deployed-file-browser',
