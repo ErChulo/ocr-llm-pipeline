@@ -9,7 +9,8 @@ import 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 import type { SourceDocument, SourceRecord, SourceTextSpan, SourceReviewIssue } from './pipeline.ts';
 import { ocrReviewIssue } from './ocrReview.ts';
 import { countAmbiguousOcrNumericTokens } from './ocrNumericReview.ts';
-import { hasMalformedNumericTableRow, preferFallbackForMalformedRows } from './ocrResolutionChoice.ts';
+import { hasMalformedNumericTableRow, preferFallbackForMalformedRows,
+  hasImplausibleAgeTableRow, preferFallbackForImplausibleAges } from './ocrResolutionChoice.ts';
 import { detectPdfLayoutRisks } from './pdfLayout.ts';
 import { assessSpatialOcrRows, type SpatialAssessment } from './ocrSpatial.ts';
 import { restoredOriginalRasterSpatial } from './ocrOrientation.ts';
@@ -195,6 +196,33 @@ export async function parsePdf(fileName: string, bytes: Uint8Array, ocr?:OcrCall
             warnings.push('PDF page '+pageNo+
               ' bounded orientation OCR pass failed; the initial unverified OCR was retained.');
           }
+        }
+        // High-resolution PDF.js resampling can merge two age glyphs:
+        // the real baseline raster read printed 55 as 585 at 2800 pixels.
+        // Never accept a three-digit implausible age as a verified source fact.
+        // A separate bounded PDF.js/Tesseract pass may be selected ONLY when
+        // all existing plausible rows and their literal factors are retained.
+        if(hasImplausibleAgeTableRow(primary.text)){
+          try{
+            const lower=await renderAndRecognize(1.5,1600);
+            if(preferFallbackForImplausibleAges(primary,lower)){
+              warnings.push('PDF page '+pageNo+
+                ' selected a separate lower-resolution measured OCR pass because the initial '+
+                'pass contained an implausible age. Both transcriptions are unverified. '+
+                'Confirm the original PDF page; no digits or pixels were inferred.');
+              return lower;
+            }
+          }catch{
+            warnings.push('PDF page '+pageNo+
+              ' lower-resolution OCR reread failed; the original unverified transcription was retained.');
+          }
+          warnings.push('PDF page '+pageNo+
+            ' includes an implausible OCR age and has no uniquely corroborated alternate reading.');
+          reviewIssues.push({id:'pdf:ocr-implausible-age:'+pageNo,
+            category:'ocr_unverified',page:pageNo,
+            message:'OCR of age-labelled numeric table on page '+pageNo+
+              ' contains an implausible age. No replacement was inferred. '+
+              'Inspect the original page and correct the OCR before exporting.'});
         }
         // Malformed multi-decimal numeric rows may come from rasterization.
         // A bounded second OCR pass is used ONLY when it independently reads
