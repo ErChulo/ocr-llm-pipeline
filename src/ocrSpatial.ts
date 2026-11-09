@@ -68,19 +68,70 @@ function skewCorroboratedHeaderRow(
   return middleError<=Math.max(3,Math.min(ageHeight,middleHeight,factorHeight)*0.20);
 }
 
+type LiteralRange={start:number;end:number};
+type LiteralOccurrences=Map<string,LiteralRange[]>;
 const NUMERIC_WORD=/(?:^|[^A-Za-z0-9_.+\-])(\d{1,3}|\d+\.\d{2,6})(?=$|[^A-Za-z0-9_.])/g;
-function indexedNumericRanges(text:string):Map<string,{start:number;end:number}|null>|null{
-  // A single bounded scan prevents adversarial 10k words × 2M characters work.
+function indexedNumericRanges(text:string):LiteralOccurrences|null{
+  // Bound scans and preserve ORIGINAL character offsets for repeated tokens.
+  // Two appearances of a factor are not interchangeable source citations.
   if(text.length>250_000)return null;
-  const result=new Map<string,{start:number;end:number}|null>();
+  const result:LiteralOccurrences=new Map();
   let scanned=0;
   for(const match of text.matchAll(NUMERIC_WORD)){
     if(++scanned>20_000)return null;
     const token=match[1],start=match.index+match[0].length-token.length;
-    if(result.has(token))result.set(token,null); // duplicate: no unique source range
-    else result.set(token,{start,end:start+token.length});
+    const prior=result.get(token)??[];
+    prior.push({start,end:start+token.length});
+    result.set(token,prior);
   }
   return result;
+}
+/**
+ * Only when a numeric literal repeats: locate BOTH words together on one
+ * actual OCR transcript line. Reject any unmatched extra appearance, duplicate
+ * pair, third column, or conflicting line. Geometry remains independently
+ * measured by Tesseract and must already pass all existing row checks.
+ */
+function repeatedRowSourceRanges(
+  text:string,occurrences:LiteralOccurrences,
+  measuredPairs:readonly {age:MeasuredOcrWord;factor:MeasuredOcrWord}[]
+):Map<string,{age:LiteralRange;factor:LiteralRange}>|null{
+  const rows=new Map<string,{age:LiteralRange;factor:LiteralRange}|null>();
+  const tokenCounts=new Map<string,number>();
+  let offset=0;
+  for(const rawLine of text.split('\n')){
+    const line=rawLine.endsWith('\r')?rawLine.slice(0,-1):rawLine;
+    const match=/^([ \t]*)(\d{1,3})([ \t]+)(\d+\.\d{2,6})([ \t]*)$/.exec(line);
+    if(match){
+      const age=match[2],factor=match[4],key=age+'|'+factor;
+      const ageStart=offset+match[1].length;
+      const factorStart=ageStart+age.length+match[3].length;
+      const ranges={age:{start:ageStart,end:ageStart+age.length},
+        factor:{start:factorStart,end:factorStart+factor.length}};
+      rows.set(key,rows.has(key)?null:ranges);
+
+    }
+    offset+=rawLine.length+1;
+  }
+  const selected=new Map<string,{age:LiteralRange;factor:LiteralRange}>();
+  const usedTokens=new Set<string>();
+  for(const {age,factor} of measuredPairs){
+    const key=age.text+'|'+factor.text, ranges=rows.get(key);
+    if(!ranges||selected.has(key))return null;
+    if(text.slice(ranges.age.start,ranges.age.end)!==age.text||
+       text.slice(ranges.factor.start,ranges.factor.end)!==factor.text)return null;
+    selected.set(key,ranges);
+    usedTokens.add(age.text);usedTokens.add(factor.text);
+    tokenCounts.set(age.text,(tokenCounts.get(age.text)??0)+1);
+    tokenCounts.set(factor.text,(tokenCounts.get(factor.text)??0)+1);
+  }
+  // A repeated factor mentioned in a title, note or unpaired extra row
+  // cannot silently be attached to one of the measured table cells.
+  for(const token of usedTokens){
+    if((occurrences.get(token)?.length??0)!==(tokenCounts.get(token)??0))
+      return null;
+  }
+  return selected;
 }
 const empty=(reason:string):SpatialAssessment=>({status:'abstain',reason,pairs:[]});
 export function assessSpatialOcrRows(
@@ -115,10 +166,10 @@ export function assessSpatialOcrRows(
   const tolerance=Math.max(18,w*0.055);
   const ages=words.filter(word=>AGE.test(word.text) &&
     word.bbox.y0>headerBottom && Math.abs(word.bbox.x0-ageHeader.bbox.x0)<=tolerance &&
-    anchors.get(word.text)!=null);
+    anchors.has(word.text));
   const factors=words.filter(word=>FACTOR.test(word.text) &&
     word.bbox.y0>headerBottom && Math.abs(word.bbox.x0-factorX)<=tolerance &&
-    anchors.get(word.text)!=null);
+    anchors.has(word.text));
   if(ages.length<2||factors.length<2)return empty('insufficient-unique-column-values');
   if(ages.length>256||factors.length>256)return empty('excessive-table-complexity');
   const provisional=ages.flatMap(age=>{
@@ -151,6 +202,11 @@ export function assessSpatialOcrRows(
   const uniqueLines=result.every((row,i)=>i===0||
     row.age.bbox.y0-result[i-1].age.bbox.y1>=0);
   if(!uniqueLines)return empty('overlapping-rows');
+  const repeated=result.some(row=>
+    (anchors.get(row.age.text)?.length??0)!==1 ||
+    (anchors.get(row.factor.text)?.length??0)!==1);
+  const rowRanges=repeated?repeatedRowSourceRanges(text,anchors,result):null;
+  if(repeated&&!rowRanges)return empty('ambiguous-repeated-numeric-transcript');
   return {status:'candidates',reason:'observed-ocr-word-geometry-not-verified',pairs:result.map(row=>({
     page,age:row.age,factor:row.factor,
     region:{x0:Math.min(row.age.bbox.x0,row.factor.bbox.x0),
@@ -158,6 +214,7 @@ export function assessSpatialOcrRows(
       x1:Math.max(row.age.bbox.x1,row.factor.bbox.x1),
       y1:Math.max(row.age.bbox.y1,row.factor.bbox.y1)},
     imageWidth:w,imageHeight:h,precision:'tesseract-raster-word-envelope',
-    transcriptRanges:{age:anchors.get(row.age.text)!,factor:anchors.get(row.factor.text)!}
+    transcriptRanges:repeated?rowRanges!.get(row.age.text+'|'+row.factor.text)!:
+      {age:anchors.get(row.age.text)![0],factor:anchors.get(row.factor.text)![0]}
   }))};
 }
