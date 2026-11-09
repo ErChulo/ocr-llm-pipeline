@@ -12,10 +12,12 @@ import type {ExtractionAudit} from './chunkExtraction.ts';
 import {auditLiteralEvidence} from './evidence.ts';
 import {selectedCitationIsInstructionRisk} from './sourceInstructionReview.ts';
 import {selectedCitationExpresslyDisclaimed} from './disclaimedEvidence.ts';
+import {inspectNormalAgeSourceConflict} from './normalAgeConflict.ts';
 
 export type AttributionAbstention={
   path:string;
-  reason:'only-ai-instruction-literal'|'only-explicitly-disclaimed-literal'|'mixed-disqualified-literal'|'missing-source-audit'|'source-absent-numeric-literal';
+  reason:'only-ai-instruction-literal'|'only-explicitly-disclaimed-literal'|'mixed-disqualified-literal'|'missing-source-audit'|'source-absent-numeric-literal'|
+    'unresolved-normal-age-source-claims'|'unscannable-normal-age-source';
 };
 export type CandidateAttribution={
   decision:'abstain'|'review-required';
@@ -41,7 +43,20 @@ export function assessCandidateSourceAttribution(
     (typeof check.value==='number'&&Number.isFinite(check.value) ||
      typeof check.value==='string'&&numericCandidate.test(check.value.trim()))
   ).map(check=>({path:check.path,reason:'source-absent-numeric-literal'}));
-  const abstentions:AttributionAbstention[]=[...unsupportedNumeric,...checks.flatMap(check=>{
+  // Literal matching is not governing-source adjudication. Two credible
+  // but conflicting normal-age statements require an explicit applicability
+  // resolution rather than accepting a model-picked value (even an exact one).
+  const sourceConflicts:AttributionAbstention[]=checks.filter(check=>
+    check.status==='match'
+  ).flatMap(check=>{
+    const conflict=inspectNormalAgeSourceConflict(doc,check.path);
+    return conflict.state==='unresolved'
+      ? [{path:check.path,reason:'unresolved-normal-age-source-claims' as const}]
+      : conflict.state==='unscannable'
+        ? [{path:check.path,reason:'unscannable-normal-age-source' as const}]
+        : [];
+  });
+  const abstentions:AttributionAbstention[]=[...unsupportedNumeric,...sourceConflicts,...checks.flatMap(check=>{
     if(check.status!=='match'||check.evidenceMethod!=='literal_value'||
        check.matches.length===0)return [];
     const risk=check.matches.map(match=>({
@@ -65,6 +80,6 @@ export function assessCandidateSourceAttribution(
 export function attributionAbstentionMessage(review:CandidateAttribution):string {
   const paths=review.abstentions.map(x=>x.path).join(', ')||'unknown field';
   return 'Source attribution abstained: '+paths+
-    '. A numeric proposal has no matching original source literal, or its only matching passages are AI-directed instructions or expressly disclaimed examples. '+
-    'The model proposal has not been replaced. Correct it against an authentic applicable passage and validate again.';
+    '. A numeric proposal is missing original evidence, appears only in instructions/non-governing examples, or the source has incompatible apparent normal-retirement-age claims that need an applicability determination. '+
+    'The model proposal was not replaced or approved. Resolve the governing source and effective-date applicability using an authorized review process before using the value.';
 }
