@@ -170,6 +170,10 @@ const sweepImages=rasters.map(r=>Object.fromEntries(
 ));
 const pdf=createMultiPageScannedPdf(images);
 assert.equal(pdf.subarray(0,5).toString(),'%PDF-');
+// Preserve the authentic fictional JPEG-XObject document for the exact
+// shipped HTML file:// integration benchmark in a separate browser process.
+mkdirSync('tmp',{recursive:true});
+writeFileSync('tmp/stratified-raster-original.pdf',pdf);
 const task=getDocument({data:Uint8Array.from(pdf),useWasm:false,disableFontFace:true});
 try{
  const doc=await task.promise;
