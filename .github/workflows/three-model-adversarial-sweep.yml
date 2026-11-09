@@ -7,6 +7,9 @@ on:
       - '.github/workflows/three-model-adversarial-sweep.yml'
       - 'tests/real-physical-holdout-benchmark.mjs'
       - 'src/sourceAttribution.ts'
+      - 'src/normalAgeConflict.ts'
+      - 'src/exportGate.ts'
+      - 'tests/normalAgeConflict.test.mjs'
       - 'src/disclaimedEvidence.ts'
       - 'tests/sourceAttribution.test.mjs'
       - 'tests/fixtures/holdoutSelection.mjs'
@@ -22,7 +25,7 @@ permissions:
 jobs:
   measured-physical-subset:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 80
     strategy:
       fail-fast: false
       matrix:
@@ -56,15 +59,18 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
+      # Multi-gigabyte checkpoint downloads on networked CI can legitimately
+      # take >12 minutes (3B measured ~1.95 MB/s); timeouts are infra failures,
+      # never evidence that model factual accuracy has improved or regressed.
       - name: Download and checksum-verify selected official Qwen GGUF on CI only
-        timeout-minutes: 12
+        timeout-minutes: 27
         env:
           MODEL_URL: ${{ matrix.model.url }}
           MODEL_SHA256: ${{ matrix.model.sha256 }}
           MODEL_FILE: tmp/${{ matrix.model.filename }}
         run: |
           mkdir -p tmp
-          curl -fL --retry 3 --retry-all-errors "$MODEL_URL" -o "$MODEL_FILE"
+          curl -fL --retry 3 --retry-all-errors --connect-timeout 45 --speed-time 180 --speed-limit 100000 "$MODEL_URL" -o "$MODEL_FILE"
           printf '%s  %s\n' "$MODEL_SHA256" "$MODEL_FILE" | sha256sum -c -
       - name: Measure two identical fictional adversarial source documents in offline file URL
         timeout-minutes: 26
