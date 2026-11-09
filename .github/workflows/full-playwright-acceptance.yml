@@ -25,6 +25,7 @@ on:
       - 'tests/disclaimedEvidence.test.mjs'
       - 'src/normalAgeConflict.ts'
       - 'tests/normalAgeConflict.test.mjs'
+      - 'tests/hundredAdversarialFormatMatrix.test.mjs'
       - 'src/sourceAttribution.ts'
       - 'tests/sourceAttribution.test.mjs'
       - 'src/App.tsx'
