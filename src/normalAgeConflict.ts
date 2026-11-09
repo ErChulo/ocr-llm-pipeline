@@ -72,3 +72,29 @@ export function inspectNormalAgeSourceConflict(
   const distinctAges=[...new Set(claims.map(claim=>claim.age))].sort((a,b)=>a-b);
   return {state:distinctAges.length>1?'unresolved':'clear',claims,distinctAges};
 }
+
+/**
+ * A normal-age claim cannot borrow a same-valued number from a participant
+ * age, valuation year, unrelated benefit field, or other source record.
+ * A matching numerical string is accepted as a *review candidate* only at
+ * the original, independently observed labelled normal-age token offset.
+ *
+ * This does NOT say a labelled statement governs; contradictory labelled
+ * statements must still be resolved by an authorized human. Missing labels
+ * fall through to existing manual evidence review rather than being invented.
+ */
+export function normalAgeCitationUnrelatedToLabelledClaim(
+  doc:SourceDocument,path:string,value:unknown,
+  citation:{start:number;end:number}
+):boolean {
+  const scan=inspectNormalAgeSourceConflict(doc,path);
+  if(scan.state!=='clear'||scan.claims.length===0)return false;
+  const literal=typeof value==='number'&&Number.isInteger(value)?value:
+    typeof value==='string'&&/^\d{1,3}$/.test(value.trim())
+      ?Number(value.trim()):null;
+  if(literal===null)return false;
+  if(!citation||!Number.isSafeInteger(citation.start)||!Number.isSafeInteger(citation.end))
+    return true;
+  return !scan.claims.some(claim=>claim.age===literal &&
+    claim.start===citation.start&&claim.end===citation.end);
+}
