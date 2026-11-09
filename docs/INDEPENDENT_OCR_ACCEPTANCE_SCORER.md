@@ -11,7 +11,7 @@ Module: `scripts/score-independent-ocr-acceptance.mjs` (`scoreIndependentOcrAcce
   "corpusId": "independent-fictional-corpus-version-id",
   "sourceType": "fictional",
   "annotationsSha256": "64-character SHA-256 hexadecimal digest",
-  "candidateCommitSha": "64-character Git commit digest",
+  "candidateCommitSha": "40- or 64-character Git commit digest",
   "pages": [
     {
       "documentId": "fictional-document-001",
