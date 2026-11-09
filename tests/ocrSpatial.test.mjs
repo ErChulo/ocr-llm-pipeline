@@ -135,3 +135,29 @@ test('leading-decimal intervening cells fail closed rather than yielding false a
   assert.deepEqual(v.pairs,[],token);
  }
 });
+
+test('measured headers with literal trailing colons recover rows without changing pixel provenance',()=>{
+  const altered=original.map(w=>['AGE','MONTHLY','FACTOR'].includes(w.text)?{...w,text:w.text+':'}:w);
+  const result=assessSpatialOcrRows({...args,words:altered,
+    text:'AGE: MONTHLY: FACTOR:\n58 0.9063\n64 0.9813'});
+  assert.equal(result.status,'candidates');
+  assert.deepEqual(result.pairs.map(p=>[p.age.text,p.factor.text]),
+    [['58','0.9063'],['64','0.9813']]);
+  assert.deepEqual(result.pairs[0].age.bbox,original[3].bbox);
+  assert.deepEqual(result.pairs[0].factor.bbox,original[4].bbox);
+});
+test('punctuated headers preserve ambiguity checks and reject fuzzy OCR guesses',()=>{
+  const punctuated=original.map(w=>['AGE','MONTHLY','FACTOR'].includes(w.text)?{...w,text:w.text+':'}:w);
+  const numeric=word('20',290,239,40);
+  const blocked=assessSpatialOcrRows({...args,words:[...punctuated,numeric],
+    text:'AGE: SERVICE MONTHLY: FACTOR:\n58 20 0.9063\n64 0.9813'});
+  assert.equal(blocked.status,'abstain');
+  assert.equal(blocked.reason,'intervening-numeric-column');
+  for(const token of ['AGE::','A6E','FACTOR.','FACT0R']){
+    const base=punctuated.map(w=>w.text==='AGE:'?{...w,text:token}:w);
+    assert.equal(assessSpatialOcrRows({...args,words:base}).status,'abstain');
+  }
+  const duplicate=assessSpatialOcrRows({...args,
+    words:[...punctuated,word('AGE',75,140)]});
+  assert.equal(duplicate.status,'abstain');
+});
