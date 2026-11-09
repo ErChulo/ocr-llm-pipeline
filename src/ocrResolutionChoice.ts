@@ -51,3 +51,46 @@ export function preferFallbackForMalformedRows(
   }
   return true;
 }
+
+/** AGE-labelled schedules may contain OCR merges such as 55 -> 585.
+ * A measured alternate raster is a new transcription, never an inferred edit.
+ * Stop on ambiguous repeated factors, row loss or any change to stable rows.
+ */
+const maxPlausibleActuarialAge=125;
+const plausibleAge=(age:string)=>Number.isInteger(Number(age))&&
+  Number(age)>=0&&Number(age)<=maxPlausibleActuarialAge;
+const hasAgeFactorHeader=(text:string)=>text.split(/\r?\n/).some(line=>
+  /\bAGE\b/i.test(line)&&/\bFACTOR\b/i.test(line));
+export function hasImplausibleAgeTableRow(text:string):boolean{
+  return typeof text==='string'&&hasAgeFactorHeader(text)&&
+    rows(text).some(row=>validFactor.test(row.factor)&&!plausibleAge(row.age));
+}
+export function preferFallbackForImplausibleAges(
+  first:MeasuredOcr,second:MeasuredOcr
+):boolean{
+  if(!first?.text||!second?.text||
+     !Number.isFinite(first.confidence)||!Number.isFinite(second.confidence)||
+     second.confidence<first.confidence-20||
+     !hasImplausibleAgeTableRow(first.text)||
+     !hasAgeFactorHeader(second.text))return false;
+  const primary=rows(first.text),other=rows(second.text);
+  if(primary.length<2||primary.length!==other.length||
+     primary.some(row=>!validFactor.test(row.factor))||
+     other.some(row=>!validFactor.test(row.factor)||!plausibleAge(row.age)))
+    return false;
+  const stable=primary.filter(row=>plausibleAge(row.age));
+  const bad=primary.filter(row=>!plausibleAge(row.age));
+  if(!bad.length||!containsAll(counts(stable),counts(other)))return false;
+  const stableAges=new Set(stable.map(row=>row.age));
+  const stableFactors=new Set(stable.map(row=>row.factor));
+  const consumed=new Set<string>();
+  for(const malformed of bad){
+    // The observed factor on the malformed primary row must be unchanged.
+    // A duplicated factor or age collision provides no unique row identity.
+    const options=other.filter(row=>row.factor===malformed.factor);
+    if(stableFactors.has(malformed.factor)||options.length!==1||
+       stableAges.has(options[0].age)||consumed.has(options[0].age))return false;
+    consumed.add(options[0].age);
+  }
+  return true;
+}
