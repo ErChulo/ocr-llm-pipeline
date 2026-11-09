@@ -113,7 +113,9 @@ export function assessSpatialOcrRows(
   const factorX=monthly[0]?.bbox.x0??factorHeader.bbox.x0;
   const headerBottom=Math.max(ageHeader.bbox.y1,factorHeader.bbox.y1);
   const tolerance=Math.max(18,w*0.055);
-  const ages=words.filter(word=>AGE.test(word.text) &&
+  // Implausible ages (e.g. OCR merging printed 55 into 585) may not
+  // acquire a measured age/factor association merely by having valid pixels.
+  const ages=words.filter(word=>AGE.test(word.text) && Number(word.text)<=125 &&
     word.bbox.y0>headerBottom && Math.abs(word.bbox.x0-ageHeader.bbox.x0)<=tolerance &&
     anchors.get(word.text)!=null);
   const factors=words.filter(word=>FACTOR.test(word.text) &&
