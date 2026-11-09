@@ -16,7 +16,8 @@ const officeSteps = [
   ] },
   { title: 'Get a GGUF model separately', instructions: [
     'Download a compatible GGUF model from an approved, trustworthy model publisher while still on the permitted internet-connected computer.',
-    'For a first fictional test, start with a small 0.5B GGUF model rather than a larger 1.5B or 3B model.',
+    'For a first fictional test, use the CI-tested Qwen2.5-0.5B-Instruct Q4_K_M GGUF: qwen2.5-0.5b-instruct-q4_k_m.gguf.',
+    'On the permitted download computer, the model publisher is Qwen at huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF. Verify the file and use only approved downloads.',
     'Keep the GGUF file unchanged. If the model is split into multiple GGUF parts, keep every part together.',
     'The GGUF model is NOT included in the GitHub HTML artifact. The app does not download models for you.'
   ] },
