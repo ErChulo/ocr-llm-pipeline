@@ -93,12 +93,15 @@ export function assessSpatialOcrRows(
   if(words.some(word=>!inside(word,w,h)))return empty('untrusted-word-box');
   const anchors=indexedNumericRanges(text);
   if(!anchors)return empty('excessive-transcript-complexity');
-  const headerAge=words.filter(word=>word.text.toUpperCase()==='AGE');
-  const headerFactor=words.filter(word=>word.text.toUpperCase()==='FACTOR');
+  // Tesseract may retain a printed trailing colon on measured headers.
+  // Accept only that literal punctuation, never fuzzy/semantic header guesses.
+  const headerText=(word:MeasuredOcrWord)=>word.text.toUpperCase().replace(/:$/, '');
+  const headerAge=words.filter(word=>headerText(word)==='AGE');
+  const headerFactor=words.filter(word=>headerText(word)==='FACTOR');
   // Refuse repeated headers before any cross-product can exhaust memory.
   if(headerAge.length!==1||headerFactor.length!==1)return empty('ambiguous-or-missing-column-headers');
   const ageHeader=headerAge[0],factorHeader=headerFactor[0];
-  const monthly=words.filter(word=>word.text.toUpperCase()==='MONTHLY' &&
+  const monthly=words.filter(word=>headerText(word)==='MONTHLY' &&
     sameRow(word,factorHeader) && word.bbox.x0<factorHeader.bbox.x0);
   if(monthly.length>1)return empty('ambiguous-factor-header');
   const headerGeometryValid=sameRow(ageHeader,factorHeader) ||
