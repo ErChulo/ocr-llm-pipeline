@@ -20,7 +20,10 @@ export type NormalAgeConflict={
 const MAX_SCAN_CHARS=2_000_000;
 const MAX_CLAIMS=256;
 /** Intentionally narrow: age 55 for EARLY retirement does not conflict. */
-const labelledAge=/\bnormal(?:[ \t_-]+retirement)?[ \t_-]+age(?:[ \t]*\([ \t]*NRA[ \t]*\))?[ \t]*(?:(?:is|equals|of|at(?:[ \t]+age)?)\b|[:=])?[ \t]*(\d{1,3})(?!\d|\.\d)/gi;
+// Recognize additional literal *declarations*, not legal applicability:
+// 'shall be age 65', 'will be age 65', and 'NRA: 65' are common source
+// forms. Keep the capture tied to the same physical source record and line.
+const labelledAge=/\b(?:normal(?:[ \t_-]+retirement)?[ \t_-]+age(?:[ \t]*\([ \t]*NRA[ \t]*\))?|NRA)[ \t]*(?:(?:is|equals|shall[ \t]+be|will[ \t]+be|means|of|at(?:[ \t]+age)?)\b|[:=])?[ \t]*(?:age[ \t]+)?(\d{1,3})(?!\d|\.\d)/gi;
 function isNormalAgeField(path:string):boolean {
   if(typeof path!=='string')return false;
   const field=path.split('/').at(-1)?.replace(/~1/g,'/').replace(/~0/g,'~')??'';
