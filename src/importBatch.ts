@@ -55,9 +55,14 @@ function validateDoc(doc:SourceDocument):void {
 }
 export async function importDocumentBatch(
   files:readonly File[], existing:readonly SourceDocument[],
-  importOne:ImportOne, onProgress?:Progress
+  importOne:ImportOne, onProgress?:Progress, signal?:AbortSignal
 ):Promise<BatchResult>{
+  const checkCancelled=()=>{
+    if(signal?.aborted)throw new Error('Document import cancelled. No files were imported.');
+  };
+  checkCancelled();
   preflight(files,existing);
+  checkCancelled();
   const ids=new Set(existing.map(doc=>key(doc.id)));
   const names=new Set(existing.map(doc=>key(doc.name)));
   let totalDocs=existing.length;
@@ -66,9 +71,14 @@ export async function importDocumentBatch(
   const documents:SourceDocument[]=[];
   const notes:string[]=[];
   for(let i=0;i<files.length;i++){
+    checkCancelled();
     // Sequential execution bounds peak OCR/WASM and PDF parsing workloads.
     // No caller-visible document list is mutated before all files succeed.
     const imported=await importOne(files[i]);
+    // A running OCR operation may not support interruption. Discard its
+    // result if cancellation arrived while it was executing; never commit
+    // any partial batch or start the next file.
+    checkCancelled();
     if(!imported||!Array.isArray(imported.documents)||
        !imported.documents.length)throw new Error(
       'File '+(i+1)+' returned no source documents. No files were imported.'
@@ -100,6 +110,8 @@ export async function importDocumentBatch(
     }
     notes.push(...(imported.notes??[]));
     onProgress?.(i+1,files.length);
+    checkCancelled();
   }
+  checkCancelled();
   return {documents,notes};
 }
