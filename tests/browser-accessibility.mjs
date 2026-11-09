@@ -56,6 +56,20 @@ try{
   await page.getByRole('button',{name:'Guide',exact:true}).click();
   const modal=page.getByRole('dialog',{name:'User guide'});
   await modal.waitFor({timeout:10000});
+  // Office setup must be the first view and advance one actionable step
+  // without requiring downloads or a model on the managed machine.
+  const setup=modal.locator('.guide-office-wizard');
+  assert.equal(await setup.isVisible(),true,'Office setup must be the default Guide view');
+  assert.match(await setup.innerText(),/two separate local files/i);
+  assert.match(await modal.getByRole('status').innerText(),/step 1 of 6/i);
+  await modal.getByRole('button',{name:'Next step'}).click();
+  assert.match(await modal.getByRole('status').innerText(),/step 2 of 6/i);
+  assert.match(await setup.innerText(),/GGUF model is NOT included/);
+  await modal.getByRole('button',{name:'Using the app'}).click();
+  await modal.getByRole('heading',{name:'1. Load a model'}).waitFor();
+  assert.equal(await setup.isVisible(),false);
+  await modal.getByRole('button',{name:'Office setup'}).click();
+  assert.equal(await setup.isVisible(),true);
   await analyze('user-guide-dialog');
   assert.equal(await page.getByRole('button',{name:'Close guide'}).evaluate(
     el=>el===document.activeElement),true,
