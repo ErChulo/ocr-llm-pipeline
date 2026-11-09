@@ -164,7 +164,9 @@ export function assessSpatialOcrRows(
   const factorX=monthly[0]?.bbox.x0??factorHeader.bbox.x0;
   const headerBottom=Math.max(ageHeader.bbox.y1,factorHeader.bbox.y1);
   const tolerance=Math.max(18,w*0.055);
-  const ages=words.filter(word=>AGE.test(word.text) &&
+  // Age cells above 125 are suspect OCR (e.g. printed 55 read as 585).
+  // Preserve the measured pixels, but never offer an implausible candidate.
+  const ages=words.filter(word=>AGE.test(word.text) && Number(word.text)<=125 &&
     word.bbox.y0>headerBottom && Math.abs(word.bbox.x0-ageHeader.bbox.x0)<=tolerance &&
     anchors.has(word.text));
   const factors=words.filter(word=>FACTOR.test(word.text) &&

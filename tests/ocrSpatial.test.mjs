@@ -206,3 +206,15 @@ test('an actually measured third numeric column blocks repeated-factor recovery'
   assert.equal(assessment.status,'abstain');
   assert.equal(assessment.reason,'intervening-numeric-column');
 });
+
+test('implausible measured OCR age 585 cannot become a sourced AGE/FACTOR association',()=>{
+  const altered=original.map(w=>w.text==='58'?{...w,text:'585'}:w);
+  const result=assessSpatialOcrRows({...args,words:altered,
+    text:'AGE MONTHLY FACTOR\n585 0.9063\n64 0.9813'});
+  assert.equal(result.status,'abstain');
+  assert.deepEqual(result.pairs,[]);
+  const boundary=original.map(w=>w.text==='58'?{...w,text:'125'}:w);
+  const plausible=assessSpatialOcrRows({...args,words:boundary,
+    text:'AGE MONTHLY FACTOR\n125 0.9063\n64 0.9813'});
+  assert.equal(plausible.status,'candidates');
+});
