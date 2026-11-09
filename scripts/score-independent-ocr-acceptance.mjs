@@ -13,6 +13,7 @@ const REQUIRED_DOCUMENTS=100,REQUIRED_PAGES=500,REQUIRED_NUMBERS=5000;
 const MIN_CONDITION_PAGES=20;
 const int=(n,min=0)=>Number.isSafeInteger(n)&&n>=min;
 const sha=txt=>typeof txt==='string'&&/^[0-9a-f]{64}$/i.test(txt);
+const commitSha=txt=>typeof txt==='string'&&/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i.test(txt);
 const id=txt=>typeof txt==='string'&&txt.length>0&&txt.length<=160&&
   !/[\u0000-\u001f\u007f]/.test(txt);
 const numberRatio=(a,b)=>b===0?null:a/b;
@@ -20,7 +21,7 @@ const notPlain=(x)=>!x||typeof x!=='object'||Array.isArray(x);
 export function scoreIndependentOcrAcceptance(report){
   if(notPlain(report)||!id(report.corpusId)||
     report.sourceType!=='fictional'||
-    !sha(report.annotationsSha256)||!sha(report.candidateCommitSha)||
+    !sha(report.annotationsSha256)||!commitSha(report.candidateCommitSha)||
     !Array.isArray(report.pages)||report.pages.length===0||
     report.pages.length>20000)
     throw new Error('Missing or invalid fictional holdout manifest.');
