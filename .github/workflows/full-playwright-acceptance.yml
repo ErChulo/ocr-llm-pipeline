@@ -79,6 +79,7 @@ jobs:
             dist/index.html
             tmp/smoke-*.png
             tmp/guide-print.pdf
+            tmp/fictional-original-pixel-rotation-browser.json
           if-no-files-found: ignore
 
   real-qwen-json-extraction:
