@@ -82,14 +82,17 @@ try{
   await modal.getByRole('button',{name:'Office setup'}).click();
   assert.equal(await setup.isVisible(),true);
   await analyze('user-guide-dialog');
+  assert.equal(await modal.evaluate(el=>el.contains(document.activeElement)),true,
+    'Guide navigation must keep keyboard focus inside the dialog');
   await page.emulateMedia({media:'print'});
   assert.equal(await modal.locator('.guide-print-office').isVisible(),true,
     'Printed guide must include every office setup step');
   assert.equal(await modal.locator('.guide-office-wizard').isVisible(),false,
     'Print must not output only the currently selected screen');
   await page.emulateMedia({media:'screen'});
-  assert.equal(await modal.evaluate(el=>el.contains(document.activeElement)),true,
-    'Keyboard focus must remain inside the open Guide after navigation');
+  // Headless Chromium's print-media transition may reset focus to body.
+  // Explicitly focus a dialog control before testing keyboard Escape.
+  await page.getByRole('button',{name:'Close guide'}).focus();
   await page.keyboard.press('Escape');
   await modal.waitFor({state:'detached',timeout:10000});
   await page.waitForFunction(()=>document.activeElement instanceof HTMLButtonElement &&
