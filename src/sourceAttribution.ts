@@ -80,6 +80,6 @@ export function assessCandidateSourceAttribution(
 export function attributionAbstentionMessage(review:CandidateAttribution):string {
   const paths=review.abstentions.map(x=>x.path).join(', ')||'unknown field';
   return 'Source attribution abstained: '+paths+
-    '. A numeric proposal is missing original evidence, appears only in instructions/non-governing examples, or the source has incompatible apparent normal-retirement-age claims that need an applicability determination. '+
+    '. A numeric proposal has no matching original source literal, appears only in instructions/non-governing examples, or the source has incompatible apparent normal-retirement-age claims that need an applicability determination. '+
     'The model proposal was not replaced or approved. Resolve the governing source and effective-date applicability using an authorized review process before using the value.';
 }
