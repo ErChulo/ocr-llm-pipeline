@@ -101,3 +101,26 @@ test('source age conflict is a conservative warning, not a source-governing deci
  assert.deepEqual(result.distinctAges,[65,99]);
  assert.ok(result.claims.every(c=>Number(source.text.slice(c.start,c.end))===c.age));
 });
+
+test('an exact but unrelated numeric token cannot establish normal-age provenance',async()=>{
+ const {normalAgeCitationUnrelatedToLabelledClaim:unrelated}=
+   await import('../src/normalAgeConflict.ts');
+ const text='FICTIONAL NORMAL RETIREMENT AGE 65.\n'+
+   'A retired participant died at age 99.\n'+
+   'The prior administrator lists another participant age 65.';
+ const source=doc(text);
+ const normal=text.indexOf('65'),participant99=text.indexOf('99');
+ const duplicate65=text.lastIndexOf('65');
+ assert.equal(unrelated(source,'/normal_age',65,{start:normal,end:normal+2}),false);
+ assert.equal(unrelated(source,'/normal_age',99,{start:participant99,end:participant99+2}),true);
+ assert.equal(unrelated(source,'/normal_age',65,{start:duplicate65,end:duplicate65+2}),true);
+ assert.equal(unrelated(source,'/early_retirement_age',99,{start:participant99,end:participant99+2}),false);
+});
+test('a disclaimed example cannot lend an alternative normal-age source offset',async()=>{
+ const {normalAgeCitationUnrelatedToLabelledClaim:unrelated}=
+   await import('../src/normalAgeConflict.ts');
+ const text='FICTIONAL PLAN: normal_age 65.\nEXAMPLE ONLY: normal_age 99.';
+ const source=doc(text);
+ const index=text.lastIndexOf('99');
+ assert.equal(unrelated(source,'/normal_age','99',{start:index,end:index+2}),true);
+});

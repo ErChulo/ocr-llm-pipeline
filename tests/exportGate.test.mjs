@@ -247,3 +247,38 @@ test('benign early age and repeated normal age remain available for human eviden
   assert.equal(gate.allowed,true,JSON.stringify(gate.reasons));
  }
 });
+
+test('final export refuses a selected participant-age citation even when normal age has same literal',()=>{
+ const text='FICTIONAL PLAN: normal_age 65.\nA participant is currently age 65.';
+ const source={...d,text};
+ const reviewed={...audit,sourceText:text,length:text.length,
+   chunks:[{chunk:1,start:0,end:text.length}]};
+ const value={normal_age:65};
+ const checks=auditLiteralEvidence(source,value,reviewed);
+ assert.equal(checks[0].status,'match');
+ assert.equal(checks[0].matches.length,2);
+ const normal=checks[0].matches.findIndex(match=>
+   match.start===text.indexOf('65'));
+ const participant=checks[0].matches.findIndex(match=>
+   match.start===text.lastIndexOf('65'));
+ assert.ok(normal>=0&&participant>=0&&normal!==participant);
+ const request={...safe,document:source,audit:reviewed,value,evidence:checks,
+   selectedEvidence:{'/normal_age':normal},confirmedEvidence:{'/normal_age':true}};
+ assert.equal(evaluateExportGate(request).allowed,true);
+ const unrelated=evaluateExportGate({...request,selectedEvidence:{'/normal_age':participant}});
+ assert.equal(unrelated.allowed,false);
+ assert.ok(unrelated.reasons.some(reason=>reason.includes('unrelated numeric passage')));
+});
+test('final export rejects age 99 attributed solely to participant age 99',()=>{
+ const text='FICTIONAL PLAN: normal retirement age 65.\nParticipant died aged 99.';
+ const source={...d,text},value={normal_age:99};
+ const reviewed={...audit,sourceText:text,length:text.length,
+   chunks:[{chunk:1,start:0,end:text.length}]};
+ const checks=auditLiteralEvidence(source,value,reviewed);
+ assert.equal(checks[0].status,'match');
+ const result=evaluateExportGate({...safe,document:source,audit:reviewed,
+   value,evidence:checks,selectedEvidence:{'/normal_age':0},
+   confirmedEvidence:{'/normal_age':true}});
+ assert.equal(result.allowed,false);
+ assert.ok(result.reasons.some(reason=>reason.includes('unrelated numeric passage')));
+});

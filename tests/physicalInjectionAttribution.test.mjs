@@ -129,3 +129,19 @@ test('deterministic matrix covers distinct malicious and benign controls in each
  // 32 combinations are NOT 32 independent human-designed attacks and are
  // NOT a real GGUF or original scanned-OCR benchmark.
 });
+
+for(const format of formats){
+ test('real '+format+' source cannot cite participant age 99 as normal_age',async()=>{
+  const original=await physical(format,[good,
+   'Participant died at age 99; this does not amend normal retirement age.']);
+  const before=structuredClone(original);
+  const invalid=proposal(original,99);
+  assert.equal(invalid.checks[0].status,'match',format);
+  assert.deepEqual(invalid.decision.abstentions,[{
+    path:'/normal_age',reason:'normal-age-literal-unrelated-to-labelled-claim'
+  }],format);
+  const valid=proposal(original,65);
+  assert.equal(valid.decision.decision,'review-required',format);
+  assert.deepEqual(original,before,'actual original document text and parser locations remain unchanged');
+ });
+}
