@@ -72,8 +72,12 @@ try {
  },null,{timeout:480000});
  const text=await page.locator('pre.preview').innerText();
  const pageBodies=new Map();
- const parts=[...text.matchAll(/^Page (\d+):\s*\n([\s\S]*?)(?=^Page \d+:|$)/gm)];
- for(const part of parts)pageBodies.set(Number(part[1]),part[2]);
+ const headers=[...text.matchAll(/^Page (\d+):[ \t]*\r?\n/gm)];
+ for(let i=0;i<headers.length;i++){
+  const start=headers[i].index+headers[i][0].length;
+  const end=i+1<headers.length?headers[i+1].index:text.length;
+  pageBodies.set(Number(headers[i][1]),text.slice(start,end));
+ }
  assert.equal(pageBodies.size,12,'Parser must preserve all twelve original page identities');
  const spatial=JSON.parse(await page.locator('pre[aria-label="Measured OCR spatial diagnostics"]').innerText());
  assert.equal(spatial.length,12,'Every scanned source page must retain a spatial status');
