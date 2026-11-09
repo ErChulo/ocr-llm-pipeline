@@ -161,3 +161,15 @@ test('punctuated headers preserve ambiguity checks and reject fuzzy OCR guesses'
     words:[...punctuated,word('AGE',75,140)]});
   assert.equal(duplicate.status,'abstain');
 });
+
+test('implausible measured OCR age 585 cannot become a sourced AGE/FACTOR association',()=>{
+  const altered=original.map(w=>w.text==='58'?{...w,text:'585'}:w);
+  const result=assessSpatialOcrRows({...args,words:altered,
+    text:'AGE MONTHLY FACTOR\n585 0.9063\n64 0.9813'});
+  assert.equal(result.status,'abstain');
+  assert.deepEqual(result.pairs,[]);
+  const boundary=original.map(w=>w.text==='58'?{...w,text:'125'}:w);
+  const plausible=assessSpatialOcrRows({...args,words:boundary,
+    text:'AGE MONTHLY FACTOR\n125 0.9063\n64 0.9813'});
+  assert.equal(plausible.status,'candidates');
+});
