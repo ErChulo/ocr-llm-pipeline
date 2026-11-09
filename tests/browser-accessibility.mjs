@@ -56,10 +56,43 @@ try{
   await page.getByRole('button',{name:'Guide',exact:true}).click();
   const modal=page.getByRole('dialog',{name:'User guide'});
   await modal.waitFor({timeout:10000});
-  await analyze('user-guide-dialog');
   assert.equal(await page.getByRole('button',{name:'Close guide'}).evaluate(
     el=>el===document.activeElement),true,
-    'Guide dialog must focus its close button');
+    'Guide dialog must initially focus its close button');
+  // Office setup must be the first view and advance one actionable step
+  // without requiring downloads or a model on the managed machine.
+  const setup=modal.locator('.guide-office-wizard');
+  assert.equal(await setup.isVisible(),true,'Office setup must be the default Guide view');
+  assert.match(await setup.innerText(),/two separate local files/i);
+  assert.match(await modal.getByRole('status').innerText(),/step 1 of 6/i);
+  await modal.getByRole('button',{name:'Next step'}).click();
+  assert.match(await modal.getByRole('status').innerText(),/step 2 of 6/i);
+  assert.match(await setup.innerText(),/GGUF model is NOT included/);
+  for(let step=3;step<=6;step++){
+    await modal.getByRole('button',{name:'Next step'}).click();
+    assert.match(await modal.getByRole('status').innerText(),
+      new RegExp('step '+step+' of 6','i'));
+  }
+  assert.match(await setup.innerText(),/wholly fictional document only/i);
+  await modal.getByRole('button',{name:'Review from step 1'}).click();
+  assert.match(await modal.getByRole('status').innerText(),/step 1 of 6/i);
+  await modal.getByRole('button',{name:'Using the app'}).click();
+  await modal.getByRole('heading',{name:'1. Load a model'}).waitFor();
+  assert.equal(await setup.isVisible(),false);
+  await modal.getByRole('button',{name:'Office setup'}).click();
+  assert.equal(await setup.isVisible(),true);
+  await analyze('user-guide-dialog');
+  assert.equal(await modal.evaluate(el=>el.contains(document.activeElement)),true,
+    'Guide navigation must keep keyboard focus inside the dialog');
+  await page.emulateMedia({media:'print'});
+  assert.equal(await modal.locator('.guide-print-office').isVisible(),true,
+    'Printed guide must include every office setup step');
+  assert.equal(await modal.locator('.guide-office-wizard').isVisible(),false,
+    'Print must not output only the currently selected screen');
+  await page.emulateMedia({media:'screen'});
+  // Headless Chromium's print-media transition may reset focus to body.
+  // Explicitly focus a dialog control before testing keyboard Escape.
+  await page.getByRole('button',{name:'Close guide'}).focus();
   await page.keyboard.press('Escape');
   await modal.waitFor({state:'detached',timeout:10000});
   await page.waitForFunction(()=>document.activeElement instanceof HTMLButtonElement &&

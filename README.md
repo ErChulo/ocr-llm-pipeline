@@ -40,6 +40,12 @@
 
 The browser smoke uses a tiny GGUF for **runtime verification only**. It does not prove large-model performance, extraction correctness on complex real pension plans, or operation on a managed PBGC workstation. The separate model benchmark measures a synthetic known-answer case and also does not certify accuracy.
 
+## Office setup (offline Windows 11, fictional tests only)
+
+Open **Guide → Office setup** inside the standalone application for a six-step, one-screen-at-a-time checklist. It explains how to obtain the built HTML and a **separately downloaded GGUF** on a permitted internet-connected computer, use an authorized transfer method, open `index.html` directly under `file://` on Windows 11 Chrome/Edge, test the local model, and run a wholly fictional verification. **Do not download the source-code ZIP as the runnable artifact.** No Python, Node, installation, server or internet is required at runtime, but office policy may block unapproved files or WebAssembly. Stop rather than bypassing agency controls. See [the complete office checklist](docs/USER_GUIDE.md#office-setup--before-first-use).
+
+**Beta status:** the existence of a working file:// app or onboarding instructions is not authorization to handle protected case/participant data on a managed office workstation.
+
 ## Run locally
 
 Development machine:

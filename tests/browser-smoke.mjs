@@ -752,8 +752,8 @@ try {
     disableFontFace:true,useSystemFonts:true,useWasm:false
   });
   const guidePdf=await guideTask.promise;
-  assert.ok(guidePdf.numPages>=1 && guidePdf.numPages<=3,
-    'Printable guide should fit into 1–3 A4 pages');
+  assert.ok(guidePdf.numPages>=1 && guidePdf.numPages<=6,
+    'Complete setup and workflow guide should fit into 1–6 A4 pages');
   let guideText='';
   for(let n=1;n<=guidePdf.numPages;n++){
     const p=await guidePdf.getPage(n);
@@ -764,6 +764,8 @@ try {
       'Print should use A4 paper');
   }
   assert.match(guideText,/Start here/i);
+  assert.match(guideText,/Get a GGUF model separately/i);
+  assert.match(guideText,/Run a fictional document check/i);
   assert.match(guideText,/Load a model/i);
   assert.match(guideText,/Export the result/i);
   assert.doesNotMatch(guideText,/scanned-synthetic\.pdf|synthetic\.csv|RETIREMENT AGE 65/,
