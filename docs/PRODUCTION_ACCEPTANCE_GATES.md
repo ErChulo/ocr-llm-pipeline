@@ -1,5 +1,8 @@
 # Production acceptance gates — release-blocking evidence register
 
+- **Repeated-factor spatial OCR recovery (proposed, November 8, 2026; independent raster verification pending):** a repeated numeric factor no longer automatically erases all otherwise measured age/factor rows. Each repeated literal must occur in a unique, whole, exact two-number OCR transcript line corroborated by the original Tesseract word envelopes and existing AGE/MONTHLY/FACTOR geometry. Extra numeric appearances, duplicate pairs, intervening measured columns and ambiguous transcript layouts still abstain. New fictional unit regressions and an original-JPEG/Tesseract PDF benchmark quantify TP, FP, FN, wrong-page and exact offsets. The existing 12-page 16/22 uncorrected-raster score is unchanged until separately remeasured; no production gate promoted and beta classification retained.
+
+
 - **Offline office setup Guide (PR pending, 2026-11-08):** Added a six-screen, one-step-at-a-time Windows 11 preparation walkthrough to the actual file:// UI, with separate GitHub build artifact and verified Qwen 0.5B GGUF preparation, approved transfer and workplace restriction stop conditions, local model self-test, fictional-only extraction and complete printable directions. Added offline Playwright navigation/print and automated accessibility regression coverage. This changes usability/onboarding only; office authorization, security review and all production acceptance gates remain open. Release stays `0.3.0-beta.1`.
 
 
