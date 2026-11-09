@@ -79,7 +79,12 @@ try {
   pageBodies.set(Number(headers[i][1]),text.slice(start,end));
  }
  assert.equal(pageBodies.size,12,'Parser must preserve all twelve original page identities');
- const spatial=JSON.parse(await page.locator('pre[aria-label="Measured OCR spatial diagnostics"]').innerText());
+ // The app renders diagnostics inside a collapsed <details>. innerText
+ // returns an empty string for hidden content; textContent preserves the
+ // actual rendered JSON without changing application state or source bytes.
+ const diagnosticText=await page.locator('pre[aria-label="Measured OCR spatial diagnostics"]').textContent();
+ assert.ok(diagnosticText?.trim(),'Measured OCR diagnostics must be present in the shipped app');
+ const spatial=JSON.parse(diagnosticText);
  assert.equal(spatial.length,12,'Every scanned source page must retain a spatial status');
  let truePositive=0,falsePositive=0,falseNegative=0,wrongPage=0;
  let exactNumericHits=0,expectedNumeric=0,ambiguousAbstentions=0;
