@@ -1,0 +1,50 @@
+name: Integrated twelve-page offline application OCR verification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/integrated-raster-browser.yml'
+      - 'tests/browser-integrated-stratified-raster.mjs'
+      - 'tests/stratified-raster-benchmark.mjs'
+      - 'src/ocr.ts'
+      - 'src/ocrSpatial.ts'
+      - 'src/pdfText.ts'
+      - 'src/ocrOrientation.ts'
+
+permissions:
+  contents: read
+
+jobs:
+  original-jpeg-file-url:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build exact offline single-file application
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+          npm run build
+      - name: Install pinned Chromium for CI only
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Generate original JPEG PDF with fixed reference regions and measure raw OCR
+        timeout-minutes: 12
+        run: node --experimental-strip-types tests/stratified-raster-benchmark.mjs
+      - name: Import the same twelve-page PDF through actual standalone file HTML
+        timeout-minutes: 18
+        run: node --experimental-strip-types tests/browser-integrated-stratified-raster.mjs
+      - name: Publish fictional-only raw and integrated reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fictional-original-jpeg-app-ocr-comparison
+          path: |
+            tmp/stratified-raster-report.json
+            tmp/integrated-stratified-browser-report.json
+          if-no-files-found: ignore
