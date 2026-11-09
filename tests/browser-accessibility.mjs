@@ -79,6 +79,12 @@ try{
   await modal.getByRole('button',{name:'Office setup'}).click();
   assert.equal(await setup.isVisible(),true);
   await analyze('user-guide-dialog');
+  await page.emulateMedia({media:'print'});
+  assert.equal(await modal.locator('.guide-print-office').isVisible(),true,
+    'Printed guide must include every office setup step');
+  assert.equal(await modal.locator('.guide-office-wizard').isVisible(),false,
+    'Print must not output only the currently selected screen');
+  await page.emulateMedia({media:'screen'});
   assert.equal(await page.getByRole('button',{name:'Close guide'}).evaluate(
     el=>el===document.activeElement),true,
     'Guide dialog must focus its close button');
