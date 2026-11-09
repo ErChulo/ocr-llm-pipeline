@@ -43,3 +43,34 @@ test('retain primary OCR if alternate is invalid, uncertain or still malformed',
     text:'52 0.7124\n70 1.1179',confidence:NaN
   }),false);
 });
+
+test('real PDF rendering age-glyph merge is detectable without invented correction',async()=>{
+  const {hasImplausibleAgeTableRow,preferFallbackForImplausibleAges}=
+    await import('../src/ocrResolutionChoice.ts');
+  const first={text:'FICTIONAL TABLE\nAGE MONTHLY FACTOR\n585 0.8750\n65 1.0000',confidence:95};
+  const lower={text:'FICTIONAL TABLE\nAGE MONTHLY FACTOR\n55 0.8750\n65 1.0000',confidence:93};
+  assert.equal(hasImplausibleAgeTableRow(first.text),true);
+  assert.equal(hasImplausibleAgeTableRow(lower.text),false);
+  assert.equal(preferFallbackForImplausibleAges(first,lower),true);
+  assert.equal(preferFallbackForImplausibleAges(lower,first),false);
+});
+test('bounded age reread abstains on changes to stable factors, missing rows or duplicate factors',async()=>{
+  const {preferFallbackForImplausibleAges,hasImplausibleAgeTableRow}=
+    await import('../src/ocrResolutionChoice.ts');
+  const first={text:'AGE MONTHLY FACTOR\n585 0.8750\n65 1.0000',confidence:95};
+  for(const text of [
+    'AGE MONTHLY FACTOR\n55 0.8750\n65 1.0001',
+    'AGE MONTHLY FACTOR\n55 0.8750',
+    'AGE MONTHLY FACTOR\n55 0.8750\n55 1.0000',
+    'AGE MONTHLY FACTOR\n585 0.8750\n65 1.0000',
+    'AGE MONTHLY FACTOR\n55 1.0000\n65 0.8750',
+    'AGE MONTHLY FACTOR\n55 0.8750\n65 1.0000\n60 1.0000',
+    '55 0.8750\n65 1.0000'
+  ]) assert.equal(preferFallbackForImplausibleAges(first,{text,confidence:95}),false,text);
+  assert.equal(preferFallbackForImplausibleAges(first,{
+    text:'AGE MONTHLY FACTOR\n55 0.8750\n65 1.0000',confidence:40
+  }),false);
+  assert.equal(hasImplausibleAgeTableRow('AGE MONTHLY FACTOR\n125 1.0000'),false);
+  assert.equal(hasImplausibleAgeTableRow('AGE MONTHLY FACTOR\n126 1.0000'),true);
+  assert.equal(hasImplausibleAgeTableRow('585 0.8750\n65 1.0000'),false);
+});
