@@ -162,6 +162,51 @@ test('punctuated headers preserve ambiguity checks and reject fuzzy OCR guesses'
   assert.equal(duplicate.status,'abstain');
 });
 
+test('repeated factors are traced only to uniquely corroborated exact source rows',()=>{
+  const words=original.map(w=>['0.9063','0.9813'].includes(w.text)?
+    {...w,text:'1.0000'}:w);
+  const text='AGE MONTHLY FACTOR\n58 1.0000\n64 1.0000';
+  const assessment=assessSpatialOcrRows({...args,text,words});
+  assert.equal(assessment.status,'candidates');
+  assert.deepEqual(assessment.pairs.map(row=>[row.age.text,row.factor.text]),
+    [['58','1.0000'],['64','1.0000']]);
+  for(const pair of assessment.pairs){
+    assert.equal(text.slice(pair.transcriptRanges.age.start,
+      pair.transcriptRanges.age.end),pair.age.text);
+    assert.equal(text.slice(pair.transcriptRanges.factor.start,
+      pair.transcriptRanges.factor.end),pair.factor.text);
+  }
+  assert.notDeepEqual(assessment.pairs[0].transcriptRanges.factor,
+    assessment.pairs[1].transcriptRanges.factor);
+  assert.deepEqual(assessment.pairs[0].factor.bbox,original[4].bbox);
+  assert.deepEqual(assessment.pairs[1].factor.bbox,original[6].bbox);
+});
+test('repeated factors fail closed on extra text occurrences or source-row ambiguity',()=>{
+  const words=original.map(w=>['0.9063','0.9813'].includes(w.text)?
+    {...w,text:'1.0000'}:w);
+  const good='AGE MONTHLY FACTOR\n58 1.0000\n64 1.0000';
+  for(const text of [
+    good+'\nNote: factor 1.0000',
+    good+'\n1.0000',
+    'AGE MONTHLY FACTOR\n58 1.0000\n64 1.0000\n65 1.0000',
+    'AGE MONTHLY FACTOR\n58 20 1.0000\n64 30 1.0000',
+    'AGE MONTHLY FACTOR\n58 1.0000\n58 1.0000'
+  ]){
+    const assessment=assessSpatialOcrRows({...args,text,words});
+    assert.equal(assessment.status,'abstain',text);
+    assert.deepEqual(assessment.pairs,[],text);
+  }
+});
+test('an actually measured third numeric column blocks repeated-factor recovery',()=>{
+  const words=original.map(w=>['0.9063','0.9813'].includes(w.text)?
+    {...w,text:'1.0000'}:w);
+  const assessment=assessSpatialOcrRows({...args,words:[
+    ...words,word('20',290,239),word('30',290,336)
+  ],text:'AGE SERVICE MONTHLY FACTOR\n58 20 1.0000\n64 30 1.0000'});
+  assert.equal(assessment.status,'abstain');
+  assert.equal(assessment.reason,'intervening-numeric-column');
+});
+
 test('implausible measured OCR age 585 cannot become a sourced AGE/FACTOR association',()=>{
   const altered=original.map(w=>w.text==='58'?{...w,text:'585'}:w);
   const result=assessSpatialOcrRows({...args,words:altered,

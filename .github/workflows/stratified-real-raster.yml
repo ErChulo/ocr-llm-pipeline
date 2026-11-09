@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/stratified-real-raster.yml'
       - 'tests/stratified-raster-benchmark.mjs'
+      - 'tests/repeated-factor-raster-benchmark.mjs'
       - 'tests/fixtures/orientationCandidateSelection.mjs'
       - 'tests/orientationCandidateSelection.test.mjs'
       - 'tests/fixtures/spatialCellMetrics.mjs'
@@ -33,10 +34,15 @@ jobs:
       - name: Measure actual Tesseract word boxes across twelve fictional PDF pages
         timeout-minutes: 12
         run: node --experimental-strip-types tests/stratified-raster-benchmark.mjs
+      - name: Verify repeated actuarial factors against original JPEG source pixels
+        timeout-minutes: 5
+        run: node --experimental-strip-types tests/repeated-factor-raster-benchmark.mjs
       - name: Archive per-condition measurement and abstention report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: stratified-fictional-actual-ocr-raster
-          path: tmp/stratified-raster-report.json
+          path: |
+            tmp/stratified-raster-report.json
+            tmp/repeated-factor-raster-report.json
           if-no-files-found: ignore
