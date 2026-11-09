@@ -1,5 +1,8 @@
 # Production acceptance gates — release-blocking evidence register
 
+- **PR #107 proposed measured punctuated-header recovery (2026-11-08; verification pending):** accept only literal OCR-measured AGE:, MONTHLY: and FACTOR: column headers alongside unpunctuated forms. Preserve original Tesseract word coordinates, source page, unique-header requirement and numeric-third-column abstention. Two fictional regression tests cover recovery and ambiguity. No independently measured change to the 16/22 original-JPEG baseline or adversarial GGUF scores has been established. Spatial gate remains BLOCKED; release remains `0.3.0-beta.1`.
+
+
 **Status date:** 2026-11-08. **Release:** `0.3.0-beta.1` (**NOT production-ready**).
 This document records proposed exit criteria and measured evidence separately.
 Passing CI, or an exact result on a small fictional fixture, is not production certification.
