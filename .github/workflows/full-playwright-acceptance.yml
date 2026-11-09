@@ -23,6 +23,8 @@ on:
       - 'tests/evidence.test.mjs'
       - 'src/disclaimedEvidence.ts'
       - 'tests/disclaimedEvidence.test.mjs'
+      - 'src/normalAgeConflict.ts'
+      - 'tests/normalAgeConflict.test.mjs'
       - 'src/sourceAttribution.ts'
       - 'tests/sourceAttribution.test.mjs'
       - 'src/App.tsx'
