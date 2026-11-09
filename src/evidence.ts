@@ -73,6 +73,12 @@ function tokenFor(value: unknown): string | null {
   // "true" or "false" is not evidence of that claim.
   return null;
 }
+// Numeric sign screening is strictly contextual: preserve the source bytes,
+// Unicode offsets and selected evidence. PDF/OCR may include typographic minus
+// and format/invisible spacing between a sign and the monetary numeral.
+const qualifiedNumericPrefix=/[+\-−–—‒‑‐﹣－＋][\s\u200B-\u200D\u2060\uFEFF]*[$€£]?[\s\u200B-\u200D\u2060\uFEFF]*$/u;
+const accountingPrefix=/\([\s\u200B-\u200D\u2060\uFEFF]*[$€£]?[\s\u200B-\u200D\u2060\uFEFF]*$/u;
+const accountingSuffix=/^[\s\u200B-\u200D\u2060\uFEFF]*\)/u;
 function boundaryOkay(source: string,start: number,end: number,value: unknown): boolean {
   // Match whole numeric tokens, including numeric strings from JSON schemas.
   const token=typeof value==='number' && Number.isFinite(value)?String(value):
@@ -94,10 +100,10 @@ function boundaryOkay(source: string,start: number,end: number,value: unknown): 
     const unsignedFinancial=/^(?:[$€£]\s*)?(?:\d+(?:,\d{3})*(?:\.\d+)?|\.\d+)[ \t]?%?$/.test(token)
       && /[$€£%]/.test(token);
     if(unsignedFinancial){
-      const prefix=source.slice(Math.max(0,start-8),start);
-      const suffix=source.slice(end,Math.min(source.length,end+4));
-      if(/[+\-−–]\s*$/.test(prefix))return false;
-      if(/\(\s*$/.test(prefix)&&/^\s*\)/.test(suffix))return false;
+      const prefix=source.slice(Math.max(0,start-16),start);
+      const suffix=source.slice(end,Math.min(source.length,end+16));
+      if(qualifiedNumericPrefix.test(prefix))return false;
+      if(accountingPrefix.test(prefix)&&accountingSuffix.test(suffix))return false;
     }
     if(word.test(first) && word.test(before))return false;
     if(word.test(last) && word.test(after))return false;
@@ -112,13 +118,13 @@ function boundaryOkay(source: string,start: number,end: number,value: unknown): 
   if((before==='.'||before===',')&&/[0-9]/.test(prev))return false;
   if((after==='.'||after===',')&&/[0-9]/.test(next))return false;
   // Positive values must not be backed by a negative or signed quantity.
-  if(!/^[+-]/.test(token)){
-    if(/[-+−–]/.test(before))return false;
-    if(/[-+−–]\s*[$€£]?\s*$/.test(source.slice(Math.max(0,start-8),start)))return false;
+  if(!/^[+\-−–—‒‑‐﹣－＋]/u.test(token)){
+    if(qualifiedNumericPrefix.test(source.slice(Math.max(0,start-16),start)))return false;
   }
-  // Parentheses may indicate a negative accounting amount.
-  if(after===')' && before==='(')return false;
-  if(after===')' && before==='$' && prev==='(')return false;
+  // Accounting parentheses may be separated from the original source numeral
+  // by a currency symbol or zero-width formatting. Never silently strip them.
+  if(accountingPrefix.test(source.slice(Math.max(0,start-16),start))&&
+     accountingSuffix.test(source.slice(end,Math.min(source.length,end+16))))return false;
   // Scientific notation is not the same as the bare mantissa/exponent.
   if(/^[eE][+-]?\d/.test(source.slice(end,end+4)))return false;
   if(/[eE]/.test(before)&&/[0-9]/.test(prev))return false;
