@@ -213,3 +213,37 @@ test('silently omitted source-instruction warning cannot be bypassed by a stale 
  assert.equal(result.allowed,false);
  assert.ok(result.reasons.some(x=>x.includes('not registered')));
 });
+
+test('final export rechecks contradictory normal ages despite schema and confirmed citations',()=>{
+ const source={...d,text:'FICTIONAL PLAN: normal_age 65.\n'+
+   'AMENDMENT effective 2025: normal_age 67.'};
+ const reviewed={...audit,documentId:source.id,documentName:source.name,
+   sourceText:source.text,length:source.text.length,
+   chunks:[{chunk:1,start:0,end:source.text.length}]};
+ for(const selectedAge of [65,67]){
+  const value={normal_age:selectedAge};
+  const checks=auditLiteralEvidence(source,value,reviewed);
+  assert.equal(checks[0].status,'match');
+  const gate=evaluateExportGate({...safe,document:source,audit:reviewed,
+   value,evidence:checks,selectedEvidence:{'/normal_age':0},
+   confirmedEvidence:{'/normal_age':true},sourceIssuesUnreviewed:0});
+  assert.equal(gate.allowed,false);
+  assert.ok(gate.reasons.some(reason=>reason.includes('Conflicting normal retirement ages')));
+ }
+});
+test('benign early age and repeated normal age remain available for human evidence review',()=>{
+ for(const text of [
+  'FICTIONAL PLAN: normal_age 65.\nEarly retirement age 55.',
+  'FICTIONAL PLAN: normal_age 65.\nConfirmed normal retirement age 65.'
+ ]){
+  const source={...d,text};
+  const reviewed={...audit,sourceText:text,length:text.length,
+   chunks:[{chunk:1,start:0,end:text.length}]};
+  const value={normal_age:65};
+  const checks=auditLiteralEvidence(source,value,reviewed);
+  const gate=evaluateExportGate({...safe,document:source,audit:reviewed,
+    value,evidence:checks,selectedEvidence:{'/normal_age':0},
+    confirmedEvidence:{'/normal_age':true}});
+  assert.equal(gate.allowed,true,JSON.stringify(gate.reasons));
+ }
+});
