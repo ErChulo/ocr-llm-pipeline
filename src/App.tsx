@@ -56,6 +56,8 @@ export default function App() {
   const [modelName, setModelName] = useState('');
   const [modelProfile, setModelProfile] = useState<GgufProfile|null>(null);
   const [busy, setBusy] = useState(false);
+  const [importing,setImporting]=useState(false);
+  const importAbort=useRef<AbortController|null>(null);
   const [testingModel, setTestingModel] = useState(false);
   const [benchmarkStatus, setBenchmarkStatus] = useState('');
   const [corpusRunning,setCorpusRunning]=useState(false);
@@ -241,12 +243,15 @@ export default function App() {
   async function onAttach(e: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.currentTarget.files ?? []);
     e.currentTarget.value = '';
-    if (!files.length) return;
+    if (!files.length||busy||importAbort.current) return;
+    const controller=new AbortController();
+    importAbort.current=controller;
+    setImporting(true);
     setError(''); setBusy(true); setStatus('Reading local documents. OCR may take additional time...');
     try {
       const batch = await importDocumentBatch(files,docs,importFile,(done,total)=>{
         setStatus('Reading local files '+done+' of '+total+'. No documents are committed until all succeed.');
-      });
+      },controller.signal);
       const added = batch.documents;
       setDocs(current => [...current, ...added]);
       setDocumentIndex(docs.length);
@@ -256,8 +261,15 @@ export default function App() {
       clearExtraction();
       setNotes(batch.notes);
       setStatus('Imported ' + added.length + ' local document(s). No server was used.');
-    } catch (e) { setError(errorMessage(e)); setStatus('Document import stopped.'); }
-    finally { setBusy(false); }
+    } catch (e) {
+      if(controller.signal.aborted){
+        setStatus('Document import cancelled. No documents were added.');
+      }else{setError(errorMessage(e));setStatus('Document import stopped.');}
+    } finally {
+      importAbort.current=null;
+      setImporting(false);
+      setBusy(false);
+    }
   }
 
   async function onSupplementMixedPdf(){
@@ -475,6 +487,11 @@ export default function App() {
         <label className="picker">Attach OCR export / text
           <input type="file" multiple accept=".jsonc,.json,.txt,.md,.csv,.docx,.xlsx,.pdf,.png,.jpg,.jpeg,.webp" disabled={busy} onChange={e => void onAttach(e)}/>
         </label>
+        {importing && <button type="button" className="secondary"
+          onClick={()=>{
+            importAbort.current?.abort();
+            setStatus('Cancellation requested. The current local file may finish before the entire batch is discarded.');
+          }}>Cancel document import</button>}
         <p className="help">Supports PDF (including scanned pages), images, DOCX, XLSX, OCR JSONC and text. OCR is English-only.</p>
         <p className="help">{docs.length} document(s) in this session</p>
       </section>
