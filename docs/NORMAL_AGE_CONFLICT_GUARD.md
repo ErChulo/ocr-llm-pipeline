@@ -4,7 +4,7 @@ This deliberately narrow safety check refuses to treat a model-selected normal-r
 
 ## Exact behavior
 
-1. Scan original parser text and record boundaries for explicit `normal retirement age`, `normal age`, or `normal_age` statements containing a literal integer. Track the exact original text offsets. Do not infer cross-cell, cross-paragraph or cross-page numeric associations.
+1. Scan original parser text and record boundaries for explicit `normal retirement age`, `normal age`, `normal_age`, or standalone `NRA` statements containing a literal integer, including same-record `shall be age`, `will be age`, and `NRA:` clauses. Track the exact original text offsets. Do not infer cross-cell, cross-paragraph or cross-page numeric associations.
 2. Exclude literal appearances solely inside already recognized AI instruction text or expressly disclaimed nongoverning examples. These passages retain their existing separate security checks.
 3. For an extracted field `normal_age`, `normal_retirement_age`, `normalRetirementAge` or `nra`, **two distinct remaining values** mean an unresolved conflict. The entire candidate fails prevalidation, regardless of which candidate the LLM suggested. No source is silently chosen, and no substitute value is generated.
 4. Recheck at the final export gate even when the source, schema and evidence confirmation controls were previously satisfied. Incomplete/malformed source scan states also block that field.
