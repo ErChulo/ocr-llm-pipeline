@@ -65,6 +65,14 @@ try{
   await modal.getByRole('button',{name:'Next step'}).click();
   assert.match(await modal.getByRole('status').innerText(),/step 2 of 6/i);
   assert.match(await setup.innerText(),/GGUF model is NOT included/);
+  for(let step=3;step<=6;step++){
+    await modal.getByRole('button',{name:'Next step'}).click();
+    assert.match(await modal.getByRole('status').innerText(),
+      new RegExp('step '+step+' of 6','i'));
+  }
+  assert.match(await setup.innerText(),/wholly fictional document only/i);
+  await modal.getByRole('button',{name:'Review from step 1'}).click();
+  assert.match(await modal.getByRole('status').innerText(),/step 1 of 6/i);
   await modal.getByRole('button',{name:'Using the app'}).click();
   await modal.getByRole('heading',{name:'1. Load a model'}).waitFor();
   assert.equal(await setup.isVisible(),false);
