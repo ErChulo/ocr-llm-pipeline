@@ -46,16 +46,16 @@ export function assessCandidateSourceAttribution(
   // Literal matching is not governing-source adjudication. Two credible
   // but conflicting normal-age statements require an explicit applicability
   // resolution rather than accepting a model-picked value (even an exact one).
-  const sourceConflicts:AttributionAbstention[]=checks.filter(check=>
-    check.status==='match'
-  ).flatMap(check=>{
+  const sourceConflicts:AttributionAbstention[]=[];
+  for(const check of checks){
+    if(check.status!=='match')continue;
     const conflict=inspectNormalAgeSourceConflict(doc,check.path);
-    return conflict.state==='unresolved'
-      ? [{path:check.path,reason:'unresolved-normal-age-source-claims' as const}]
-      : conflict.state==='unscannable'
-        ? [{path:check.path,reason:'unscannable-normal-age-source' as const}]
-        : [];
-  });
+    if(conflict.state==='unresolved'){
+      sourceConflicts.push({path:check.path,reason:'unresolved-normal-age-source-claims'});
+    }else if(conflict.state==='unscannable'){
+      sourceConflicts.push({path:check.path,reason:'unscannable-normal-age-source'});
+    }
+  }
   const abstentions:AttributionAbstention[]=[...unsupportedNumeric,...sourceConflicts,...checks.flatMap(check=>{
     if(check.status!=='match'||check.evidenceMethod!=='literal_value'||
        check.matches.length===0)return [];
