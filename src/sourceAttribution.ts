@@ -12,12 +12,13 @@ import type {ExtractionAudit} from './chunkExtraction.ts';
 import {auditLiteralEvidence} from './evidence.ts';
 import {selectedCitationIsInstructionRisk} from './sourceInstructionReview.ts';
 import {selectedCitationExpresslyDisclaimed} from './disclaimedEvidence.ts';
-import {inspectNormalAgeSourceConflict} from './normalAgeConflict.ts';
+import {inspectNormalAgeSourceConflict,normalAgeCitationUnrelatedToLabelledClaim} from './normalAgeConflict.ts';
 
 export type AttributionAbstention={
   path:string;
   reason:'only-ai-instruction-literal'|'only-explicitly-disclaimed-literal'|'mixed-disqualified-literal'|'missing-source-audit'|'source-absent-numeric-literal'|
-    'unresolved-normal-age-source-claims'|'unscannable-normal-age-source';
+    'unresolved-normal-age-source-claims'|'unscannable-normal-age-source'|
+    'normal-age-literal-unrelated-to-labelled-claim';
 };
 export type CandidateAttribution={
   decision:'abstain'|'review-required';
@@ -54,6 +55,20 @@ export function assessCandidateSourceAttribution(
       sourceConflicts.push({path:check.path,reason:'unresolved-normal-age-source-claims'});
     }else if(conflict.state==='unscannable'){
       sourceConflicts.push({path:check.path,reason:'unscannable-normal-age-source'});
+    }else if(conflict.state==='clear'&&conflict.claims.length){
+      const clean=check.matches.filter(match=>
+        !selectedCitationIsInstructionRisk(doc.text,match.start,match.end)&&
+        !selectedCitationExpresslyDisclaimed(doc.text,match.start,match.end));
+      // A matching participant age or other numeric figure is not a normal-
+      // retirement-age provision. Do not generate substitute evidence.
+      // Leave solely instruction/disclaimed matches to the existing guard.
+      if(clean.length&&clean.every(match=>
+        normalAgeCitationUnrelatedToLabelledClaim(doc,check.path,check.value,match)
+      )){
+        sourceConflicts.push({
+          path:check.path,reason:'normal-age-literal-unrelated-to-labelled-claim'
+        });
+      }
     }
   }
   const abstentions:AttributionAbstention[]=[...unsupportedNumeric,...sourceConflicts,...checks.flatMap(check=>{
@@ -80,6 +95,6 @@ export function assessCandidateSourceAttribution(
 export function attributionAbstentionMessage(review:CandidateAttribution):string {
   const paths=review.abstentions.map(x=>x.path).join(', ')||'unknown field';
   return 'Source attribution abstained: '+paths+
-    '. A numeric proposal has no matching original source literal, appears only in instructions/non-governing examples, or the source has incompatible apparent normal-retirement-age claims that need an applicability determination. '+
+    '. A numeric proposal has no matching original source literal, appears only in instructions/non-governing examples, or the numeric literal is outside a labelled normal-age source provision, or the source has incompatible apparent normal-retirement-age claims that need an applicability determination. '+
     'The model proposal was not replaced or approved. Resolve the governing source and effective-date applicability using an authorized review process before using the value.';
 }

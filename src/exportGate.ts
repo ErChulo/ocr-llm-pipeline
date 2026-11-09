@@ -9,7 +9,7 @@ import { evidenceReviewComplete, evidenceMatchesCurrentValue, evidenceSelections
 import { screenPrivacySurfaces } from './privacy.ts';
 import { containsSourceInstructionRisk,selectedCitationIsInstructionRisk } from './sourceInstructionReview.ts';
 import {selectedCitationExpresslyDisclaimed} from './disclaimedEvidence.ts';
-import {inspectNormalAgeSourceConflict} from './normalAgeConflict.ts';
+import {inspectNormalAgeSourceConflict,normalAgeCitationUnrelatedToLabelledClaim} from './normalAgeConflict.ts';
 
 export type ExportGateInputs = {
   document: SourceDocument | null;
@@ -114,6 +114,17 @@ export function evaluateExportGate(input:ExportGateInputs):ExportGate{
     inspectNormalAgeSourceConflict(document,check.path).state==='unscannable'
   )){
     reasons.push('Normal retirement age source-conflict review could not be completed. Export remains blocked.');
+  }
+  // Independently recheck the actual selected citation. Literal 65
+  // elsewhere (participant age, service or valuation notes) cannot support a
+  // normal retirement age merely because a labelled claim also says 65.
+  if(document&&input.evidence.some(check=>{
+    const index=input.selectedEvidence?.[check.path];
+    const match=Number.isSafeInteger(index)&&index>=0?check.matches?.[index]:null;
+    return match&&normalAgeCitationUnrelatedToLabelledClaim(
+      document,check.path,check.value,match);
+  })){
+    reasons.push('Selected normal retirement age evidence comes from an unrelated numeric passage, not the original labelled provision. Choose the actual governing normal-age clause.');
   }
   const issues=document?.reviewIssues??[];
   const issueIds=new Set<string>();

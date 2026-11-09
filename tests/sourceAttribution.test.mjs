@@ -186,3 +186,39 @@ test('early retirement age 55 does not create false conflict with normal age 65'
  const audit=collectChunkCandidates(source,[chunk],[value]);
  assert.equal(assessCandidateSourceAttribution(source,audit,value).decision,'review-required');
 });
+
+test('plausible but unrelated participant age 99 cannot become normal retirement age evidence',()=>{
+ const source=doc('FICTIONAL PLAN: normal retirement age 65.\n'+
+  'A participant died at age 99. This is not a retirement age provision.');
+ const before=structuredClone(source);
+ const {audit,value}=candidate(source,99);
+ const result=assessCandidateSourceAttribution(source,audit,value);
+ assert.equal(result.decision,'abstain');
+ assert.deepEqual(result.abstentions,[{
+  path:'/normal_age',reason:'normal-age-literal-unrelated-to-labelled-claim'
+ }]);
+ assert.deepEqual(source,before);
+ assert.deepEqual(value,{normal_age:99});
+ assert.equal(assessCandidateSourceAttribution(source,
+   candidate(source,65).audit,{normal_age:65}).decision,'review-required');
+});
+test('a real labelled source claim remains available when same age repeats elsewhere',()=>{
+ const source=doc('FICTIONAL PLAN: normal_age 65.\nParticipant age 65.');
+ const {audit,value}=candidate(source,65);
+ assert.equal(assessCandidateSourceAttribution(source,audit,value).decision,'review-required');
+});
+test('model cannot borrow a labelled normal age from outside its audited source section',()=>{
+ const source=doc('FICTIONAL PLAN: normal_age 65.\n'+
+  'Unrelated participant age 65.');
+ const middle=source.text.indexOf('Unrelated');
+ const originalSection={chunk:1,start:0,end:middle,text:source.text.slice(0,middle)};
+ const otherSection={chunk:2,start:middle,end:source.text.length,
+   text:source.text.slice(middle)};
+ const audit=collectChunkCandidates(source,[originalSection,otherSection],
+   [{normal_age:null},{normal_age:65}]);
+ const decision=assessCandidateSourceAttribution(source,audit,{normal_age:65});
+ assert.equal(decision.decision,'abstain');
+ assert.deepEqual(decision.abstentions,[{
+  path:'/normal_age',reason:'normal-age-literal-unrelated-to-labelled-claim'
+ }]);
+});
