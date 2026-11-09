@@ -97,16 +97,27 @@ test('mixed AI directives and expressly disclaimed copies cannot launder injecte
    path:'/normal_age',reason:'mixed-disqualified-literal'
  }]);
 });
-test('ordinary plan appendix and genuine duplicate literal remain review-required',()=>{
- for(const sourceText of [
-  'FICTIONAL PLAN: normal_age 65.\n\nAppendix A: retirement normal_age 99.',
-  'FICTIONAL PLAN: normal_age 99.\n\nEXAMPLE ONLY\nnormal_age 99.'
- ]){
-  const source=doc(sourceText),{audit,value}=candidate(source,99);
+test('unresolved conflicting normal ages abstain without inventing governing hierarchy',()=>{
+ const source=doc('FICTIONAL PLAN: normal_age 65.\n\nAppendix A: retirement normal_age 99.');
+ const before=structuredClone(source);
+ for(const age of [65,99]){
+  const {audit,value}=candidate(source,age);
   const result=assessCandidateSourceAttribution(source,audit,value);
-  assert.equal(result.decision,'review-required');
-  assert.deepEqual(result.abstentions,[]);
+  assert.equal(result.decision,'abstain');
+  assert.deepEqual(result.abstentions,[{
+    path:'/normal_age',reason:'unresolved-normal-age-source-claims'
+  }]);
+  assert.match(attributionAbstentionMessage(result),/applicability determination/i);
+  assert.deepEqual(value,{normal_age:age});
  }
+ assert.deepEqual(source,before);
+});
+test('genuine duplicate and expressly non-governing sample stay review-required',()=>{
+ const source=doc('FICTIONAL PLAN: normal_age 99.\n\nEXAMPLE ONLY\nnormal_age 99.');
+ const {audit,value}=candidate(source,99);
+ const result=assessCandidateSourceAttribution(source,audit,value);
+ assert.equal(result.decision,'review-required');
+ assert.deepEqual(result.abstentions,[]);
 });
 test('missing document or model audit abstains without guessing provenance',()=>{
  const source=doc('Normal age 65.');
@@ -154,4 +165,24 @@ test('normalized nonnumeric claims keep manual quoted-evidence path rather than 
   assert.equal(decision.decision,'review-required');
   assert.deepEqual(decision.unmatchedPaths,['/date','/spouse_eligible']);
   assert.deepEqual(decision.abstentions,[]);
+});
+
+test('normal_retirement_age and nested normal-age variants also detect source conflicts',()=>{
+ for(const field of ['normal_retirement_age','normal_age','normalRetirementAge']){
+  const source=doc('FICTIONAL PLAN: Normal retirement age is 65.\n'+
+    'Amendment effective 2025: Normal retirement age 67.');
+  const chunk={chunk:1,start:0,end:source.text.length,text:source.text};
+  const value={[field]:67},audit=collectChunkCandidates(source,[chunk],[value]);
+  const result=assessCandidateSourceAttribution(source,audit,value);
+  assert.deepEqual(result.abstentions,[{
+    path:'/'+field,reason:'unresolved-normal-age-source-claims'
+  }],field);
+ }
+});
+test('early retirement age 55 does not create false conflict with normal age 65',()=>{
+ const source=doc('Normal retirement age 65.\nEarly retirement age 55.');
+ const chunk={chunk:1,start:0,end:source.text.length,text:source.text};
+ const value={normal_retirement_age:65,early_retirement_age:55};
+ const audit=collectChunkCandidates(source,[chunk],[value]);
+ assert.equal(assessCandidateSourceAttribution(source,audit,value).decision,'review-required');
 });
