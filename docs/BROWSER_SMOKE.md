@@ -1,5 +1,10 @@
 # Experimental real-browser GGUF smoke test
 
+## Measured original-JPEG orientation extension (merged PR #119, November 9)
+
+In standalone `file://` Chromium, three separately encoded fictional JPEGs were each embedded in PDFs **without** PDF `/Rotate` metadata, with original source pixel turns of **90°, 180° and 270°**. The live importer recovered **4/4 exact literals** and **2/2 separately annotated, measured source word/cell pairs** at each angle, **12/12 literals and 6/6 pairs total**, with zero accepted false associations, zero wrong-page claims and zero runtime HTTP(S)/WebSocket requests. All pages retained mandatory source-original review. [Merged PR #119](https://github.com/ErChulo/ocr-llm-pipeline/pull/119) and [passing offline smoke CI](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42724087277). This three-page non-blinded developer fixture is distinct from the 12-page original-JPEG raw **16/22** baseline and does not establish representative 97% recall, 99.5% precision or the required 500-page holdout.
+
+
 A separate GitHub Actions workflow builds the standalone HTML, downloads a tiny GGUF fixture **on the networked CI runner**, starts a headless Chromium browser, opens the HTML from \`file://\`, and blocks HTTPS and WebSocket requests.
 
 It tests:
