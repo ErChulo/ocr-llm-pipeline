@@ -1,5 +1,8 @@
 # Changelog
 
+- **November 9, merged PR #123:** introduce separate offline acceptance-bundle byte-integrity checker with real file and annotation SHA-256 verification, traversal/symlink/duplicate-original rejection, and 420/420 successful tests. Engineering/CI only (not PBGC workstation); no independent annotations or OCR remeasurement performed; production gate remains blocked.
+
+
 - **November 9 merged PR #121:** reject incomplete original parser-record coverage of normal-retirement-age source statements, keeping benign whitespace gaps and original offsets intact; 416/416 source tests and all triggered offline/actual-model CI passed. This remains deterministic abstention, not a new source authority decision or production release.
 
 
