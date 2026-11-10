@@ -1,5 +1,8 @@
 # Production acceptance gates — release-blocking evidence register
 
+- **Verified and merged [PR #123](https://github.com/ErChulo/ocr-llm-pipeline/pull/123), original-byte holdout integrity:** a separate **offline engineering/CI-only** validator checks physical archived fictional original-file SHA-256 and annotation-file hashes against the submitted OCR threshold manifest, rejects traversal/symlink/duplicate physical originals, and preserves explicit `independentlyAdjudicated=false` / `productionGatePassed=false`. **420/420** source tests, single-file build passed ([method](INDEPENDENT_OCR_BUNDLE_VERIFICATION.md)). This does **not** run OCR, authenticate a scan, independently verify per-page numeric ground truth or close gate 1/2.
+
+
 - **November 9 verified [PR #121](https://github.com/ErChulo/ocr-llm-pipeline/pull/121), parser-record completeness:** The normal-retirement-age guard now abstains rather than overlook a conflicting fact in non-whitespace text omitted by a parser-record map. Whitespace-only separators remain allowed; source bytes and offsets are unchanged. **416/416** source tests, single HTML build, offline browser, accessibility, full Playwright, and 0.5B/1.5B/3B adversarial CI passed. **Not** legal amendment hierarchy, independent source accuracy, or a closed production gate.
 
 
