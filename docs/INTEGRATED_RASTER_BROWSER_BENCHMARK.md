@@ -1,5 +1,8 @@
 # Integrated twelve-page raster acceptance experiment
 
+**November 9 additional deployed orientation regression, merged PR #119:** A *different*, fixed three-page original-JPEG cohort embedded 90°, 180° and 270° pixel rotations in PDFs with no `/Rotate` metadata and ran through the same actual standalone `file://` application. Measured **12/12** numeric literal recoveries, **6/6** original-visual-cell-ROI-corroborated Tesseract pairs, zero FP, zero wrong-page and zero outbound browser requests; source review remained mandatory ([offline CI](https://github.com/ErChulo/ocr-llm-pipeline/actions/runs/42724087277)). These denominators belong only to the three-page regression, **not** to the twelve-page integrated benchmark or raw original-JPEG cohort.
+
+
 **Release remains `0.3.0-beta.1`. This development benchmark never certifies production or office authorization.**
 
 ## Question
