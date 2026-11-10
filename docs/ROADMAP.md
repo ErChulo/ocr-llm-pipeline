@@ -1,5 +1,8 @@
 # Roadmap — beta validation
 
+- [x] **Merged PR #121:** fail-closed detection of non-whitespace leading, interior, and trailing gaps in original-source record maps for normal-age conflicts. **416/416** tests plus offline build/browser/accessibility, Playwright and real three-GGUF adversarial regression workflows passed. Does **not** select a governing amendment or pass any independent acceptance gate.
+
+
 - [x] **Merged PRs #118, #119, #120 (November 9; engineering regression only):** extend original-source normal-age clauses and adversarial citation abstention (412/412 source tests and three-GGUF regression workflows); verify all three exact deployed `file://` JPEG quarter-turns on a tiny fixture (12/12 literals, 6/6 measured pairs, 0 FP, 0 network); provide cooperative, all-or-nothing local document import cancellation (411/411 source tests and 0.5B 7/8, 1.5B 8/8 short-case actual GGUF). **Still open:** independent 100-document/500-page/5,000-numeral OCR holdout, at least 100 independently designed attacks, 99% accepted critical model precision, complete source legal applicability, target-workstation verification, security/accessibility human review. Do not promote above beta.
 
 
