@@ -1,5 +1,8 @@
 # Development verification status — 2026-11-09
 
+- **Merged PR #121:** enforce complete coverage of substantive original document text by normal-age parser record maps; unindexed text now triggers unscannable-source abstention, without rewriting source, assuming amendment precedence, or fabricating page/cell offsets. **416/416** source tests, build, offline browser, accessibility, full Playwright and three-model adversarial CI passed. All production gates remain open.
+
+
 - **Verified and merged Nov 9, PRs #118–#120:** [#118](https://github.com/ErChulo/ocr-llm-pipeline/pull/118) strengthened labelled normal-retirement-age source declarations (412 source tests, complete offline browser/a11y/Playwright and real 0.5B/1.5B/3B adversarial CI passed as workflows; **each model still selected injected age 99, each was stopped by deterministic abstention**). [#119](https://github.com/ErChulo/ocr-llm-pipeline/pull/119) confirmed actual 90°/180°/270° source JPEG rotations inside unrotated-metadata PDFs via deployed `file://`: **12/12** exact numerals and **6/6** independently ROI-matched measured pairs, zero false/wrong-page and zero runtime external requests on **three fixed fictional pages**, not a new large holdout. [#120](https://github.com/ErChulo/ocr-llm-pipeline/pull/120) added cooperative local import cancellation with batch rollback; **411/411** source tests, browser, accessibility, full Playwright, separate actual 0.5B **7/8** and 1.5B **8/8** eight-case developmental GGUF corpus passed. An already executing OCR read may finish before its entire batch is discarded. No changes to bulk-ocr-studio; app remains `0.3.0-beta.1`, not office-certified. All eight acceptance gates stay FAIL/BLOCKED.
 
 
