@@ -48,9 +48,15 @@ export function inspectNormalAgeSourceConflict(
   if(ranges.length>10000)return empty('unscannable');
   let last=0;
   const claims:NormalAgeClaim[]=[];
+  // A supplied record map may not hide contradictory source clauses in a
+  // leading, interior or trailing gap. Parser-added whitespace separators
+  // are harmless; unindexed original text is not evidence we can ignore.
+  const uncoveredHasText=(start:number,end:number):boolean=>
+    /\S/u.test(doc.text.slice(start,end));
   for(const record of ranges){
     if(!record||!Number.isSafeInteger(record.start)||!Number.isSafeInteger(record.end)||
-       record.start<last||record.end>doc.text.length||record.end<=record.start)
+       record.start<last||record.end>doc.text.length||record.end<=record.start||
+       uncoveredHasText(last,record.start))
       return empty('unscannable');
     last=record.end;
     const segment=doc.text.slice(record.start,record.end);
@@ -72,6 +78,7 @@ export function inspectNormalAgeSourceConflict(
       offset+=rawLine.length+1;
     }
   }
+  if(uncoveredHasText(last,doc.text.length))return empty('unscannable');
   const distinctAges=[...new Set(claims.map(claim=>claim.age))].sort((a,b)=>a-b);
   return {state:distinctAges.length>1?'unresolved':'clear',claims,distinctAges};
 }
