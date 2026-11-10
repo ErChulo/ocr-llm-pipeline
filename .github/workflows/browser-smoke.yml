@@ -78,4 +78,5 @@ jobs:
             tmp/fictional-scanned-pdf-ocr.json
             tmp/fictional-multipage-scanned-pdf-ocr.json
             tmp/fictional-spatial-ocr-cells.json
+            tmp/fictional-original-pixel-rotation-browser.json
           if-no-files-found: ignore
