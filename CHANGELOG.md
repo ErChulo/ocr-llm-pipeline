@@ -1,5 +1,8 @@
 # Changelog
 
+- **November 9 merged PR #121:** reject incomplete original parser-record coverage of normal-retirement-age source statements, keeping benign whitespace gaps and original offsets intact; 416/416 source tests and all triggered offline/actual-model CI passed. This remains deterministic abstention, not a new source authority decision or production release.
+
+
 - **November 9, 2026 — merged PRs #118–#120:** normal-retirement-age `NRA:` / `shall be age` exact-source declaration guard; deployed offline JPEG/PDF 90°/180°/270° pixel-rotation regression (three fixed fictional pages: 12/12 numerals, 6/6 correct measured table associations, zero FP/wrong-page/network); and a visible cooperative batch-import cancellation control with all-or-nothing rollback. All branch source/build, offline smoke, relevant accessibility/Playwright and real GGUF regression workflows passed. Qwen 0.5B remained 7/8 on the eight-case development corpus; a separate Qwen 1.5B run measured 8/8, while physical adversarial models still selected false age 99 (guard abstained). **No production gate closed; beta `0.3.0-beta.1`.**
 
 
