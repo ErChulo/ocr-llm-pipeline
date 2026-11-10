@@ -1,5 +1,8 @@
 # Development verification status — 2026-11-09
 
+- **Merged PR #123:** new offline Node-based **engineering/CI** original-byte verifier checks SHA-256 of archived fictional originals and annotations against reported document/page hashes, rejects paths, symlinks, repeats and tampered files. **420/420** branch tests and standalone HTML build passed. Does not modify the `file://` workstation runtime, install Node there, run OCR, establish independent authorship or promote any production gate. Documentation: [bundle verifier](INDEPENDENT_OCR_BUNDLE_VERIFICATION.md).
+
+
 - **Merged PR #121:** enforce complete coverage of substantive original document text by normal-age parser record maps; unindexed text now triggers unscannable-source abstention, without rewriting source, assuming amendment precedence, or fabricating page/cell offsets. **416/416** source tests, build, offline browser, accessibility, full Playwright and three-model adversarial CI passed. All production gates remain open.
 
 
