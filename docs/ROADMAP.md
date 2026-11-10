@@ -1,5 +1,8 @@
 # Roadmap — beta validation
 
+- [x] **Merged PR #123, byte-level acceptance evidence prerequisite:** offline CLI checks genuine archived fictional original and annotation bytes against reported SHA-256, rejects copied/duplicate originals, traversal and symlinks. **420/420** tests and standalone build passed. `productionGatePassed=false` unconditionally; independent image/page/row adjudication and measured deployed 500-page holdout remain **open**, not simulated by this script.
+
+
 - [x] **Merged PR #121:** fail-closed detection of non-whitespace leading, interior, and trailing gaps in original-source record maps for normal-age conflicts. **416/416** tests plus offline build/browser/accessibility, Playwright and real three-GGUF adversarial regression workflows passed. Does **not** select a governing amendment or pass any independent acceptance gate.
 
 
