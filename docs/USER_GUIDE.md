@@ -20,7 +20,7 @@ This beta application includes a built-in **Guide** with an **Office setup** wal
 1. Open `index.html` in Chrome or Edge. You do not need a local server.
 2. Select **Choose model files**. Select the GGUF file. Select **Load model**.
 3. Select **Test model**. Read the status. If the model fails, select a different compatible file.
-4. Select **Attach OCR export / text**. Choose a PDF, PNG, JPG, WebP, DOCX, XLSX, CSV, TXT, MD or supported JSONC/JSON export.
+4. Select **Attach OCR export / text**. Choose a PDF, PNG, JPG, WebP, DOCX, XLSX, CSV, TXT, MD or supported JSONC/JSON export. If a multi-file import needs to stop, select **Cancel document import**. The active OCR operation may finish locally, but its entire pending batch is discarded; documents already loaded remain intact.
 5. Select **Documents**. Review the imported text and source notes. For PDFs, choose **View original PDF**. For scanned pages, choose **Correct OCR text**.
 6. Select **Extract JSON**, review the JSON Schema, select **Check schema**, then **Extract and validate**.
 7. Resolve conflicts only after verifying the original source. Edit JSON if necessary and select **Validate edited JSON**.

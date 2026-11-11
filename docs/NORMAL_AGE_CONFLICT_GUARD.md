@@ -5,10 +5,11 @@ This deliberately narrow safety check refuses to treat a model-selected normal-r
 ## Exact behavior
 
 1. Scan original parser text and record boundaries for explicit `normal retirement age`, `normal age`, `normal_age`, or standalone `NRA` statements containing a literal integer, including same-record `shall be age`, `will be age`, and `NRA:` clauses. Track the exact original text offsets. Do not infer cross-cell, cross-paragraph or cross-page numeric associations.
-2. Exclude literal appearances solely inside already recognized AI instruction text or expressly disclaimed nongoverning examples. These passages retain their existing separate security checks.
-3. For an extracted field `normal_age`, `normal_retirement_age`, `normalRetirementAge` or `nra`, **two distinct remaining values** mean an unresolved conflict. The entire candidate fails prevalidation, regardless of which candidate the LLM suggested. No source is silently chosen, and no substitute value is generated.
-4. Recheck at the final export gate even when the source, schema and evidence confirmation controls were previously satisfied. Incomplete/malformed source scan states also block that field.
-5. Identical repeated values and a separate explicitly labelled **early** retirement age are not treated as normal-age conflicts. Source review and factual verification remain mandatory.
+2. Reject a malformed/incomplete record map if any *non-whitespace* original source text lies outside its declared source-record ranges. Genuine parser whitespace separators are permitted; source text, UTF-16 offsets, and parser locations remain unchanged. A missing record map still means document-wide text with only document-level provenance.
+3. Exclude literal appearances solely inside already recognized AI instruction text or expressly disclaimed nongoverning examples. These passages retain their existing separate security checks.
+4. For an extracted field `normal_age`, `normal_retirement_age`, `normalRetirementAge` or `nra`, **two distinct remaining values** mean an unresolved conflict. The entire candidate fails prevalidation, regardless of which candidate the LLM suggested. No source is silently chosen, and no substitute value is generated.
+5. Recheck at the final export gate even when the source, schema and evidence confirmation controls were previously satisfied. Incomplete/malformed source scan states also block that field.
+6. Identical repeated values and a separate explicitly labelled **early** retirement age are not treated as normal-age conflicts. Source review and factual verification remain mandatory.
 
 ## Scope and limitations
 
